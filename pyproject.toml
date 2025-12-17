@@ -1,0 +1,14 @@
+[project]
+name = "vlmx-sh2"
+version = "0.1.0"
+description = "CLI shell for VLMX"
+requires-python = ">=3.11"
+dependencies = [
+    "mypy",
+    "pydantic",
+    "rapidfuzz",
+    "textual",
+]
+
+[project.scripts]
+vlmx = "vlmx_sh2.main:main"
