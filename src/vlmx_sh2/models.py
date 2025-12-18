@@ -5,8 +5,9 @@ Operational models may differ from the database schema.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from vlmx_sh2.enum import Entity, Currency, Unit
+import datetime
 
 from pydantic.types import date
 
@@ -56,7 +57,7 @@ class CompanyModel(DatabaseModel):
     entity: Entity
     currency: Currency
     unit: Unit
-    month: int = 12
+    fiscal_month: int = 12
     incorporation: Optional[date] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
