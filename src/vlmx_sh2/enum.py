@@ -1,7 +1,7 @@
 from enum import Enum
 
-
 ### ENUM for keywords
+
 
 class KeywordType(Enum):
     VERB = "verb"
@@ -9,17 +9,23 @@ class KeywordType(Enum):
     ADJECTIVE = "adjective"
     PREPOSITION = "preposition"
 
+
 class KeywordUsage(Enum):
-    ACTION = "action"          #
-    MODIFIER = "modifier"
-    ENTITY = "entity" 
-    PROPERTY = "property"
+    ACTION = "action"  # verbs only (eg. create, update, delete)
+    MODIFIER = "modifier"  # adjectives or nouns that modify an entity (only one adjective per entity). Additional filers can be added with where"
+    ENTITY = "entity"  # noun only :An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
+    ATTRIBUTE = "attribute"  # noun or adjective: attributes are Pydantic model's fields which correspond to SQL table columns (eg. key field => key column)
+    FILTER = (
+        "filter"  # preposition: Filters are used to filter entities (eg. where id=5)
+    )
 
 
 ### Company Enums
 
+
 class Entity(str, Enum):
     """Company entity types"""
+
     SA = "SA"
     SARL = "SARL"
     SAS = "SAS"
@@ -33,6 +39,7 @@ class Entity(str, Enum):
 
 class Currency(str, Enum):
     """Supported currencies"""
+
     EUR = "EUR"
     USD = "USD"
     GBP = "GBP"
@@ -42,6 +49,7 @@ class Currency(str, Enum):
 
 class Unit(str, Enum):
     """Financial units"""
+
     THOUSANDS = "THOUSANDS"
     MILLIONS = "MILLIONS"
 

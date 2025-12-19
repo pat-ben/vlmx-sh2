@@ -1,17 +1,15 @@
-""" This files includes pydantic models that should match
+"""This files includes pydantic models that should match
 1:1 SQL tables. Each model represents a table in the database.
 Operational models may differ from the database schema.
-    
+This file is also helpful to design the DSL grammar which should correspond to the database models.
+
 """
 
+from datetime import date, datetime
+from typing import Optional, Union
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
-from vlmx_sh2.enum import Entity, Currency, Unit
-import datetime
-
-from pydantic.types import date
-
-
+from vlmx_sh2.enum import (Entity, Currency, Unit)
+ 
 
 # File: src/vlmx_sh2/models/database.py
 """
@@ -24,18 +22,18 @@ Architecture:
 """
 
 
-
 # ============================================
 # BASE MODEL
 # ============================================
 
+
 class DatabaseModel(BaseModel):
     """Base class for all database models"""
-    
+
     class Config:
         orm_mode = True
         use_enum_values = True
-        
+
     @classmethod
     def table_name(cls) -> str:
         """Returns the SQL table name for this model"""
@@ -43,8 +41,9 @@ class DatabaseModel(BaseModel):
 
 
 # ============================================
-# TABLE MODELS (1:1 with SQL tables)
+# COMPANY MODEL created at the same time as the database
 # ============================================
+
 
 class CompanyModel(DatabaseModel):
     """
@@ -52,6 +51,7 @@ class CompanyModel(DatabaseModel):
     SQL Table: company
     Description: Core company information (one record per company database)
     """
+
     id: Optional[int] = None
     name: str
     entity: Entity
@@ -59,12 +59,24 @@ class CompanyModel(DatabaseModel):
     unit: Unit
     fiscal_month: int = 12
     incorporation: Optional[date] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    
+    # timestamp
+    created_at: datetime = Field(default_factory=datetime.now)    
+    updated_at: datetime = Field(default_factory=datetime.now)
+    
+    # track where the source database file is located and when it was last synced
+    source_db: Optional[str] = Field(None, description="Source database file (portfolio only)")
+    last_synced_at: Optional[datetime] = Field(None, description="Last sync timestamp (portfolio only)")
 
     @classmethod
     def table_name(cls) -> str:
         return "company"
+
+
+
+# ============================================
+# METADATA MODEL (company basic metadata extension))
+# ============================================
 
 
 class MetadataModel(DatabaseModel):
@@ -73,34 +85,47 @@ class MetadataModel(DatabaseModel):
     SQL Table: metadata
     Description: Extended company metadata (key-value pairs)
     """
+
     id: Optional[int] = None
     company_id: int = Field(..., description="Reference to company.id")
     key: str = Field(..., description="Metadata key")
-    value: str = Field(..., description="Metadata value")
-    data_type: Literal["string", "number", "boolean", "date"] = Field(default="string")
-    description: Optional[str] = Field(None, description="Description of this metadata")
+    value: Union[str, int, float, bool, date, list, dict, None] = Field(..., description="Metadata value (automatically typed and validated)")
+    
+    # timestamp
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    
+
     @classmethod
     def table_name(cls) -> str:
         return "metadata"
 
 
+# ============================================
+# BRAND MODEL (Parent - Core brand info only)
+# ============================================
+
 class BrandModel(DatabaseModel):
     """
     Python Model: BrandModel
     SQL Table: brand
-    Description: Company brand identity (vision, mission, values, promise)
+    Description: Core company brand identity (vision, mission, personality, promise)
+    
+    Note: offering, target, and values moved to separate tables:
+    - OfferingModel → brand_offerings table
+    - TargetModel → brand_targets table
+    - ValueModel → brand_values table
     """
     id: Optional[int] = None
-    company_id: int = Field(..., description="Reference to company.id")
-    vision: Optional[str] = Field(None, description="Company vision")
-    mission: Optional[str] = Field(None, description="Company mission")
-    values: Optional[str] = Field(None, description="Company values (JSON or text)")
-    promise: Optional[str] = Field(None, description="Brand promise")
-    tagline: Optional[str] = Field(None, description="Company tagline")
-    positioning: Optional[str] = Field(None, description="Market positioning")
+    company_id: int = Field(default=1, description="Reference to company.id")
+    
+    # Core brand elements (single text fields)
+    vision: Optional[str] = Field(None, description="Company vision statement")
+    mission: Optional[str] = Field(None, description="Company mission statement")
+    personality: Optional[str] = Field(None, description="Brand personality description")
+    promise: Optional[str] = Field(None, description="Brand promise to customers")
+    brand: Optional[str] = Field(None, description="Brand name")
+    
+    # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
@@ -109,145 +134,103 @@ class BrandModel(DatabaseModel):
         return "brand"
 
 
-class DocsModel(DatabaseModel):
+# ============================================
+# OFFERING MODEL (Key-Value Pairs)
+# ============================================
+
+class OfferingModel(DatabaseModel):
     """
-    Python Model: DocsModel
-    SQL Table: docs
-    Description: Document references (Microsoft files + PDF)
-    """
-    id: Optional[int] = None
-    company_id: int = Field(..., description="Reference to company.id")
-    file_name: str = Field(..., description="Document filename")
-    file_path: str = Field(..., description="Path to document")
-    file_type: DocumentType = Field(..., description="Document type")
-    file_size: Optional[int] = Field(None, description="File size in bytes")
-    description: Optional[str] = Field(None, description="Document description")
-    category: Optional[str] = Field(None, description="Document category")
-    tags: Optional[str] = Field(None, description="Tags (comma-separated or JSON)")
-    uploaded_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    Python Model: OfferingModel
+    SQL Table: brand_offerings
+    Description: Company product/service offerings (key-value pairs)
     
-    @classmethod
-    def table_name(cls) -> str:
-        return "docs"
-
-
-class JsonModel(DatabaseModel):
-    """
-    Python Model: JsonModel
-    SQL Table: json
-    Description: Standardized JSON data (accounting, budget, planning)
+    Examples:
+        key="Core Product", value="AI-powered financial analytics platform"
+        key="Premium Service", value="White-label solutions for enterprises"
+        key="Consulting", value="Strategic advisory for digital transformation"
     """
     id: Optional[int] = None
-    company_id: int = Field(..., description="Reference to company.id")
-    data_type: JsonDataType = Field(..., description="Type of JSON data")
-    json_content: str = Field(..., description="JSON content as string")
-    period_date: Optional[date] = Field(None, description="Period this data relates to")
-    fiscal_year: Optional[int] = Field(None, description="Fiscal year")
-    status: Literal["DRAFT", "FINAL", "ARCHIVED"] = Field(default="DRAFT")
-    description: Optional[str] = Field(None, description="Description of this JSON data")
+    brand_id: int = Field(..., description="Reference to brand.id")
+    key: str = Field(..., description="Offering title/category")
+    value: str = Field(
+        ..., 
+        description="Offering description (automatically typed and validated)"
+    )
+    order_num: int = Field(default=0, description="Display order")
+    
+    # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
     @classmethod
     def table_name(cls) -> str:
-        return "json"
+        return "brand_offerings"
 
 
-class DataModel(DatabaseModel):
+# ============================================
+# TARGET MODEL (Key-Value Pairs)
+# ============================================
+
+class TargetModel(DatabaseModel):
     """
-    Python Model: DataModel
-    SQL Table: data
-    Description: Key financial data (fundamentals)
+    Python Model: TargetModel
+    SQL Table: brand_targets
+    Description: Target audience/market segments (key-value pairs)
+    
+    Examples:
+        key="Primary Segment", value="Fintech startups with 10-50 employees"
+        key="Secondary Segment", value="Mid-market financial institutions"
+        key="Geographic Focus", value="European Union and Switzerland"
+        key="Customer Profile", value="CFOs and finance teams"
     """
     id: Optional[int] = None
-    company_id: int = Field(..., description="Reference to company.id")
-    period_date: date = Field(..., description="Period end date")
-    fiscal_year: int = Field(..., description="Fiscal year")
-    status: Literal["ACTUAL", "PLAN", "FORECAST", "BUDGET"] = Field(default="ACTUAL")
+    brand_id: int = Field(..., description="Reference to brand.id")
+    key: str = Field(..., description="Target segment title/category")
+    value: str = Field(
+        ..., 
+        description="Target segment description (automatically typed and validated)"
+    )
+    order_num: int = Field(default=0, description="Display order")
     
-    # Financial metrics
-    revenue: Optional[float] = Field(None, description="Revenue")
-    ebitda: Optional[float] = Field(None, description="EBITDA")
-    equity: Optional[float] = Field(None, description="Equity")
-    debt: Optional[float] = Field(None, description="Debt")
-    cash: Optional[float] = Field(None, description="Cash")
-    grants: Optional[float] = Field(None, description="Grants")
-    
-    # Metadata
-    notes: Optional[str] = Field(None, description="Notes about this period")
+    # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
     @classmethod
     def table_name(cls) -> str:
-        return "data"
+        return "brand_targets"
 
 
-class MetricsModel(DatabaseModel):
+# ============================================
+# VALUE MODEL (Key-Value Pairs)
+# ============================================
+
+class ValueModel(DatabaseModel):
     """
-    Python Model: MetricsModel
-    SQL Table: metrics
-    Description: Company metrics (KPIs, performance indicators)
+    Python Model: ValueModel
+    SQL Table: brand_values
+    Description: Company core values (key-value pairs)
+    
+    Examples:
+        key="Innovation", value="We constantly push boundaries and embrace new technologies"
+        key="Integrity", value="We act with honesty and transparency in all our dealings"
+        key="Impact", value="We measure success by the positive change we create"
+        key="Inclusivity", value="We build products that serve everyone, regardless of background"
     """
     id: Optional[int] = None
-    company_id: int = Field(..., description="Reference to company.id")
-    metric_name: str = Field(..., description="Name of the metric")
-    metric_value: float = Field(..., description="Metric value")
-    metric_unit: Optional[str] = Field(None, description="Unit of measurement")
-    period_date: date = Field(..., description="Period this metric relates to")
-    category: Optional[str] = Field(None, description="Metric category")
-    description: Optional[str] = Field(None, description="Metric description")
+    brand_id: int = Field(..., description="Reference to brand.id")
+    key: str = Field(..., description="Value name/title")
+    value: str = Field(
+        ..., 
+        description="Value description/explanation (automatically typed and validated)"
+    )
+    order_num: int = Field(default=0, description="Display order")
+    
+    # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
     @classmethod
     def table_name(cls) -> str:
-        return "metrics"
+        return "brand_values"
 
-
-class MilestonesModel(DatabaseModel):
-    """
-    Python Model: MilestonesModel
-    SQL Table: milestones
-    Description: Company milestones
-    """
-    id: Optional[int] = None
-    company_id: int = Field(..., description="Reference to company.id")
-    title: str = Field(..., description="Milestone title")
-    description: Optional[str] = Field(None, description="Milestone description")
-    target_date: Optional[date] = Field(None, description="Target completion date")
-    actual_date: Optional[date] = Field(None, description="Actual completion date")
-    status: MilestoneStatus = Field(default=MilestoneStatus.ACTIVE, description="Milestone status")
-    priority: Literal["HIGH", "MEDIUM", "LOW"] = Field(default="MEDIUM")
-    category: Optional[str] = Field(None, description="Milestone category")
-    progress: Optional[int] = Field(None, ge=0, le=100, description="Progress percentage")
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
-    
-    @classmethod
-    def table_name(cls) -> str:
-        return "milestones"
-
-
-class NewsModel(DatabaseModel):
-    """
-    Python Model: NewsModel
-    SQL Table: news
-    Description: Company news and announcements
-    """
-    id: Optional[int] = None
-    company_id: int = Field(..., description="Reference to company.id")
-    date: date = Field(..., description="News date")
-    headline: str = Field(..., description="News headline")
-    content: Optional[str] = Field(None, description="Full news content")
-    source: Optional[str] = Field(None, description="News source")
-    url: Optional[str] = Field(None, description="URL to original news")
-    category: Optional[str] = Field(None, description="News category")
-    tags: Optional[str] = Field(None, description="Tags (comma-separated or JSON)")
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
-    
-    @classmethod
-    def table_name(cls) -> str:
-        return "news"
