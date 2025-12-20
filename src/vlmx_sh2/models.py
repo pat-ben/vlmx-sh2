@@ -8,7 +8,7 @@ This file is also helpful to design the DSL grammar which should correspond ... 
 from datetime import date, datetime
 from typing import Optional, Union
 from pydantic import BaseModel, Field
-from vlmx_sh2.enum import (Entity, Currency, Unit)
+from vlmx_sh2.enums import (Entity, Currency, Unit)
  
 
 # File: src/vlmx_sh2/models/database.py
@@ -75,7 +75,7 @@ class CompanyModel(DatabaseModel):
 
 
 # ============================================
-# METADATA MODEL (company basic metadata extension))
+# METADATA MODEL (company metadata extension)
 # ============================================
 
 
