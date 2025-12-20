@@ -10,8 +10,9 @@ Defines the structure for all keyword types:
 """
 
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Type, Optional, Literal, List, Tuple
+from typing import Type, Optional, Literal, List, Dict
 from .enums import KeywordType, OperationLevel
+from .models import CompanyModel
 
 
 # ==================== BASE KEYWORD ====================
@@ -83,3 +84,83 @@ class AttributeKeyword(BaseKeyword):
 # ==================== UNION TYPE ====================
 
 Keyword = ActionKeyword | EntityKeyword | AttributeKeyword | ModifierKeyword
+
+# ==================== KEYWORD REGISTRATIONS ====================
+
+
+
+# Define all keywords in a list
+KEYWORDS: List[Keyword] = [
+    # ==================== ACTIONS ====================
+    ActionKeyword(
+        id="create",
+        description="Create a new entity (company, milestone, etc.)",
+        aliases=["add", "new"],
+        abbreviations=["c"],
+        operation_level=OperationLevel.TABLE,
+        requires_entity=True,
+        destructive=False,
+    ),
+    
+    ActionKeyword(
+        id="delete",
+        description="Delete an existing entity",
+        aliases=["remove", "drop"],
+        abbreviations=["d"],
+        operation_level=OperationLevel.ROW,
+        requires_entity=True,
+        destructive=True,
+        warning="This action will permanently delete the entity"
+    ),
+    
+    # ==================== ENTITIES ====================
+    EntityKeyword(
+        id="company",
+        description="A business entity that can be managed in the terminal",
+        aliases=["business", "firm"],
+        abbreviations=["co"],
+        entity_model=CompanyModel
+    ),
+    
+    # ==================== ATTRIBUTES ====================
+    AttributeKeyword(
+        id="entity",
+        description="Legal entity type (SA, LLC, INC, etc.)",
+        aliases=["entity_type", "legal_entity"],
+        abbreviations=["ent"],
+        entity_models=[CompanyModel]
+    ),
+    
+    AttributeKeyword(
+        id="currency",
+        description="Currency used for financial data (EUR, USD, GBP, etc.)",
+        aliases=["curr"],
+        abbreviations=["cur"],
+        entity_models=[CompanyModel]
+    ),
+]
+
+# Auto-build the registry from the list (NO REPETITION!)
+KEYWORD_REGISTRY: Dict[str, Keyword] = {
+    keyword.id: keyword for keyword in KEYWORDS
+}
+
+
+# ==================== HELPER FUNCTIONS ====================
+
+def get_keyword(keyword_id: str) -> Keyword | None:
+    """Get a keyword by its ID"""
+    return KEYWORD_REGISTRY.get(keyword_id)
+
+
+def get_all_keywords() -> Dict[str, Keyword]:
+    """Get all registered keywords"""
+    return KEYWORD_REGISTRY
+
+
+def get_keywords_by_type(keyword_type: KeywordType) -> Dict[str, Keyword]:
+    """Get all keywords of a specific type"""
+    return {
+        k: v for k, v in KEYWORD_REGISTRY.items()
+        if v.keyword_type == keyword_type
+    }
