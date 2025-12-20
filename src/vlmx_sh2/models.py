@@ -1,7 +1,7 @@
-"""This files includes pydantic models that should match
+"""This files includes an example of pydantic models that should match
 1:1 SQL tables. Each model represents a table in the database.
 Operational models may differ from the database schema.
-This file is also helpful to design the DSL grammar which should correspond to the database models.
+This file is also helpful to design the DSL grammar which should correspond ... to the database.
 
 """
 
@@ -135,7 +135,7 @@ class BrandModel(DatabaseModel):
 
 
 # ============================================
-# OFFERING MODEL (Key-Value Pairs)
+# OFFERING MODEL RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
 class OfferingModel(DatabaseModel):
@@ -156,7 +156,6 @@ class OfferingModel(DatabaseModel):
         ..., 
         description="Offering description (automatically typed and validated)"
     )
-    order_num: int = Field(default=0, description="Display order")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
@@ -168,7 +167,7 @@ class OfferingModel(DatabaseModel):
 
 
 # ============================================
-# TARGET MODEL (Key-Value Pairs)
+# TARGET MODEL RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
 class TargetModel(DatabaseModel):
@@ -190,7 +189,6 @@ class TargetModel(DatabaseModel):
         ..., 
         description="Target segment description (automatically typed and validated)"
     )
-    order_num: int = Field(default=0, description="Display order")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
@@ -202,7 +200,7 @@ class TargetModel(DatabaseModel):
 
 
 # ============================================
-# VALUE MODEL (Key-Value Pairs)
+# VALUE MODEL RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
 class ValueModel(DatabaseModel):
@@ -223,9 +221,7 @@ class ValueModel(DatabaseModel):
     value: str = Field(
         ..., 
         description="Value description/explanation (automatically typed and validated)"
-    )
-    order_num: int = Field(default=0, description="Display order")
-    
+    )    
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
