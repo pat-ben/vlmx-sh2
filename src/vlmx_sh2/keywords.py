@@ -11,7 +11,7 @@ Defines the structure for all keyword types:
 
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Type, Optional, Literal, List, Dict
-from .enums import KeywordType, OperationLevel
+from .enums import KeywordType, OperationLevel, ActionCategory, CRUDOperation
 from .models import CompanyModel
 
 
@@ -39,6 +39,8 @@ class ActionKeyword(BaseKeyword):
     """
     
     keyword_type: Literal[KeywordType.ACTION] = KeywordType.ACTION
+    action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
+    crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
     operation_level: OperationLevel = Field(description="Level at which this action operates (database, table, row, query)")
     requires_entity: bool = Field(default=True, description="Whether this action requires an entity to operate on")
     destructive: bool = Field(default=False, description="Whether this action permanently destroys data (e.g., delete, drop)")
