@@ -1,0 +1,93 @@
+from enum import Enum
+
+### ENUM for keywords
+
+
+class KeywordType(Enum):
+    ACTION = "action"  # verbs only (eg. create, update, delete)
+    MODIFIER = "modifier"  # adjectives or nouns that modify an entity (only one adjective per entity). Additional filers can be added with where"
+    ENTITY = "entity"  # noun only :An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
+    ATTRIBUTE = "attribute"  # noun or adjective: attributes are Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
+    FILTER = "filter"  # preposition: Filters are used to filter entities (eg. where id=5)
+
+class KeywordTypeOrder(Enum):
+    """
+    Defines the automatic ordering of keyword types in commands.
+    Lower numbers come first in the command syntax.
+    """
+    ACTION = 1      # e.g., create, show, delete, update
+    MODIFIER = 2    # e.g., holding, operating
+    ENTITY = 3      # e.g., company, milestone, revenue
+    ATTRIBUTE = 4   # e.g., currency, entity, name, amount (no fixed order)
+    
+
+### ENUM for operations
+
+class OperationLevel(str, Enum):
+    """Level at which an action operates"""
+    DATABASE = "database"  # e.g., backup, restore
+    TABLE = "table"        # e.g., create table, drop table
+    ATTRIBUTE = "attribute"  # e.g., update, delete attribute
+    ROW = "row"            # e.g., create, update, delete record
+    QUERY = "query"        # e.g., show, filter
+    SYSTEM = "system"      # e.g., create, update, delete record
+
+class ActionCategory(str, Enum):
+    """ Broad category of what an action does. """
+    CRUD = "crud"
+    NAVIGATION = "navigation"
+    SYSTEM = "system"
+    ANALYSIS = "analysis"
+    IMPORT_EXPORT = "import_export"
+
+class CRUDOperation(str, Enum):
+    """ Specific CRUD operation type."""    
+    CREATE = "create"
+    READ = "read"
+    UPDATE = "update"
+    DELETE = "delete"
+    NONE = "none"
+
+
+### ENUM for requirements
+
+class RequirementType(Enum):
+    """Defines whether a keyword/attribute is required in a command"""
+    REQUIRED = "required"           # Must be present
+    OPTIONAL = "optional"           # Can be omitted
+    CONDITIONAL = "conditional"     # Required under certain conditions
+
+
+### Company Enums
+
+class Entity(str, Enum):
+    """Company entity types"""
+
+    SA = "SA"
+    SARL = "SARL"
+    SAS = "SAS"
+    HOLDING = "HOLDING"
+    OPERATING = "OPERATING"
+    LLC = "LLC"
+    INC = "INC"
+    LTD = "LTD"
+    GMBH = "GMBH"
+
+
+class Currency(str, Enum):
+    """Supported currencies"""
+
+    EUR = "EUR"
+    USD = "USD"
+    GBP = "GBP"
+    CHF = "CHF"
+    CAD = "CAD"
+
+
+class Unit(str, Enum):
+    """Financial units"""
+
+    THOUSANDS = "THOUSANDS"
+    MILLIONS = "MILLIONS"
+
+
