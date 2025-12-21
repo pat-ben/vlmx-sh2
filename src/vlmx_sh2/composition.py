@@ -17,7 +17,7 @@ VALUE TYPES:
 - ATTRIBUTE values: Can be any Python type (str, int, float, date, bool, etc.)
 """
 
-from typing import Any, List, Optional, Type
+from typing import List, Optional
 from vlmx_sh2.enums import KeywordType
 
 
