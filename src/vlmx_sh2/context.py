@@ -30,18 +30,18 @@ class Context(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # Context level tracking
-    level: int = 0  # 0=VLMX, 1=Company, 2=Plugin
+    level: int = 0  # 0=System (sys), 1=Organization (org), 2=Application (app)
 
-    # Platform level (level 0)
-    platform_path: Optional[Path] = None
+    # System level (level 0)
+    sys_path: Optional[Path] = None
 
-    # Company level (level 1+)
-    company_id: Optional[int] = None
-    company_name: Optional[str] = None
-    company_db_path: Optional[Path] = None
+    # Organization level (level 1+)
+    org_id: Optional[int] = None
+    org_name: Optional[str] = None
+    org_db_path: Optional[Path] = None
 
-    # Plugin level (level 2)
-    plugin_id: Optional[str] = None
+    # Application level (level 2) - plugin_id kept for developer compatibility
+    app_id: Optional[str] = None
     scenario_id: Optional[int] = None
 
     # Session (Step 2)
@@ -57,28 +57,76 @@ class Context(BaseModel):
 
     @model_validator(mode="after")
     def _validate_level_consistency(self) -> "Context":
-        # Level 0: no company or plugin fields
+        # Level 0 (sys): no organization or application fields
         if self.level == 0:
-            if any((self.company_id, self.company_name, self.plugin_id)):
+            if any((self.org_id, self.org_name, self.app_id)):
                 raise ValueError(
-                    "At level 0, company_id, company_name, and plugin_id must all be None"
+                    "At level 0 (sys), org_id, org_name, and app_id must all be None"
                 )
-        # Level 1: must have company, no plugin
+        # Level 1 (org): must have organization, no application
         elif self.level == 1:
-            if self.company_id is None or self.company_name is None:
+            if self.org_id is None or self.org_name is None:
                 raise ValueError(
-                    "At level 1, company_id and company_name must not be None"
+                    "At level 1 (org), org_id and org_name must not be None"
                 )
-            if self.plugin_id is None is False and self.plugin_id is not None:
-                # Defensive, but effectively: plugin_id must be None
-                raise ValueError("At level 1, plugin_id must be None")
-        # Level 2: must have company and plugin
+            if self.app_id is None is False and self.app_id is not None:
+                # Defensive, but effectively: app_id must be None
+                raise ValueError("At level 1 (org), app_id must be None")
+        # Level 2 (app): must have organization and application
         elif self.level == 2:
-            if self.company_id is None or self.company_name is None or self.plugin_id is None:
+            if self.org_id is None or self.org_name is None or self.app_id is None:
                 raise ValueError(
-                    "At level 2, company_id, company_name, and plugin_id must not be None"
+                    "At level 2 (app), org_id, org_name, and app_id must not be None"
                 )
         return self
+
+    # Convenience properties for new terminology
+    @property
+    def is_sys(self) -> bool:
+        """True if at system level (0)"""
+        return self.level == 0
+    
+    @property
+    def is_org(self) -> bool:
+        """True if at organization level (1)"""
+        return self.level == 1
+    
+    @property
+    def is_app(self) -> bool:
+        """True if at application level (2)"""
+        return self.level == 2
+
+    @property
+    def level_name(self) -> str:
+        """Human-readable level name"""
+        level_names = {0: "sys", 1: "org", 2: "app"}
+        return level_names.get(self.level, f"unknown({self.level})")
+
+    # Legacy compatibility properties
+    @property
+    def company_id(self) -> Optional[int]:
+        """Legacy property for org_id"""
+        return self.org_id
+    
+    @property
+    def company_name(self) -> Optional[str]:
+        """Legacy property for org_name"""
+        return self.org_name
+    
+    @property
+    def company_db_path(self) -> Optional[Path]:
+        """Legacy property for org_db_path"""
+        return self.org_db_path
+    
+    @property
+    def platform_path(self) -> Optional[Path]:
+        """Legacy property for sys_path"""
+        return self.sys_path
+    
+    @property
+    def plugin_id(self) -> Optional[str]:
+        """Legacy property for app_id"""
+        return self.app_id
 
     # Helper methods
     def get(self, key: str, default: Any = None) -> Any:
