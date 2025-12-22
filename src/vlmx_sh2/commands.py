@@ -8,7 +8,7 @@ This module handles ONLY:
 2. Registering commands in the command registry
 3. Providing access to registered commands
 
-Keywords are defined in keywords.py and referenced here by ID.
+Keywords are defined in words.py and referenced here by ID.
 """
 
 from typing import Dict, List, Optional, Callable, Any
@@ -29,7 +29,7 @@ class CommandSyntax(BaseModel):
     Specifies WHICH keywords are used (required/optional), but NOT their order.
     Order is determined automatically by composition rules.
     
-    Keywords are referenced by ID from the keyword registry (keywords.py).
+    Keywords are referenced by ID from the keyword registry (words.py).
     
     Example:
         create company ACME-SA --entity=SA --currency=EUR
@@ -50,12 +50,12 @@ class CommandSyntax(BaseModel):
     # Keyword composition
     required_keywords: List[str] = Field(
         default_factory=list,
-        description="List of required keyword IDs (from keywords registry)"
+        description="List of required keyword IDs (from words registry)"
     )
     
     optional_keywords: List[str] = Field(
         default_factory=list,
-        description="List of optional keyword IDs (from keywords registry)"
+        description="List of optional keyword IDs (from words registry)"
     )
     
     # Usage examples

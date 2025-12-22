@@ -1,18 +1,18 @@
 from enum import Enum
 
-### ENUM for keywords
+### ENUM for words
 
 
-class KeywordType(Enum):
+class WordType(Enum):
     ACTION = "action"  # verbs only (eg. create, update, delete)
     MODIFIER = "modifier"  # adjectives or nouns that modify an entity (only one adjective per entity). Additional filers can be added with where"
     ENTITY = "entity"  # noun only :An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
     ATTRIBUTE = "attribute"  # noun or adjective: attributes are Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
     FILTER = "filter"  # preposition: Filters are used to filter entities (eg. where id=5)
 
-class KeywordTypeOrder(Enum):
+class WordOrder(Enum):
     """
-    Defines the automatic ordering of keyword types in commands.
+    Defines the automatic ordering of word types in commands.
     Lower numbers come first in the command syntax.
     """
     ACTION = 1      # e.g., create, show, delete, update
@@ -52,7 +52,7 @@ class CRUDOperation(str, Enum):
 ### ENUM for requirements
 
 class RequirementType(Enum):
-    """Defines whether a keyword/attribute is required in a command"""
+    """Defines whether a word/attribute is required in a command"""
     REQUIRED = "required"           # Must be present
     OPTIONAL = "optional"           # Can be omitted
     CONDITIONAL = "conditional"     # Required under certain conditions
