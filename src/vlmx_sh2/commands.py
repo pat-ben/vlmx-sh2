@@ -31,14 +31,11 @@ class CommandSyntax(BaseModel):
     description: str = Field(description="Human-readable command description")
     required_words: Set[str] = Field(default_factory=set, description="Word IDs that must be present")
     optional_words: Set[str] = Field(default_factory=set, description="Word IDs that can be present")
-    conditional_words: Dict[str, List[str]] = Field(default_factory=dict, description="word_id -> [condition_word_ids]")
-    mutually_exclusive_groups: List[Set[str]] = Field(default_factory=list, description="Groups of words that can't coexist")
     
     def get_all_words(self) -> Set[str]:
         """Get all word IDs that can be used in this command"""
         all_words = self.required_words.copy()
-        all_words.update(self.optional_words)
-        all_words.update(self.conditional_words.keys())
+        all_words.update(self.optional_words)  
         return all_words
     
     def is_word_allowed(self, word_id: str) -> bool:
@@ -49,8 +46,6 @@ class CommandSyntax(BaseModel):
         """Get the requirement type for a specific word"""
         if word_id in self.required_words:
             return RequirementType.REQUIRED
-        elif word_id in self.conditional_words:
-            return RequirementType.CONDITIONAL
         elif word_id in self.optional_words:
             return RequirementType.OPTIONAL
         else:
