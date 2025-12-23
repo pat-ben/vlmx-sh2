@@ -25,10 +25,8 @@ class CommandSyntax(BaseModel):
     Defines the syntax requirements for a single command.
     
     Specifies which keywords are required/optional and their constraints.
-    """
+    """  
     
-    command_id: str = Field(description="Unique command identifier")
-    description: str = Field(description="Human-readable command description")
     required_words: Set[str] = Field(default_factory=set, description="Word IDs that must be present")
     optional_words: Set[str] = Field(default_factory=set, description="Word IDs that can be present")
     
@@ -85,19 +83,7 @@ class Command(BaseModel):
         # Check no unknown words
         unknown_words = word_set - self.syntax.get_all_words()
         if unknown_words:
-            return False, f"Unknown words for this command: {', '.join(unknown_words)}"
-        
-        # Check conditional words
-        for conditional_word, condition_words in self.syntax.conditional_words.items():
-            if conditional_word in word_set:
-                if not any(cond in word_set for cond in condition_words):
-                    return False, f"Word '{conditional_word}' requires one of: {', '.join(condition_words)}"
-        
-        # Check mutually exclusive groups
-        for group in self.syntax.mutually_exclusive_groups:
-            present_in_group = group & word_set
-            if len(present_in_group) > 1:
-                return False, f"Only one of these words allowed: {', '.join(group)}"
+            return False, f"Unknown words for this command: {', '.join(unknown_words)}"   
         
         return True, ""
     
