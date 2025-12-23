@@ -156,30 +156,6 @@ class Command(BaseModel):
         return True, ""
 
 
-    async def execute(self, words: List[Word], context: Context) -> Any:
-        """
-        Execute the command with the given words and context.
-
-        Automatically sorts words by composition rules before execution.
-        Ensures context is properly injected throughout the execution chain.
-        """
-        if not self.handler:
-            raise NotImplementedError(
-                f"Command '{self.command_id}' has no execution handler"
-            )
-
-        # Sort words according to automatic composition rules
-        sorted_words = sort_words(words)
-
-        # Validate context requirements before execution
-        can_exec, error_msg = self.can_execute(context)
-        if not can_exec:
-            raise ValueError(f"Cannot execute command in current context: {error_msg}")
-
-        # Execute with sorted words and injected context
-        return await self.handler(sorted_words, context)
-
-
 # ==================== COMMAND REGISTRY ====================
 
 
