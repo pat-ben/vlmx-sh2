@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from pydantic import BaseModel, Field, field_validator
 
 from .context import Context
-from .enums import RequirementType, WordType
+from .enums import RequirementType, WordType, ContextLevel
 from .syntax import get_composition_error, is_valid_command, sort_words
 from .words import Word, get_word
 
@@ -75,82 +75,6 @@ class CommandWords(BaseModel):
         all_words.update(self.optional_words)
         return all_words
 
-    def is_word_allowed(self, word_id: str) -> bool:
-        """Check if a word ID is allowed in this command"""
-        return word_id in self.get_all_words()
-
-    def get_requirement_type(self, word_id: str) -> RequirementType:
-        """Get the requirement type for a specific word"""
-        if word_id in self.required_words:
-            return RequirementType.REQUIRED
-        elif word_id in self.optional_words:
-            return RequirementType.OPTIONAL
-        else:
-            raise ValueError(f"Word '{word_id}' is not part of this command syntax")
-
-    @classmethod
-    def from_word_types(
-        cls,
-        required_actions: Optional[Set[str]] = None,
-        optional_actions: Optional[Set[str]] = None,
-        required_entities: Optional[Set[str]] = None,
-        optional_entities: Optional[Set[str]] = None,
-        required_attributes: Optional[Set[str]] = None,
-        optional_attributes: Optional[Set[str]] = None,
-        required_modifiers: Optional[Set[str]] = None,
-        optional_modifiers: Optional[Set[str]] = None,
-    ) -> "CommandWords":
-        """
-        Create CommandWords from word types for better organization.
-
-        This helper method makes it easier to define command syntax by grouping
-        words by their types rather than mixing them in required/optional sets.
-
-        Example:
-            CommandWords.from_word_types(
-                required_actions={"create"},
-                required_entities={"company"},
-                optional_attributes={"entity", "currency"}
-            )
-        """
-        required_words = set()
-        optional_words = set()
-
-        # Combine all required words
-        for word_set in [
-            required_actions,
-            required_entities,
-            required_attributes,
-            required_modifiers,
-        ]:
-            if word_set:
-                required_words.update(word_set)
-
-        # Combine all optional words
-        for word_set in [
-            optional_actions,
-            optional_entities,
-            optional_attributes,
-            optional_modifiers,
-        ]:
-            if word_set:
-                optional_words.update(word_set)
-
-        return cls(required_words=required_words, optional_words=optional_words)
-
-    def get_words_by_type(self, word_type: WordType) -> Set[str]:
-        """Get all words of a specific type that are part of this command"""
-        from .words import get_all_words
-
-        all_word_registry = get_all_words()
-        command_words = self.get_all_words()
-
-        return {
-            word_id
-            for word_id in command_words
-            if word_id in all_word_registry
-            and all_word_registry[word_id].word_type == word_type
-        }
 
 
 # ==================== COMMAND DEFINITION ====================
@@ -163,14 +87,36 @@ class Command(BaseModel):
 
     command_id: str = Field(description="Unique command identifier")
     description: str = Field(description="Human-readable command description")
-    syntax: CommandWords = Field(description="Command syntax requirements")
-    handler: Optional[Callable] = Field(
-        default=None, description="Command execution handler"
-    )
+    words: CommandWords = Field(description="Command syntax requirements")
+    context: ContextLevel = Field(default=ContextLevel.SYS, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
+    handler: Optional[Callable] = Field(default=None, description="Command execution handler")
     examples: List[str] = Field(default_factory=list, description="Usage examples")
 
     class Config:
         arbitrary_types_allowed = True
+
+    def can_execute(self, context: Context) -> tuple[bool, str]:
+        """
+        Check if this command can be executed in the given context.
+        """
+        if context.level < self.context:
+            # Get readable level names
+            level_names = {
+                ContextLevel.SYS: "sys",
+                ContextLevel.ORG: "org", 
+                ContextLevel.APP: "app"
+            }
+            
+            required = level_names[self.context]
+            current = level_names[ContextLevel(context.level)]
+            
+            return False, (
+                f"Command requires '{required}' context, "
+                f"currently at '{current}' context"
+            )
+        
+        return True, ""
+
 
     def validate_words(self, word_ids: List[str]) -> tuple[bool, str]:
         """
@@ -184,12 +130,12 @@ class Command(BaseModel):
         word_set = set(word_ids)
 
         # Check required words are present
-        missing_required = self.syntax.required_words - word_set
+        missing_required = self.words.required_words - word_set
         if missing_required:
             return False, f"Missing required words: {', '.join(missing_required)}"
 
         # Check no unknown words for this command
-        unknown_words = word_set - self.syntax.get_all_words()
+        unknown_words = word_set - self.words.get_all_words()
         if unknown_words:
             return False, f"Unknown words for this command: {', '.join(unknown_words)}"
 
@@ -209,12 +155,6 @@ class Command(BaseModel):
 
         return True, ""
 
-    def can_execute(self, context: Context) -> tuple[bool, str]:
-        """
-        Check if this command can be executed in the given context.
-        Override in subclasses for context-specific validation.
-        """
-        return True, ""
 
     async def execute(self, words: List[Word], context: Context) -> Any:
         """
@@ -259,7 +199,7 @@ class CommandRegistry:
 
         # Index by action words for quick lookup
         action_words = []
-        for word_id in command.syntax.get_all_words():
+        for word_id in command.words.get_all_words():
             word_obj = get_word(word_id)
             if word_obj and word_obj.word_type == WordType.ACTION:
                 action_words.append(word_id)
@@ -303,7 +243,7 @@ class CommandRegistry:
             return matching_commands
 
         for command in self._commands.values():
-            command_words = command.syntax.get_all_words()
+            command_words = command.words.get_all_words()
             if word_set.issubset(command_words):
                 matching_commands.append(command)
 
@@ -406,7 +346,7 @@ def register_command(
         command = Command(
             command_id=command_id,
             description=description,
-            syntax=syntax,
+            words=syntax,
             handler=handler_func,
             examples=examples or [],
         )
@@ -537,7 +477,7 @@ def register_advanced_commands():
     command = Command(
         command_id="create_company_advanced",
         description="Create a new company entity (advanced validation)",
-        syntax=create_syntax,
+        words=create_syntax,
         examples=[
             "create company ACME-SA --entity=SA --currency=EUR",
             "create company HoldCo --entity=HOLDING",

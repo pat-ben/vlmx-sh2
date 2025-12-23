@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 
 ### ENUM for words
 
@@ -37,6 +37,12 @@ class CRUDOperation(str, Enum):
     UPDATE = "update"
     DELETE = "delete"
     NONE = "none"
+
+
+class ContextLevel(IntEnum):
+    SYS = 0
+    ORG = 1
+    APP = 2
 
 
 ### ENUM for requirements
