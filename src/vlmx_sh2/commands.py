@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from pydantic import BaseModel, Field, field_validator
 
 from .context import Context
-from .enums import RequirementType, WordType, ContextLevel
+from .enums import ContextLevel, RequirementType, WordType
 from .syntax import get_composition_error, is_valid_command, sort_words
 from .words import Word, get_word
 
@@ -76,7 +76,6 @@ class CommandWords(BaseModel):
         return all_words
 
 
-
 # ==================== COMMAND DEFINITION ====================
 
 
@@ -88,8 +87,13 @@ class Command(BaseModel):
     command_id: str = Field(description="Unique command identifier")
     description: str = Field(description="Human-readable command description")
     words: CommandWords = Field(description="Command syntax requirements")
-    context: ContextLevel = Field(default=ContextLevel.SYS, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
-    handler: Optional[Callable] = Field(default=None, description="Command execution handler")
+    context: ContextLevel = Field(
+        default=ContextLevel.SYS,
+        description="Minimum context level required: SYS(0), ORG(1), or APP(2)",
+    )
+    handler: Optional[Callable] = Field(
+        default=None, description="Command execution handler"
+    )
     examples: List[str] = Field(default_factory=list, description="Usage examples")
 
     class Config:
@@ -103,20 +107,19 @@ class Command(BaseModel):
             # Get readable level names
             level_names = {
                 ContextLevel.SYS: "sys",
-                ContextLevel.ORG: "org", 
-                ContextLevel.APP: "app"
+                ContextLevel.ORG: "org",
+                ContextLevel.APP: "app",
             }
-            
+
             required = level_names[self.context]
             current = level_names[ContextLevel(context.level)]
-            
+
             return False, (
                 f"Command requires '{required}' context, "
                 f"currently at '{current}' context"
             )
-        
-        return True, ""
 
+        return True, ""
 
     def validate_words(self, word_ids: List[str]) -> tuple[bool, str]:
         """
@@ -154,6 +157,29 @@ class Command(BaseModel):
             return False, composition_error
 
         return True, ""
+
+    async def execute(self, words: List[Word], context: Context) -> Any:
+        """
+        Execute the command with the given words and context.
+
+        Automatically sorts words by composition rules before execution.
+        Ensures context is properly injected throughout the execution chain.
+        """
+        if not self.handler:
+            raise NotImplementedError(
+                f"Command '{self.command_id}' has no execution handler"
+            )
+
+        # Sort words according to automatic composition rules
+        sorted_words = sort_words(words)
+
+        # Validate context requirements before execution
+        can_exec, error_msg = self.can_execute(context)
+        if not can_exec:
+            raise ValueError(f"Cannot execute command in current context: {error_msg}")
+
+        # Execute with sorted words and injected context
+        return await self.handler(sorted_words, context)
 
 
 # ==================== COMMAND REGISTRY ====================
