@@ -42,7 +42,6 @@ class Context(BaseModel):
 
     # Application level (level 2) - plugin_id kept for developer compatibility
     app_id: Optional[str] = None
-    scenario_id: Optional[int] = None
 
     # Session (Step 2)
     user_id: Optional[int] = None
