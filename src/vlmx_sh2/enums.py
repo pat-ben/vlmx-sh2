@@ -10,16 +10,6 @@ class WordType(Enum):
     ATTRIBUTE = "attribute"  # noun or adjective: attributes are Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
     FILTER = "filter"  # preposition: Filters are used to filter entities (eg. where id=5)
 
-class WordOrder(Enum):
-    """
-    Defines the automatic ordering of word types in commands.
-    Lower numbers come first in the command syntax.
-    """
-    ACTION = 1      # e.g., create, show, delete, update
-    MODIFIER = 2    # e.g., holding, operating
-    ENTITY = 3      # e.g., company, milestone, revenue
-    ATTRIBUTE = 4   # e.g., currency, entity, name, amount (no fixed order)
-    
 
 ### ENUM for operations
 

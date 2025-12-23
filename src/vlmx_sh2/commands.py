@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from .words import get_word, Word
 from .enums import WordType, RequirementType
 from .context import Context
+from .syntax import SyntaxRules, is_valid_command, get_composition_error, sort_words
 
 
 # ==================== COMMAND SYNTAX ====================
@@ -24,7 +25,8 @@ class CommandSyntax(BaseModel):
     """
     Defines the syntax requirements for a single command.
     
-    Specifies which keywords are required/optional and their constraints.
+    Specifies WHAT words are required/optional, not HOW they are ordered.
+    Ordering and composition logic is handled automatically by syntax.py.
     """  
     
     required_words: Set[str] = Field(default_factory=set, description="Word IDs that must be present")
@@ -70,6 +72,8 @@ class Command(BaseModel):
         """
         Validate that provided word IDs satisfy command syntax requirements.
         
+        Uses automatic composition rules from syntax.py for ordering validation.
+        
         Returns:
             (is_valid, error_message)
         """
@@ -80,10 +84,24 @@ class Command(BaseModel):
         if missing_required:
             return False, f"Missing required words: {', '.join(missing_required)}"
         
-        # Check no unknown words
+        # Check no unknown words for this command
         unknown_words = word_set - self.syntax.get_all_words()
         if unknown_words:
-            return False, f"Unknown words for this command: {', '.join(unknown_words)}"   
+            return False, f"Unknown words for this command: {', '.join(unknown_words)}"
+        
+        # Get word objects for composition validation
+        word_objects = []
+        for word_id in word_ids:
+            word_obj = get_word(word_id)
+            if word_obj:
+                word_objects.append(word_obj)
+            else:
+                return False, f"Unknown word ID: {word_id}"
+        
+        # Use automatic composition validation from syntax.py
+        composition_error = get_composition_error(word_objects)
+        if composition_error:
+            return False, composition_error
         
         return True, ""
     
@@ -97,11 +115,23 @@ class Command(BaseModel):
     async def execute(self, words: List[Word], context: Context) -> Any:
         """
         Execute the command with the given words and context.
-        Override in subclasses or set handler function.
+        
+        Automatically sorts words by composition rules before execution.
+        Ensures context is properly injected throughout the execution chain.
         """
-        if self.handler:
-            return await self.handler(words, context)
-        raise NotImplementedError(f"Command '{self.command_id}' has no execution handler")
+        if not self.handler:
+            raise NotImplementedError(f"Command '{self.command_id}' has no execution handler")
+        
+        # Sort words according to automatic composition rules
+        sorted_words = sort_words(words)
+        
+        # Validate context requirements before execution
+        can_exec, error_msg = self.can_execute(context)
+        if not can_exec:
+            raise ValueError(f"Cannot execute command in current context: {error_msg}")
+        
+        # Execute with sorted words and injected context
+        return await self.handler(sorted_words, context)
 
 
 # ==================== COMMAND REGISTRY ====================
@@ -143,9 +173,26 @@ class CommandRegistry:
         """
         Find commands that could match the given word IDs.
         Returns commands where all provided words are allowed.
+        
+        Uses automatic composition validation from syntax.py.
         """
         word_set = set(word_ids)
         matching_commands = []
+        
+        # Get word objects for composition validation
+        word_objects = []
+        for word_id in word_ids:
+            word_obj = get_word(word_id)
+            if word_obj:
+                word_objects.append(word_obj)
+        
+        # Skip if we don't have valid word objects
+        if len(word_objects) != len(word_ids):
+            return matching_commands
+        
+        # Check if the word combination follows composition rules
+        if not is_valid_command(word_objects):
+            return matching_commands
         
         for command in self._commands.values():
             command_words = command.syntax.get_all_words()
@@ -154,6 +201,20 @@ class CommandRegistry:
         
         return matching_commands
     
+    def sort_command_words(self, word_ids: List[str]) -> List[str]:
+        """
+        Sort word IDs according to automatic composition rules.
+        Returns properly ordered word IDs using syntax.py rules.
+        """
+        word_objects = []
+        for word_id in word_ids:
+            word_obj = get_word(word_id)
+            if word_obj:
+                word_objects.append(word_obj)
+        
+        sorted_words = sort_words(word_objects)
+        return [word.id for word in sorted_words]
+    
     def get_all_commands(self) -> Dict[str, Command]:
         """Get all registered commands"""
         return self._commands.copy()
@@ -161,6 +222,41 @@ class CommandRegistry:
     def list_command_ids(self) -> List[str]:
         """Get list of all command IDs"""
         return list(self._commands.keys())
+    
+    async def execute_command(self, command_id: str, word_ids: List[str], context: Context) -> Any:
+        """
+        Execute a command by ID with automatic word resolution and context injection.
+        
+        Args:
+            command_id: The command to execute
+            word_ids: List of word IDs to pass to the command
+            context: Execution context to inject
+            
+        Returns:
+            Command execution result
+            
+        Raises:
+            ValueError: If command not found or validation fails
+        """
+        command = self.get_command(command_id)
+        if not command:
+            raise ValueError(f"Command '{command_id}' not found")
+        
+        # Resolve word objects from IDs
+        words = []
+        for word_id in word_ids:
+            word_obj = get_word(word_id)
+            if not word_obj:
+                raise ValueError(f"Unknown word ID: {word_id}")
+            words.append(word_obj)
+        
+        # Validate words against command syntax
+        is_valid, error_msg = command.validate_words(word_ids)
+        if not is_valid:
+            raise ValueError(f"Command validation failed: {error_msg}")
+        
+        # Execute with context injection
+        return await command.execute(words, context)
 
 
 # ==================== DECORATOR FOR AUTO-REGISTRATION ====================
@@ -173,8 +269,6 @@ def register_command(
     description: str,
     required_words: Set[str] = None,
     optional_words: Set[str] = None,
-    conditional_words: Dict[str, List[str]] = None,
-    mutually_exclusive_groups: List[Set[str]] = None,
     examples: List[str] = None
 ):
     """
@@ -193,12 +287,8 @@ def register_command(
     """
     def decorator(handler_func: Callable) -> Callable:
         syntax = CommandSyntax(
-            command_id=command_id,
-            description=description,
             required_words=required_words or set(),
-            optional_words=optional_words or set(),
-            conditional_words=conditional_words or {},
-            mutually_exclusive_groups=mutually_exclusive_groups or [],
+            optional_words=optional_words or set()
         )
         
         command = Command(
@@ -232,6 +322,37 @@ def find_commands(word_ids: List[str]) -> List[Command]:
 def get_commands_by_action(action_word_id: str) -> List[Command]:
     """Get commands that use a specific action word"""
     return _command_registry.get_commands_by_action(action_word_id)
+
+def sort_command_words(word_ids: List[str]) -> List[str]:
+    """Sort word IDs according to automatic composition rules"""
+    return _command_registry.sort_command_words(word_ids)
+
+def validate_command_composition(word_ids: List[str]) -> tuple[bool, str]:
+    """
+    Validate word composition using automatic syntax rules.
+    
+    Args:
+        word_ids: List of word IDs to validate
+        
+    Returns:
+        (is_valid, error_message)
+    """
+    word_objects = []
+    for word_id in word_ids:
+        word_obj = get_word(word_id)
+        if not word_obj:
+            return False, f"Unknown word ID: {word_id}"
+        word_objects.append(word_obj)
+    
+    composition_error = get_composition_error(word_objects)
+    if composition_error:
+        return False, composition_error
+    
+    return True, ""
+
+async def execute_command(command_id: str, word_ids: List[str], context: Context) -> Any:
+    """Execute a command with automatic validation and context injection"""
+    return await _command_registry.execute_command(command_id, word_ids, context)
 
 
 # ==================== BASIC COMMAND DEFINITIONS ====================
