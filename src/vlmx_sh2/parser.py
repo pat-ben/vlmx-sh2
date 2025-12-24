@@ -42,15 +42,7 @@ class ParsedToken(BaseModel):
     suggestions: List[str] = Field(default_factory=list, description="Alternative suggestions for this token")
     
     class Config:
-        arbitrary_types_allowed = True
-    
-    @field_validator('confidence')
-    @classmethod
-    def validate_confidence(cls, v: float) -> float:
-        """Validate that confidence is between 0 and 100."""
-        if not 0.0 <= v <= 100.0:
-            raise ValueError(f"confidence must be between 0 and 100, got: {v}")
-        return v
+        arbitrary_types_allowed = True 
     
     @property
     def is_recognized_word(self) -> bool:
@@ -128,12 +120,15 @@ class Tokenizer:
     # Regex patterns for different token types
     ATTRIBUTE_PATTERN = re.compile(r'--(\w+)=([^"\s]+|"[^"]*")')
     WORD_PATTERN = re.compile(r'\b[a-zA-Z_][a-zA-Z0-9_-]*\b')
-    VALUE_PATTERN = re.compile(r'[A-Z0-9_-]+')  # Company names, etc.
     
     @classmethod
     def tokenize(cls, text: str) -> List[ParsedToken]:
         """
         Tokenize input text into basic tokens.
+        
+        Ignores -- and = separators, focuses on extracting meaningful tokens:
+        - Words that might match the word registry
+        - Values (company names, attribute values)
         
         Args:
             text: Input text to tokenize
@@ -143,26 +138,30 @@ class Tokenizer:
         """
         tokens = []
         
-        # First, extract attributes (--key=value)
-        for match in cls.ATTRIBUTE_PATTERN.finditer(text):
-            tokens.append(ParsedToken(
-                text=match.group(0),
-                position=match.start(),
-                token_type=TokenType.FLAG,
-                confidence=1.0
-            ))
+        # Remove attribute patterns and extract just the meaningful parts
+        # This removes --key=value but we'll extract the values separately
+        text_without_flags = cls.ATTRIBUTE_PATTERN.sub('', text)
         
-        # Remove attributes from text for word processing
-        text_without_attrs = cls.ATTRIBUTE_PATTERN.sub('', text)
-        
-        # Extract words
-        for match in cls.WORD_PATTERN.finditer(text_without_attrs):
-            word_text = match.group(0).lower()
+        # Extract all word-like tokens from the clean text
+        for match in cls.WORD_PATTERN.finditer(text_without_flags):
+            word_text = match.group(0)
             
             tokens.append(ParsedToken(
                 text=word_text,
                 position=match.start(),
                 token_type=TokenType.UNKNOWN,  # Will be determined later
+                confidence=0.0
+            ))
+        
+        # Extract attribute values separately (the values after =)
+        for match in cls.ATTRIBUTE_PATTERN.finditer(text):
+            # Extract the value part after the =
+            value = match.group(2).strip('"')  # Remove quotes if present
+            
+            tokens.append(ParsedToken(
+                text=value,
+                position=match.end() - len(value),  # Approximate position
+                token_type=TokenType.UNKNOWN,  # Will be determined as VALUE or UNKNOWN
                 confidence=0.0
             ))
         
@@ -256,6 +255,11 @@ class WordRecognizer:
         """
         Process tokens to recognize words and update token types.
         
+        Classifies tokens as:
+        - WORD: Matches a word in the registry
+        - VALUE: Looks like a company name or attribute value
+        - UNKNOWN: Doesn't match any known pattern
+        
         Args:
             tokens: List of tokens to process
             
@@ -264,6 +268,7 @@ class WordRecognizer:
         """
         for token in tokens:
             if token.token_type == TokenType.UNKNOWN:
+                # First try to recognize as a word from registry
                 word, confidence, suggestions = self.recognize_word(token.text)
                 
                 if word:
@@ -273,41 +278,76 @@ class WordRecognizer:
                     token.token_type = TokenType.WORD
                 else:
                     token.suggestions = suggestions
-                    # Could be a value (company name, etc.)
-                    if token.text.isupper() or '_' in token.text or '-' in token.text:
+                    # Classify as VALUE if it looks like a company name or attribute value
+                    if self._is_value_token(token.text):
                         token.token_type = TokenType.VALUE
                     else:
                         token.token_type = TokenType.UNKNOWN
         
         return tokens
+    
+    def _is_value_token(self, text: str) -> bool:
+        """
+        Determine if a token should be classified as a VALUE.
+        
+        Values are typically:
+        - Company names (uppercase, with hyphens/underscores)
+        - Attribute values (SA, EUR, etc.)
+        - Mixed case identifiers
+        
+        Args:
+            text: Token text to classify
+            
+        Returns:
+            True if the token should be classified as VALUE
+        """
+        # Company names and entity values are often uppercase
+        if text.isupper():
+            return True
+            
+        # Contains hyphens or underscores (common in company names)
+        if '_' in text or '-' in text:
+            return True
+            
+        # Mixed case (could be a name)
+        if text != text.lower() and text != text.upper():
+            return True
+            
+        # Known attribute values
+        known_values = {'SA', 'SARL', 'SAS', 'LLC', 'INC', 'LTD', 'GMBH', 
+                       'EUR', 'USD', 'GBP', 'CHF', 'CAD',
+                       'THOUSANDS', 'MILLIONS'}
+        if text.upper() in known_values:
+            return True
+            
+        return False
 
 
 # ==================== VALUE EXTRACTION ====================
 
 class ValueExtractor:
-    """Extracts values and attributes from tokens."""
+    """Extracts values and attributes from tokens and original text."""
     
     @staticmethod
-    def extract_attributes(tokens: List[ParsedToken]) -> Dict[str, str]:
+    def extract_attributes(original_text: str) -> Dict[str, str]:
         """
-        Extract attribute key-value pairs from tokens.
+        Extract attribute key-value pairs directly from original text.
         
         Args:
-            tokens: List of tokens to process
+            original_text: Original input text to parse
             
         Returns:
             Dictionary of attribute key-value pairs
         """
         attributes = {}
         
-        for token in tokens:
-            if token.token_type == TokenType.FLAG:
-                # Parse --key=value format
-                if '=' in token.text:
-                    parts = token.text[2:].split('=', 1)  # Remove -- prefix
-                    if len(parts) == 2:
-                        key, value = parts
-                        attributes[key] = value.strip('"')
+        # Use regex to find --key=value patterns
+        attribute_pattern = re.compile(r'--(\w+)=([^"\s]+|"[^"]*")')
+        
+        for match in attribute_pattern.finditer(original_text):
+            key = match.group(1)
+            value = match.group(2).strip('"')  # Remove quotes if present
+            attributes[key] = value
         
         return attributes
     
@@ -328,8 +368,27 @@ class ValueExtractor:
         value_tokens = [t for t in tokens if t.token_type == TokenType.VALUE]
         
         if value_tokens:
-            # For now, assume first value is company name
-            values['company_name'] = value_tokens[0].text
+            # Try to identify company name vs attribute values
+            company_candidates = []
+            attribute_values = []
+            
+            for token in value_tokens:
+                # Check if it looks like a company name (contains hyphen/underscore or mixed case)
+                if ('_' in token.text or '-' in token.text or 
+                    (token.text != token.text.lower() and token.text != token.text.upper())):
+                    company_candidates.append(token.text)
+                else:
+                    attribute_values.append(token.text)
+            
+            # Use the first company candidate as company name, or fallback to first value
+            if company_candidates:
+                values['company_name'] = company_candidates[0]
+            elif value_tokens:
+                values['company_name'] = value_tokens[0].text
+            
+            # Store all attribute values for potential use
+            if attribute_values:
+                values['attribute_values'] = attribute_values
         
         return values
 
@@ -370,7 +429,7 @@ class VLMXParser:
             tokens = self.word_recognizer.process_tokens(tokens)
             
             # Step 3: Extract values and attributes
-            result.attributes = self.value_extractor.extract_attributes(tokens)
+            result.attributes = self.value_extractor.extract_attributes(input_text)
             result.values = self.value_extractor.extract_values(tokens)
             
             # Step 4: Collect recognized words

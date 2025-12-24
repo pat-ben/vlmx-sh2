@@ -42,7 +42,6 @@ class TokenType(str, Enum):
     """Type classification for parsed tokens"""
     WORD = "word"        # Token that matches a Word in the registry
     VALUE = "value"      # Token representing a value (company name, etc.)
-    FLAG = "flag"        # Command-line style flag (--key=value)
     UNKNOWN = "unknown"  # Token that doesn't match any known pattern
 
 class ContextLevel(IntEnum):
