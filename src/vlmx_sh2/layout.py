@@ -5,9 +5,10 @@ from textual.widgets import Footer, Header, Label, Input
 from textual.containers import VerticalGroup, Container
 from textual.css.query import NoMatches
 
-from .parser import VLMXParser, ParseResult
+from .parser import VLMXParser
 from .context import Context
-from .commands import execute_command
+from .results import CommandResult, format_command_result
+
 
 
 
@@ -122,20 +123,23 @@ class CommandBlock(VerticalGroup):
             # Execute the handler with ParseResult
             result = await handler(parse_result, self.context)
             
-            # Display the result
-            if result.get("success", False):
-                message = result.get("message", "Command executed successfully")
-                self.show_output(message)
+            # Display the result using the results.py formatting
+            if isinstance(result, CommandResult):
+                formatted_result = format_command_result(result, parse_result)
                 
-                # Show additional result info if available
-                if "company" in result:
-                    company = result["company"]
-                    self.show_output(f"  Company: {company.get('name', 'N/A')}")
-                    self.show_output(f"  Entity: {company.get('entity', 'N/A')}")
-                    self.show_output(f"  Currency: {company.get('currency', 'N/A')}")
+                # Split the formatted result into lines and display each
+                for line in formatted_result.split('\n'):
+                    if line.strip():  # Skip empty lines
+                        is_error = not result.success
+                        self.show_output(line, is_error=is_error)
             else:
-                error = result.get("error", "Command failed")
-                self.show_output(f"Error: {error}", is_error=True)
+                # Fallback for handlers that still return dicts
+                if result.get("success", False):
+                    message = result.get("message", "Command executed successfully")
+                    self.show_output(message)
+                else:
+                    error = result.get("error", "Command failed")
+                    self.show_output(f"Error: {error}", is_error=True)
                 
         except Exception as e:
             self.show_output(f"Execution Error: {str(e)}", is_error=True)

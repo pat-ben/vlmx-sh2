@@ -15,6 +15,7 @@ from .words import get_word, EntityWord
 from .enums import ContextLevel
 from .parser import ParseResult
 from .storage import create_company, delete_company, list_companies
+from .results import CommandResult, create_success_result, create_error_result
 
 
 # ==================== BUSINESS LOGIC UTILITIES ====================
@@ -113,7 +114,7 @@ def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> d
         "create company HoldCo --entity=HOLDING --currency=USD"
     ]
 )
-async def create_company_handler(parse_result: ParseResult, context: Context) -> dict:
+async def create_company_handler(parse_result: ParseResult, context: Context) -> CommandResult:
     """
     Handler for creating companies.
     
@@ -125,21 +126,13 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
                        if hasattr(word, 'word_type') and word.word_type.value == 'entity']
         
         if not entity_words:
-            return {
-                "success": False,
-                "error": "No entity word found in command",
-                "action": "create_entity"
-            }
+            return create_error_result(["No entity word found in command"])
         
         entity_word = entity_words[0]  # Take the first entity word
         EntityModel = get_entity_model_from_registry(entity_word.id)
         
         if not EntityModel:
-            return {
-                "success": False,
-                "error": f"Entity '{entity_word.id}' not found in Words Registry",
-                "action": "create_entity"
-            }
+            return create_error_result([f"Entity '{entity_word.id}' not found in Words Registry"])
         
         # Extract entity name from parse result
         entity_name = extract_company_name_from_parse_result(parse_result)
@@ -170,17 +163,27 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
                     entity_dict[field_name] = field_value.isoformat()
         
         # Use storage module to create entity
-        result = create_company(entity_dict, context)  # TODO: Make this dynamic too
-        result["action"] = f"create_{entity_word.id}"
+        storage_result = create_company(entity_dict, context)  # TODO: Make this dynamic too
         
-        return result
+        if storage_result.get("success", False):
+            # Create success result with entity details
+            cmd_result = create_success_result(
+                operation="created",
+                entity_name=f"{entity_word.id} {entity_name}",
+                attributes={
+                    "entity": attributes["entity"].value,
+                    "currency": attributes["currency"].value,
+                    "unit": attributes["unit"].value,
+                    "created_at": entity_dict.get("created_at", "N/A")
+                }
+            )
+            return cmd_result
+        else:
+            # Create error result
+            return create_error_result([storage_result.get("error", "Failed to create entity")])
         
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to create company: {str(e)}",
-            "action": "create_company"
-        }
+        return create_error_result([f"Failed to create entity: {str(e)}"])
 
 
 @register_command(
@@ -193,7 +196,7 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
         "delete company HoldCo"
     ]
 )
-async def delete_company_handler(parse_result: ParseResult, context: Context) -> dict:
+async def delete_company_handler(parse_result: ParseResult, context: Context) -> CommandResult:
     """
     Handler for deleting companies.
     
@@ -207,11 +210,7 @@ async def delete_company_handler(parse_result: ParseResult, context: Context) ->
         if company_name.startswith("Company_"):  # This is our generated fallback name
             companies_info = list_companies(context)
             if not companies_info["success"] or companies_info["count"] == 0:
-                return {
-                    "success": False,
-                    "error": "No companies found to delete",
-                    "action": "delete_company"
-                }
+                return create_error_result(["No companies found to delete"])
             
             # Use the first company if no specific name was provided
             companies = companies_info["companies"]
@@ -219,24 +218,23 @@ async def delete_company_handler(parse_result: ParseResult, context: Context) ->
                 first_company = companies[0]
                 company_name = first_company.get("name", "Unknown")
             else:
-                return {
-                    "success": False,
-                    "error": "No companies found to delete",
-                    "action": "delete_company"
-                }
+                return create_error_result(["No companies found to delete"])
         
         # Use storage module to delete company
-        result = delete_company(company_name, context)
-        result["action"] = "delete_company"
+        storage_result = delete_company(company_name, context)
         
-        return result
+        if storage_result.get("success", False):
+            # Create success result
+            return create_success_result(
+                operation="deleted",
+                entity_name=f"company {company_name}"
+            )
+        else:
+            # Create error result
+            return create_error_result([storage_result.get("error", "Failed to delete company")])
             
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to delete company: {str(e)}",
-            "action": "delete_company"
-        }
+        return create_error_result([f"Failed to delete company: {str(e)}"])
 
 
 # ==================== UTILITY FUNCTIONS ====================
