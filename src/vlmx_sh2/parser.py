@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, field_validator
 from .commands import find_commands, Command
 from .syntax import is_valid_command, get_composition_error
 from .words import get_all_words, get_word, Word
-from .enums import WordType
+from .enums import WordType, TokenType
 
 
 # ==================== PARSE RESULT MODELS ====================
@@ -36,22 +36,13 @@ class ParsedToken(BaseModel):
     
     text: str = Field(description="The actual text of the token")
     position: int = Field(description="Position in the original input")
-    token_type: str = Field(description="Type of token: 'keyword', 'value', 'attribute', 'unknown'")
+    token_type: TokenType = Field(description="Type of token using TokenType enum")
     word: Optional[Word] = Field(default=None, description="Recognized word object if this is a keyword")
     confidence: float = Field(default=0.0, description="Confidence score for recognition (0-100)")
     suggestions: List[str] = Field(default_factory=list, description="Alternative suggestions for this token")
     
     class Config:
         arbitrary_types_allowed = True
-    
-    @field_validator('token_type')
-    @classmethod
-    def validate_token_type(cls, v: str) -> str:
-        """Validate that token_type is one of the allowed values."""
-        allowed_types = {'keyword', 'value', 'attribute', 'unknown'}
-        if v not in allowed_types:
-            raise ValueError(f"token_type must be one of {allowed_types}, got: {v}")
-        return v
     
     @field_validator('confidence')
     @classmethod
@@ -64,7 +55,7 @@ class ParsedToken(BaseModel):
     @property
     def is_recognized_word(self) -> bool:
         """True if this token represents a recognized word."""
-        return self.word is not None and self.token_type == 'keyword'
+        return self.word is not None and self.token_type == TokenType.WORD
     
     @property
     def word_type(self) -> Optional[WordType]:
@@ -157,7 +148,7 @@ class Tokenizer:
             tokens.append(ParsedToken(
                 text=match.group(0),
                 position=match.start(),
-                token_type='attribute',
+                token_type=TokenType.FLAG,
                 confidence=1.0
             ))
         
@@ -171,7 +162,7 @@ class Tokenizer:
             tokens.append(ParsedToken(
                 text=word_text,
                 position=match.start(),
-                token_type='unknown',  # Will be determined later
+                token_type=TokenType.UNKNOWN,  # Will be determined later
                 confidence=0.0
             ))
         
@@ -272,21 +263,21 @@ class WordRecognizer:
             Updated list of tokens
         """
         for token in tokens:
-            if token.token_type == 'unknown':
+            if token.token_type == TokenType.UNKNOWN:
                 word, confidence, suggestions = self.recognize_word(token.text)
                 
                 if word:
                     token.word = word
                     token.confidence = confidence
                     token.suggestions = suggestions
-                    token.token_type = 'keyword'
+                    token.token_type = TokenType.WORD
                 else:
                     token.suggestions = suggestions
                     # Could be a value (company name, etc.)
                     if token.text.isupper() or '_' in token.text or '-' in token.text:
-                        token.token_type = 'value'
+                        token.token_type = TokenType.VALUE
                     else:
-                        token.token_type = 'unknown'
+                        token.token_type = TokenType.UNKNOWN
         
         return tokens
 
@@ -310,7 +301,7 @@ class ValueExtractor:
         attributes = {}
         
         for token in tokens:
-            if token.token_type == 'attribute':
+            if token.token_type == TokenType.FLAG:
                 # Parse --key=value format
                 if '=' in token.text:
                     parts = token.text[2:].split('=', 1)  # Remove -- prefix
@@ -334,7 +325,7 @@ class ValueExtractor:
         values = {}
         
         # Look for value tokens (potential company names)
-        value_tokens = [t for t in tokens if t.token_type == 'value']
+        value_tokens = [t for t in tokens if t.token_type == TokenType.VALUE]
         
         if value_tokens:
             # For now, assume first value is company name
@@ -464,7 +455,7 @@ class VLMXParser:
         
         # Suggest corrections for unrecognized words
         for token in result.tokens:
-            if token.token_type == 'unknown' and token.suggestions:
+            if token.token_type == TokenType.UNKNOWN and token.suggestions:
                 suggestions.append(f"Did you mean '{token.suggestions[0]}' instead of '{token.text}'?")
         
         # Suggest missing required words for best command
