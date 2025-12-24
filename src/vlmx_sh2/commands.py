@@ -320,6 +320,7 @@ _command_registry = CommandRegistry()
 def register_command(
     command_id: str,
     description: str,
+    context: ContextLevel,
     required_words: Optional[Set[str]] = None,
     optional_words: Optional[Set[str]] = None,
     examples: Optional[List[str]] = None,
@@ -331,6 +332,7 @@ def register_command(
         @register_command(
             command_id="create_company",
             description="Create a new company",
+            context=ContextLevel,
             required_words={"create", "company"},
             optional_words={"entity", "currency"}
         )
@@ -348,6 +350,7 @@ def register_command(
         command = Command(
             command_id=command_id,
             description=description,
+            context=context,
             words=syntax,
             handler=handler_func,
             examples=examples or [],
@@ -362,15 +365,6 @@ def register_command(
 # ==================== COMMAND REGISTRY ACCESS ====================
 
 
-def get_registry() -> CommandRegistry:
-    """Get the global command registry"""
-    return _command_registry
-
-
-def get_command(command_id: str) -> Optional[Command]:
-    """Get a command by ID from the global registry"""
-    return _command_registry.get_command(command_id)
-
 
 def find_commands(word_ids: List[str]) -> List[Command]:
     """Find commands matching the given word IDs"""
@@ -381,36 +375,6 @@ def get_commands_by_action(action_word_id: str) -> List[Command]:
     """Get commands that use a specific action word"""
     return _command_registry.get_commands_by_action(action_word_id)
 
-
-def sort_command_words(word_ids: List[str]) -> List[str]:
-    """Sort word IDs according to automatic composition rules"""
-    return _command_registry.sort_command_words(word_ids)
-
-
-def validate_command_composition(word_ids: List[str]) -> tuple[bool, str]:
-    """
-    Validate word composition using automatic syntax rules.
-
-    Args:
-        word_ids: List of word IDs to validate
-
-    Returns:
-        (is_valid, error_message)
-    """
-    word_objects = []
-    for word_id in word_ids:
-        word_obj = get_word(word_id)
-        if not word_obj:
-            return False, f"Unknown word ID: {word_id}"
-        word_objects.append(word_obj)
-
-    composition_error = get_composition_error(word_objects)
-    if composition_error:
-        return False, composition_error
-
-    return True, ""
-
-
 async def execute_command(
     command_id: str, word_ids: List[str], context: Context
 ) -> Any:
@@ -418,78 +382,4 @@ async def execute_command(
     return await _command_registry.execute_command(command_id, word_ids, context)
 
 
-# ==================== BASIC COMMAND DEFINITIONS ====================
 
-# Basic command syntax definitions for common operations
-# These will be registered when the module is imported
-
-
-# Example using the traditional approach with validation
-@register_command(
-    command_id="create_company",
-    description="Create a new company entity",
-    required_words={"create", "company"},
-    optional_words={"entity", "currency"},
-    examples=[
-        "create company ACME-SA --entity=SA --currency=EUR",
-        "create company HoldCo --entity=HOLDING",
-    ],
-)
-async def create_company_handler(words: List[Word], context: Context):
-    """Handler for creating companies"""
-    # Implementation would go here
-    return {
-        "action": "create_company",
-        "words": [w.id for w in words],
-        "context": context.level,
-    }
-
-
-@register_command(
-    command_id="delete_company",
-    description="Delete an existing company entity",
-    required_words={"delete", "company"},
-    examples=["delete company ACME-SA", "delete company HoldCo"],
-)
-async def delete_company_handler(words: List[Word], context: Context):
-    """Handler for deleting companies"""
-    # Implementation would go here
-    return {
-        "action": "delete_company",
-        "words": [w.id for w in words],
-        "context": context.level,
-    }
-
-
-# Example using the new CommandWords.from_word_types approach
-def register_advanced_commands():
-    """
-    Example of how to register commands using the improved CommandWords validation.
-    This shows the recommended approach for creating command syntax definitions.
-    """
-
-    # Create command syntax using the type-organized approach
-    create_syntax = CommandWords.from_word_types(
-        required_actions={"create"},
-        required_entities={"company"},
-        optional_attributes={"entity", "currency"},
-    )
-
-    # Register the command with the pre-built syntax
-    command = Command(
-        command_id="create_company_advanced",
-        description="Create a new company entity (advanced validation)",
-        words=create_syntax,
-        examples=[
-            "create company ACME-SA --entity=SA --currency=EUR",
-            "create company HoldCo --entity=HOLDING",
-        ],
-    )
-
-    # The syntax validation happens automatically when CommandWords is created
-    # Any invalid word IDs will raise a ValueError during instantiation
-    get_registry().register(command)
-
-
-# Uncomment to register the advanced example:
-# register_advanced_commands()
