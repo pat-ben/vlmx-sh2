@@ -13,8 +13,49 @@ from .commands import register_command
 from .context import Context
 from .entities import CompanyEntity
 from .enums import ContextLevel
-from .parser import ParseResult, extract_company_name_from_parse_result, extract_attributes_from_parse_result
+from .parser import ParseResult
 from .storage import create_company, delete_company, list_companies
+
+
+# ==================== BUSINESS LOGIC UTILITIES ====================
+
+def extract_company_name_from_parse_result(parse_result: ParseResult) -> str:
+    """Extract company name from parse result with fallback logic."""
+    company_name = parse_result.entity_values.get('company_name')
+    
+    if company_name:
+        return company_name
+    
+    # Fallback: generate timestamp-based name for demo purposes
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"Company_{timestamp}"
+
+
+def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> dict:
+    """Extract company attributes from parse result with defaults and validation."""
+    from .enums import Currency, Entity, Unit
+    
+    attributes = {}
+    
+    # Extract entity from attributes (entity=SA)
+    entity_str = parse_result.attribute_values.get('entity', 'SA')
+    try:
+        attributes['entity'] = Entity(entity_str.upper())
+    except ValueError:
+        attributes['entity'] = Entity.SA  # Default fallback
+    
+    # Extract currency from attributes (currency=EUR)  
+    currency_str = parse_result.attribute_values.get('currency', 'EUR')
+    try:
+        attributes['currency'] = Currency(currency_str.upper())
+    except ValueError:
+        attributes['currency'] = Currency.EUR  # Default fallback
+    
+    # Set default unit
+    attributes['unit'] = Unit.THOUSANDS
+    
+    return attributes
 
 
 # ==================== COMMAND HANDLERS ====================
@@ -41,7 +82,7 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
         company_name = extract_company_name_from_parse_result(parse_result)
         
         # Extract attributes from parse result
-        attributes = extract_attributes_from_parse_result(parse_result)
+        attributes = extract_company_attributes_from_parse_result(parse_result)
         
         # Create company entity
         company_entity = CompanyEntity(
