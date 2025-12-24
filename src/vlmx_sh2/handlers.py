@@ -91,7 +91,9 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
             currency=attributes["currency"],
             unit=attributes["unit"],
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
+            source_db=None,  # Optional field for portfolio tracking
+            last_synced_at=None  # Optional field for portfolio sync tracking
         )
         
         # Convert to dict for JSON storage
