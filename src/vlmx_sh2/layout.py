@@ -158,6 +158,11 @@ class CommandBlock(VerticalGroup):
 
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the application."""
     app = VLMX()
     app.run()
+
+
+if __name__ == "__main__":
+    main()
