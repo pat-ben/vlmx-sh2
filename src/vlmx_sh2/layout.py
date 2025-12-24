@@ -5,9 +5,11 @@ from textual.widgets import Footer, Header, Label, Input
 from textual.containers import VerticalGroup, Container
 from textual.css.query import NoMatches
 
-from ..parser.core import Parser
-from ..parser.context import Context
-from ..parser.base import Result
+from .parser import VLMXParser, ParseResult
+from .context import Context
+from .commands import execute_command
+
+
 
 
 class VLMX(App):
@@ -18,7 +20,7 @@ class VLMX(App):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.parser = Parser()
+        self.parser = VLMXParser()
         self.context = Context(level=0)
 
     def compose(self) -> ComposeResult:
@@ -36,7 +38,7 @@ class VLMX(App):
 class CommandBlock(VerticalGroup):
     """A command and context block"""
 
-    def __init__(self, parser: Parser, context: Context, *args, **kwargs):
+    def __init__(self, parser: VLMXParser, context: Context, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.parser = parser
         self.context = context
@@ -76,44 +78,78 @@ class CommandBlock(VerticalGroup):
         except NoMatches:
             pass
 
-    def on_input_submitted(self, event: Input.Submitted):
+    async def on_input_submitted(self, event: Input.Submitted):
         """Handle the input being submitted."""
         user_input = event.value.strip()
 
         if not user_input:
             return
 
-        # Parse the command using the parser
-        parsed = self.parser.parse(user_input, self.context)
-
-        # Check if it's a Result (error) or a Command
-        if isinstance(parsed, Result):
-            # It's an error result
-            self.show_output(f"Error: {parsed.message}", is_error=True)
-            if parsed.suggestions:
-                for suggestion in parsed.suggestions:
-                    self.show_output(f"  → {suggestion}", is_error=True)
-        else:
-            # It's a valid command, execute it
-            result = parsed.execute(self.context)
-
-            if result.success:
-                self.show_output(result.message)
-            else:
-                self.show_output(f"Error: {result.message}", is_error=True)
-                if result.suggestions:
-                    for suggestion in result.suggestions:
+        try:
+            # Parse the command using the parser
+            parse_result = self.parser.parse(user_input)
+            
+            # Show parsing information
+            self.show_output(f"Command: {user_input}")
+            
+            if parse_result.errors:
+                # Show parsing errors
+                for error in parse_result.errors:
+                    self.show_output(f"Parse Error: {error}", is_error=True)
+                
+                # Show suggestions
+                if parse_result.suggestions:
+                    for suggestion in parse_result.suggestions:
                         self.show_output(f"  → {suggestion}", is_error=True)
+                return
+            
+            if not parse_result.best_command:
+                self.show_output("No matching command found", is_error=True)
+                if parse_result.suggestions:
+                    for suggestion in parse_result.suggestions:
+                        self.show_output(f"  → {suggestion}", is_error=True)
+                return
+            
+            # Execute the command using the new handler signature
+            command_id = parse_result.best_command.command_id
+            
+            # Get the handler function
+            handler = parse_result.best_command.handler
+            if not handler:
+                self.show_output(f"No handler found for command: {command_id}", is_error=True)
+                return
+            
+            # Execute the handler with ParseResult
+            result = await handler(parse_result, self.context)
+            
+            # Display the result
+            if result.get("success", False):
+                message = result.get("message", "Command executed successfully")
+                self.show_output(message)
+                
+                # Show additional result info if available
+                if "company" in result:
+                    company = result["company"]
+                    self.show_output(f"  Company: {company.get('name', 'N/A')}")
+                    self.show_output(f"  Entity: {company.get('entity', 'N/A')}")
+                    self.show_output(f"  Currency: {company.get('currency', 'N/A')}")
+            else:
+                error = result.get("error", "Command failed")
+                self.show_output(f"Error: {error}", is_error=True)
+                
+        except Exception as e:
+            self.show_output(f"Execution Error: {str(e)}", is_error=True)
+        
+        finally:
+            # Disable the current input
+            event.input.disabled = True
 
-        # Disable the current input
-        event.input.disabled = True
+            # Create a new command block for the next command
+            new_block = CommandBlock(parser=self.parser, context=self.context)
+            self.app.mount(new_block)
 
-        # Create a new command block for the next command
-        new_block = CommandBlock(parser=self.parser, context=self.context)
-        self.app.mount(new_block)
-
-        # Use call_after_refresh to ensure the block is fully composed before querying
-        self.app.call_after_refresh(self._focus_new_input, new_block)
+            # Use call_after_refresh to ensure the block is fully composed before querying
+            self.app.call_after_refresh(self._focus_new_input, new_block)
 
 
 

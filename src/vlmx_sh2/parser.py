@@ -530,3 +530,61 @@ def quick_parse(input_text: str) -> Tuple[bool, List[str], Dict[str, Any]]:
     }
     
     return result.is_valid, result.errors, extracted_data
+
+
+# ==================== DATA EXTRACTION UTILITIES ====================
+
+def extract_company_name_from_parse_result(parse_result: ParseResult) -> str:
+    """
+    Extract company name from parse result.
+    
+    Args:
+        parse_result: The parsed command result
+        
+    Returns:
+        Company name extracted from values or generates a default name
+    """
+    # Try to get company name from parsed values
+    company_name = parse_result.values.get('company_name')
+    
+    if company_name:
+        return company_name
+    
+    # Fallback: generate timestamp-based name for demo purposes
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"Company_{timestamp}"
+
+
+def extract_attributes_from_parse_result(parse_result: ParseResult) -> Dict[str, Any]:
+    """
+    Extract attribute values from parse result.
+    
+    Args:
+        parse_result: The parsed command result
+        
+    Returns:
+        Dictionary with entity, currency, and unit attributes
+    """
+    from .enums import Currency, Entity, Unit
+    
+    attributes = {}
+    
+    # Extract entity from attributes (--entity=SA)
+    entity_str = parse_result.attributes.get('entity', 'SA')
+    try:
+        attributes['entity'] = Entity(entity_str.upper())
+    except ValueError:
+        attributes['entity'] = Entity.SA  # Default fallback
+    
+    # Extract currency from attributes (--currency=EUR)  
+    currency_str = parse_result.attributes.get('currency', 'EUR')
+    try:
+        attributes['currency'] = Currency(currency_str.upper())
+    except ValueError:
+        attributes['currency'] = Currency.EUR  # Default fallback
+    
+    # Set default unit
+    attributes['unit'] = Unit.THOUSANDS
+    
+    return attributes
