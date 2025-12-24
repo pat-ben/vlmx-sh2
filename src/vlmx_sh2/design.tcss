@@ -1,0 +1,33 @@
+
+Screen {
+    align: left top;
+}
+
+CommandBlock {
+    layout: vertical;
+    background: $surface;
+    border: solid white;
+    width: 100%;
+    height: auto;
+    padding: 1 2;
+}
+
+CommandBlock > Label {
+    text-align: left;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+CommandBlock > Container {
+    text-align: left;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+CommandBlock > Input {
+    border: none;
+    padding: 0;
+    margin-bottom: 1;
+    width: 100%;
+}
