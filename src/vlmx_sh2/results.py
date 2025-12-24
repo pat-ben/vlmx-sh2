@@ -7,8 +7,10 @@ This module handles formatting command results for user display,
 including success/error status, missing values, and operation confirmations.
 """
 
-from typing import Dict, List, Any, Optional
-from .parser import ParseResult
+from typing import Dict, List, Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .parser import ParseResult
 
 
 class CommandResult:
@@ -35,7 +37,7 @@ class CommandResult:
         self.missing_optional_words.append(word)
 
 
-def format_command_result(result: CommandResult, parse_result: Optional[ParseResult] = None) -> str:
+def format_command_result(result: CommandResult, parse_result: Optional["ParseResult"] = None) -> str:
     """
     Format a command result for user display.
     
@@ -104,7 +106,7 @@ def create_success_result(operation: str, entity_name: str, attributes: Optional
     return result
 
 
-def create_error_result(errors: List[str], parse_result: Optional[ParseResult] = None) -> CommandResult:
+def create_error_result(errors: List[str], parse_result: Optional["ParseResult"] = None) -> CommandResult:
     """Create an error command result."""
     result = CommandResult(success=False)
     
@@ -123,7 +125,7 @@ def create_error_result(errors: List[str], parse_result: Optional[ParseResult] =
     return result
 
 
-def create_result_from_parse_errors(parse_result: ParseResult) -> CommandResult:
+def create_result_from_parse_errors(parse_result: "ParseResult") -> CommandResult:
     """Create an error result from parse result errors."""
     result = CommandResult(success=False)
     
