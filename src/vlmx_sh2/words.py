@@ -12,7 +12,14 @@ Defines the structure for all word types:
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Type, Optional, Literal, List, Dict
 from .enums import WordType, OperationLevel, ActionCategory, CRUDOperation
-from .entities import CompanyEntity
+from .entities import (
+    CompanyEntity, 
+    MetadataEntity, 
+    BrandEntity, 
+    OfferingEntity, 
+    TargetEntity, 
+    ValueEntity
+)
 
 
 # ==================== BASE WORD ====================
@@ -131,7 +138,74 @@ WORDS: List[Word] = [
         entity_model=CompanyEntity
     ),
     
+    EntityWord(
+        id="metadata",
+        description="Key-value metadata for extending company information",
+        aliases=["meta", "info"],
+        abbreviations=["md"],
+        entity_model=MetadataEntity
+    ),
+    
+    EntityWord(
+        id="brand",
+        description="Company brand identity (vision, mission, personality)",
+        aliases=["branding", "identity"],
+        abbreviations=["br"],
+        entity_model=BrandEntity
+    ),
+    
+    EntityWord(
+        id="offering",
+        description="Company product or service offerings",
+        aliases=["product", "service"],
+        abbreviations=["off"],
+        entity_model=OfferingEntity
+    ),
+    
+    EntityWord(
+        id="target",
+        description="Target audience or market segments",
+        aliases=["audience", "segment"],
+        abbreviations=["tgt"],
+        entity_model=TargetEntity
+    ),
+    
+    EntityWord(
+        id="value",
+        description="Company core values",
+        aliases=["values", "principles"],
+        abbreviations=["val"],
+        entity_model=ValueEntity
+    ),
+    
     # ==================== ATTRIBUTES ====================
+    
+    # Common attributes across multiple entities
+    AttributeWord(
+        id="name",
+        description="Name or title of the entity",
+        aliases=["title"],
+        abbreviations=["n"],
+        entity_models=[CompanyEntity, BrandEntity, OfferingEntity, TargetEntity, ValueEntity]
+    ),
+    
+    AttributeWord(
+        id="key",
+        description="Key identifier or category",
+        aliases=["category", "type"],
+        abbreviations=["k"],
+        entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValueEntity]
+    ),
+    
+    AttributeWord(
+        id="value",
+        description="Value or description content",
+        aliases=["description", "content"],
+        abbreviations=["v"],
+        entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValueEntity]
+    ),
+    
+    # Company-specific attributes
     AttributeWord(
         id="entity",
         description="Legal entity type (SA, LLC, INC, etc.)",
@@ -146,6 +220,71 @@ WORDS: List[Word] = [
         aliases=["curr"],
         abbreviations=["cur"],
         entity_models=[CompanyEntity]
+    ),
+    
+    AttributeWord(
+        id="unit",
+        description="Unit for financial data (THOUSANDS, MILLIONS, etc.)",
+        aliases=["financial_unit"],
+        abbreviations=["u"],
+        entity_models=[CompanyEntity]
+    ),
+    
+    AttributeWord(
+        id="fiscal_month",
+        description="Fiscal year end month (1-12)",
+        aliases=["fiscal_year_end"],
+        abbreviations=["fm"],
+        entity_models=[CompanyEntity]
+    ),
+    
+    AttributeWord(
+        id="incorporation",
+        description="Date of incorporation",
+        aliases=["incorporation_date", "founded"],
+        abbreviations=["inc"],
+        entity_models=[CompanyEntity]
+    ),
+    
+    # Brand-specific attributes
+    AttributeWord(
+        id="vision",
+        description="Company vision statement",
+        aliases=["vision_statement"],
+        abbreviations=["vis"],
+        entity_models=[BrandEntity]
+    ),
+    
+    AttributeWord(
+        id="mission",
+        description="Company mission statement",
+        aliases=["mission_statement"],
+        abbreviations=["mis"],
+        entity_models=[BrandEntity]
+    ),
+    
+    AttributeWord(
+        id="personality",
+        description="Brand personality description",
+        aliases=["brand_personality"],
+        abbreviations=["per"],
+        entity_models=[BrandEntity]
+    ),
+    
+    AttributeWord(
+        id="promise",
+        description="Brand promise to customers",
+        aliases=["brand_promise"],
+        abbreviations=["prom"],
+        entity_models=[BrandEntity]
+    ),
+    
+    AttributeWord(
+        id="brand",
+        description="Brand name",
+        aliases=["brand_name"],
+        abbreviations=["br"],
+        entity_models=[BrandEntity]
     ),
 ]
 

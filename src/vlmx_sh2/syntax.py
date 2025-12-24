@@ -18,7 +18,7 @@ VALUE TYPES:
 """
 
 from typing import List, Optional
-from vlmx_sh2.enums import WordType
+from .enums import WordType
 
 
 # ==================== WORD ORDER ====================

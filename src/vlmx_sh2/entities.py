@@ -8,7 +8,7 @@ This file is also helpful to design the DSL grammar which should correspond ... 
 from datetime import date, datetime
 from typing import Optional, Union
 from pydantic import BaseModel, Field
-from vlmx_sh2.enums import (Entity, Currency, Unit)
+from .enums import (Entity, Currency, Unit)
  
 
 # File: src/vlmx_sh2/models/database.py
@@ -31,7 +31,7 @@ class DatabaseModel(BaseModel):
     """Base class for all database models"""
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         use_enum_values = True
 
     @classmethod
