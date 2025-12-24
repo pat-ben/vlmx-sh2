@@ -17,7 +17,6 @@ Architecture:
 5. Validate using automatic composition rules
 """
 
-import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from rapidfuzz import fuzz, process
@@ -61,8 +60,8 @@ class ParseResult(BaseModel):
     input_text: str = Field(description="Original input text")
     tokens: List[ParsedToken] = Field(default_factory=list, description="Parsed tokens")
     recognized_words: List[Word] = Field(default_factory=list, description="Successfully recognized words")
-    values: Dict[str, Any] = Field(default_factory=dict, description="Extracted values (company names, etc.)")
-    attributes: Dict[str, str] = Field(default_factory=dict, description="Extracted attribute values")
+    entity_values: Dict[str, Any] = Field(default_factory=dict, description="Extracted entity values (company names, etc.)")
+    attribute_values: Dict[str, str] = Field(default_factory=dict, description="Extracted attribute values")
     matching_commands: List[Command] = Field(default_factory=list, description="Commands that could match")
     best_command: Optional[Command] = Field(default=None, description="Best matching command")
     is_valid: bool = Field(default=False, description="Whether the parse is valid")
@@ -115,20 +114,17 @@ class ParseResult(BaseModel):
 # ==================== TOKENIZATION ====================
 
 class Tokenizer:
-    """Basic tokenizer for VLMX DSL input."""
-    
-    # Regex patterns for different token types
-    ATTRIBUTE_PATTERN = re.compile(r'--(\w+)=([^"\s]+|"[^"]*")')
-    WORD_PATTERN = re.compile(r'\b[a-zA-Z_][a-zA-Z0-9_-]*\b')
+    """Simple tokenizer for VLMX DSL input."""
     
     @classmethod
     def tokenize(cls, text: str) -> List[ParsedToken]:
         """
         Tokenize input text into basic tokens.
         
-        Ignores -- and = separators, focuses on extracting meaningful tokens:
-        - Words that might match the word registry
-        - Values (company names, attribute values)
+        Simple approach:
+        1. Split on whitespace to get basic tokens
+        2. Separate command words from attributes using operators
+        3. No regex patterns needed since words are unique
         
         Args:
             text: Input text to tokenize
@@ -137,38 +133,69 @@ class Tokenizer:
             List of ParsedToken objects
         """
         tokens = []
+        position = 0
         
-        # Remove attribute patterns and extract just the meaningful parts
-        # This removes --key=value but we'll extract the values separately
-        text_without_flags = cls.ATTRIBUTE_PATTERN.sub('', text)
-        
-        # Extract all word-like tokens from the clean text
-        for match in cls.WORD_PATTERN.finditer(text_without_flags):
-            word_text = match.group(0)
+        # Split on whitespace and process each token
+        for raw_token in text.split():
+            raw_token = raw_token.strip()
+            if not raw_token:
+                continue
             
-            tokens.append(ParsedToken(
-                text=word_text,
-                position=match.start(),
-                token_type=TokenType.UNKNOWN,  # Will be determined later
-                confidence=0.0
-            ))
-        
-        # Extract attribute values separately (the values after =)
-        for match in cls.ATTRIBUTE_PATTERN.finditer(text):
-            # Extract the value part after the =
-            value = match.group(2).strip('"')  # Remove quotes if present
+            # Check if this token contains an operator (for attributes)
+            if cls._contains_operator(raw_token):
+                # Parse attribute: key=value, key>value, etc.
+                key, operator, value = cls._parse_attribute_token(raw_token)
+                
+                # Add the key as a token
+                if key:
+                    tokens.append(ParsedToken(
+                        text=key,
+                        position=position,
+                        token_type=TokenType.UNKNOWN,
+                        confidence=0.0
+                    ))
+                
+                # Add the value as a token
+                if value:
+                    tokens.append(ParsedToken(
+                        text=value,
+                        position=position + len(key) + len(operator),
+                        token_type=TokenType.VALUE,
+                        confidence=0.0
+                    ))
+            else:
+                # Regular word token (action/modifier/entity/flag)
+                tokens.append(ParsedToken(
+                    text=raw_token,
+                    position=position,
+                    token_type=TokenType.UNKNOWN,
+                    confidence=0.0
+                ))
             
-            tokens.append(ParsedToken(
-                text=value,
-                position=match.end() - len(value),  # Approximate position
-                token_type=TokenType.UNKNOWN,  # Will be determined as VALUE or UNKNOWN
-                confidence=0.0
-            ))
-        
-        # Sort by position
-        tokens.sort(key=lambda t: t.position)
+            position += len(raw_token) + 1  # +1 for whitespace
         
         return tokens
+    
+    @classmethod
+    def _contains_operator(cls, token: str) -> bool:
+        """Check if token contains an attribute operator."""
+        operators = ['=', '>', '<', '>=', '<=', '!=']
+        return any(op in token for op in operators)
+    
+    @classmethod
+    def _parse_attribute_token(cls, token: str) -> Tuple[str, str, str]:
+        """Parse attribute token into key, operator, value."""
+        operators = ['>=', '<=', '!=', '=', '>', '<']  # Order matters for multi-char operators
+        
+        for operator in operators:
+            if operator in token:
+                parts = token.split(operator, 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip().strip('"\'')  # Remove quotes
+                    return key, operator, value
+        
+        return token, '', ''
 
 
 # ==================== WORD RECOGNITION ====================
@@ -326,28 +353,30 @@ class WordRecognizer:
 # ==================== VALUE EXTRACTION ====================
 
 class ValueExtractor:
-    """Extracts values and attributes from tokens and original text."""
+    """Extracts values and attributes from tokens."""
     
     @staticmethod
-    def extract_attributes(original_text: str) -> Dict[str, str]:
+    def extract_attributes(tokens: List[ParsedToken]) -> Dict[str, str]:
         """
-        Extract attribute key-value pairs directly from original text.
+        Extract attribute key-value pairs from tokens.
         
         Args:
-            original_text: Original input text to parse
+            tokens: List of tokens to process
             
         Returns:
             Dictionary of attribute key-value pairs
         """
         attributes = {}
         
-        # Use regex to find --key=value patterns
-        attribute_pattern = re.compile(r'--(\w+)=([^"\s]+|"[^"]*")')
-        
-        for match in attribute_pattern.finditer(original_text):
-            key = match.group(1)
-            value = match.group(2).strip('"')  # Remove quotes if present
-            attributes[key] = value
+        # Look for consecutive tokens where the first is a key and second is a value
+        for i in range(len(tokens) - 1):
+            current_token = tokens[i]
+            next_token = tokens[i + 1]
+            
+            # If current token is unknown and next is a value, treat as key=value pair
+            if (current_token.token_type == TokenType.UNKNOWN and 
+                next_token.token_type == TokenType.VALUE):
+                attributes[current_token.text] = next_token.text
         
         return attributes
     
@@ -429,8 +458,8 @@ class VLMXParser:
             tokens = self.word_recognizer.process_tokens(tokens)
             
             # Step 3: Extract values and attributes
-            result.attributes = self.value_extractor.extract_attributes(input_text)
-            result.values = self.value_extractor.extract_values(tokens)
+            result.attribute_values = self.value_extractor.extract_attributes(tokens)
+            result.entity_values = self.value_extractor.extract_values(tokens)
             
             # Step 4: Collect recognized words
             recognized_words = []
@@ -534,7 +563,7 @@ class VLMXParser:
             suggestions.append("Consider adding an action word (e.g., 'create', 'delete', 'show')")
         
         # Suggest common attribute patterns
-        if result.action_words and result.entity_words and not result.attributes:
+        if result.action_words and result.entity_words and not result.attribute_values:
             action = result.action_words[0].id
             entity = result.entity_words[0].id
             if action == 'create' and entity == 'company':
@@ -574,8 +603,8 @@ def quick_parse(input_text: str) -> Tuple[bool, List[str], Dict[str, Any]]:
     
     extracted_data = {
         'words': [w.id for w in result.recognized_words],
-        'values': result.values,
-        'attributes': result.attributes,
+        'values': result.entity_values,
+        'attributes': result.attribute_values,
         'best_command': result.best_command.command_id if result.best_command else None
     }
     
@@ -595,7 +624,7 @@ def extract_company_name_from_parse_result(parse_result: ParseResult) -> str:
         Company name extracted from values or generates a default name
     """
     # Try to get company name from parsed values
-    company_name = parse_result.values.get('company_name')
+    company_name = parse_result.entity_values.get('company_name')
     
     if company_name:
         return company_name
@@ -621,14 +650,14 @@ def extract_attributes_from_parse_result(parse_result: ParseResult) -> Dict[str,
     attributes = {}
     
     # Extract entity from attributes (--entity=SA)
-    entity_str = parse_result.attributes.get('entity', 'SA')
+    entity_str = parse_result.attribute_values.get('entity', 'SA')
     try:
         attributes['entity'] = Entity(entity_str.upper())
     except ValueError:
         attributes['entity'] = Entity.SA  # Default fallback
     
     # Extract currency from attributes (--currency=EUR)  
-    currency_str = parse_result.attributes.get('currency', 'EUR')
+    currency_str = parse_result.attribute_values.get('currency', 'EUR')
     try:
         attributes['currency'] = Currency(currency_str.upper())
     except ValueError:
