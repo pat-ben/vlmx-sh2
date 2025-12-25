@@ -15,6 +15,7 @@ from textual.css.query import NoMatches
 from .parser import VLMXParser
 from .context import Context
 from .results import CommandResult, format_command_result
+from .handlers import register_all_commands
 
 
 
@@ -28,6 +29,11 @@ class VLMX(App):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Register all command handlers explicitly
+        self.registered_commands_count = register_all_commands()
+        
+        # Initialize parser and context after command registration
         self.parser = VLMXParser()
         self.context = Context(level=0)
 
@@ -42,6 +48,14 @@ class VLMX(App):
         self.theme = (
             "textual-dark" if self.theme == "textual-light" else "textual-light"
         )
+    
+    def get_system_info(self) -> dict:
+        """Get system information including registered commands count."""
+        return {
+            "registered_commands": self.registered_commands_count,
+            "context_level": self.context.level,
+            "parser_ready": self.parser is not None
+        }
 
 class CommandBlock(VerticalGroup):
     """A command and context block"""

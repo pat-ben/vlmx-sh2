@@ -148,7 +148,7 @@ async def create_company_handler(parse_result, context):
 
 #### Command Workflow
 
-1. **Registration**: Commands auto-register via decorators
+1. **Registration**: Commands register via decorators + explicit initialization
 2. **Parsing**: User input tokenized and matched to words
 3. **Validation**: Check required words and syntax rules
 4. **Execution**: Handler function called with parsed data
@@ -230,6 +230,11 @@ ActionWord(id="update", description="Update existing entity", ...)
 )
 async def update_company_handler(parse_result, context):
     # Implementation
+
+# Add to register_all_commands() verification
+def register_all_commands():
+    expected_commands = ["create_company", "delete_company", "update_company"]  # Add new command
+    # ... rest of function
 ```
 
 3. **Test the command**:

@@ -243,6 +243,35 @@ async def delete_company_handler(parse_result: ParseResult, context: Context) ->
 # Note: list_companies and get_company_by_name are imported from storage module
 
 
+# ==================== COMMAND REGISTRATION ====================
+
+def register_all_commands():
+    """
+    Explicitly register all command handlers.
+    
+    This function ensures all commands are registered when called.
+    The @register_command decorators above have already executed
+    during module import, but this function serves as an explicit
+    entry point for command registration and makes dependencies clear.
+    
+    Returns:
+        int: Number of commands registered
+    """
+    # Commands are already registered via decorators, but we can verify
+    from .commands import _command_registry
+    
+    registered_commands = list(_command_registry.get_all_commands().keys())
+    
+    # Verify expected commands are registered
+    expected_commands = ["create_company", "delete_company"]
+    missing_commands = [cmd for cmd in expected_commands if cmd not in registered_commands]
+    
+    if missing_commands:
+        raise RuntimeError(f"Expected commands not registered: {missing_commands}")
+    
+    return len(registered_commands)
+
+
 # ==================== DEBUG INFO ====================
 
 def get_handler_info() -> dict:
@@ -265,5 +294,6 @@ def get_handler_info() -> dict:
             }
         ],
         "storage": "JSON files",
-        "utilities": ["list_companies", "get_company_by_name"]
+        "utilities": ["list_companies", "get_company_by_name"],
+        "registered_commands": register_all_commands()
     }
