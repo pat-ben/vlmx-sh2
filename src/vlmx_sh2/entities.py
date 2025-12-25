@@ -8,7 +8,7 @@ This file is also helpful to design the DSL grammar which should correspond ... 
 from datetime import date, datetime
 from typing import Optional, Union
 from pydantic import BaseModel, Field
-from .enums import (Entity, Currency, Unit, OrganizationType)
+from .enums import (Entity, Currency, Unit, Type)
  
 
 # File: src/vlmx_sh2/models/database.py
@@ -56,7 +56,7 @@ class OrganizationEntity(DatabaseModel):
     id: Optional[int] = None
     name: str
     entity: Entity
-    type: OrganizationType
+    type: Type
     currency: Currency
     unit: Unit
     closing: int = 12

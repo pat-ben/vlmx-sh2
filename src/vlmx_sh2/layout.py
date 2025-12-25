@@ -8,6 +8,7 @@ from textual.css.query import NoMatches
 from .parser import VLMXParser
 from .context import Context
 from .results import CommandResult, format_command_result
+from . import handlers  # Import handlers to register commands
 
 
 

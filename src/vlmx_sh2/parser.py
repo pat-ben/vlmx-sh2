@@ -122,9 +122,9 @@ class Tokenizer:
         Tokenize input text into basic tokens.
         
         Enhanced approach supporting:
-        1. Single dash separator (-) as optional attribute separator
-        2. Attributes without -- prefix (entity=LLC instead of --entity=LLC)
-        3. Traditional command words and values
+        1. Attributes in key=value format (entity=SA, currency=EUR)
+        2. Traditional command words and values
+        3. Backward compatibility with --key=value format
         
         Args:
             text: Input text to tokenize
@@ -141,11 +141,6 @@ class Tokenizer:
             if not raw_token:
                 continue
             
-            # Skip single dash separator (it's semantic only)
-            if raw_token == '-':
-                position += len(raw_token) + 1
-                continue
-            
             # Remove -- prefix if present (for backward compatibility)
             clean_token = raw_token
             if raw_token.startswith('--'):
@@ -156,7 +151,7 @@ class Tokenizer:
                 # Parse attribute: key=value, key>value, etc.
                 key, operator, value = cls._parse_attribute_token(clean_token)
                 
-                # Add the key as a token
+                # Add the key as a token (this will be recognized as an attribute word)
                 if key:
                     tokens.append(ParsedToken(
                         text=key,
@@ -165,7 +160,7 @@ class Tokenizer:
                         confidence=0.0
                     ))
                 
-                # Add the value as a token
+                # Add the value as a separate token
                 if value:
                     tokens.append(ParsedToken(
                         text=value,
@@ -174,7 +169,7 @@ class Tokenizer:
                         confidence=0.0
                     ))
             else:
-                # Regular word token (action/modifier/entity/flag)
+                # Regular word token (action/modifier/entity/attribute)
                 tokens.append(ParsedToken(
                     text=clean_token,
                     position=position,
@@ -370,9 +365,9 @@ class ValueExtractor:
         """
         Extract attribute key-value pairs from tokens.
         
-        Attributes are identified by the key=value pattern where:
-        - Key is before the operator (=, >, <, etc.)
-        - Value is after the operator
+        Attributes are identified by:
+        1. Consecutive tokens where an attribute word is followed by a value
+        2. Key=value pattern already parsed during tokenization
         
         Args:
             tokens: List of tokens to process
@@ -382,14 +377,22 @@ class ValueExtractor:
         """
         attributes = {}
         
-        # Look for consecutive tokens where the first is a key and second is a value
+        # Look for consecutive tokens where an attribute word is followed by a value
         for i in range(len(tokens) - 1):
             current_token = tokens[i]
             next_token = tokens[i + 1]
             
-            # If current token is unknown and next is a value, treat as key=value pair
-            if (current_token.token_type == TokenType.UNKNOWN and 
+            # Check if current token is an attribute word and next is a value
+            if (current_token.token_type == TokenType.WORD and 
+                current_token.word and 
+                current_token.word.word_type == WordType.ATTRIBUTE and
                 next_token.token_type == TokenType.VALUE):
+                attributes[current_token.text] = next_token.text
+            
+            # Also handle cases where the token was not recognized as a word but is followed by a value
+            # This catches attribute keys that might not be in our registry
+            elif (current_token.token_type == TokenType.UNKNOWN and 
+                  next_token.token_type == TokenType.VALUE):
                 attributes[current_token.text] = next_token.text
         
         return attributes

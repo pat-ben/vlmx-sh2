@@ -77,7 +77,7 @@ def extract_company_name_from_parse_result(parse_result: ParseResult) -> str:
 
 def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> dict:
     """Extract company attributes from parse result with defaults and validation."""
-    from .enums import Currency, Entity, Unit
+    from .enums import Currency, Entity, Unit, Type
     
     attributes = {}
     
@@ -95,7 +95,8 @@ def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> d
     except ValueError:
         attributes['currency'] = Currency.EUR  # Default fallback
     
-    # Set default unit
+    # Set default type and unit (required fields)
+    attributes['type'] = Type.COMPANY  # Default to company type
     attributes['unit'] = Unit.THOUSANDS
     
     return attributes
@@ -144,6 +145,7 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
         entity_instance = EntityModel(
             name=entity_name,
             entity=attributes["entity"],
+            type=attributes["type"],
             currency=attributes["currency"],
             unit=attributes["unit"],
             created_at=datetime.now(),
@@ -171,6 +173,7 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
                 operation="created",
                 entity_name=f"{entity_word.id} {entity_name}",
                 attributes={
+                    "type": attributes["type"].value,
                     "entity": attributes["entity"].value,
                     "currency": attributes["currency"].value,
                     "unit": attributes["unit"].value,
