@@ -163,6 +163,10 @@ class CommandBlock(VerticalGroup):
                     if line.strip():  # Skip empty lines
                         is_error = not result.success
                         self.show_output(line, is_error=is_error)
+                
+                # Check if the result requests a context switch
+                if result.success and result.new_context:
+                    self.context = result.new_context
             else:
                 # Fallback for handlers that still return dicts
                 if result.get("success", False):
@@ -179,7 +183,7 @@ class CommandBlock(VerticalGroup):
             # Disable the current input
             event.input.disabled = True
 
-            # Create a new command block for the next command
+            # Create a new command block for the next command (with potentially updated context)
             new_block = CommandBlock(parser=self.parser, context=self.context)
             self.app.mount(new_block)
 

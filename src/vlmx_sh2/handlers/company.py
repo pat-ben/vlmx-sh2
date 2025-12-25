@@ -13,7 +13,7 @@ from ..core.context import Context
 from ..dsl.words import get_word, EntityWord
 from ..core.enums import ContextLevel
 from ..dsl.parser import ParseResult
-from ..storage.database import create_company, delete_company, list_companies
+from ..storage.database import create_company, delete_company, list_companies, company_exists
 from ..ui.results import CommandResult, create_success_result, create_error_result
 
 
@@ -180,6 +180,18 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
                     "created_at": entity_dict.get("created_at", "N/A")
                 }
             )
+            
+            # Create new context at organization level (level 1) with the company name
+            new_context = Context(
+                level=1,  # ORG level
+                org_id=1,  # Placeholder ID
+                org_name=entity_name,
+                org_db_path=None  # Could be set to the company folder path if needed
+            )
+            
+            # Set context switch on the result
+            cmd_result.set_context_switch(new_context)
+            
             return cmd_result
         else:
             # Create error result
@@ -240,6 +252,117 @@ async def delete_company_handler(parse_result: ParseResult, context: Context) ->
         return create_error_result([f"Failed to delete company: {str(e)}"])
 
 
+@register_command(
+    command_id="navigate",
+    description="Navigate between contexts (SYS root or ORG company)",
+    context=ContextLevel.SYS,  # Can be used from any level
+    required_words={"cd"},
+    optional_words=set(),
+    examples=[
+        "cd",  # Show current location
+        "cd ~",  # Navigate to root (SYS level)  
+        "cd ACME",  # Navigate to company ACME (ORG level)
+        "cd ..",  # Navigate up one level (to parent)
+    ]
+)
+async def navigate_handler(parse_result: ParseResult, context: Context) -> CommandResult:
+    """
+    Handler for context navigation using cd command.
+    
+    Commands:
+    - cd          : Show current location
+    - cd ~        : Navigate to root (SYS level)
+    - cd ..       : Navigate up one level  
+    - cd {company}: Navigate to company context (ORG level)
+    """
+    try:
+        # Extract navigation target from tokens more robustly
+        navigation_target = None
+        
+        # First check entity values (for company names)
+        if parse_result.entity_values.get('company_name'):
+            navigation_target = parse_result.entity_values['company_name']
+        
+        # If no entity values, look at all non-action tokens after 'cd'
+        if not navigation_target:
+            # Get all tokens that are not the 'cd' action word
+            non_action_tokens = []
+            for token in parse_result.tokens:
+                # Skip the 'cd' token itself
+                if token.text.lower() == 'cd':
+                    continue
+                # Include any other token (VALUE, UNKNOWN, or other word types)
+                if token.text.strip():  # Make sure it's not empty
+                    non_action_tokens.append(token.text)
+            
+            # Use the first non-action token as navigation target
+            if non_action_tokens:
+                navigation_target = non_action_tokens[0]
+        
+        # Handle different navigation patterns
+        if not navigation_target:
+            # Plain "cd" with no arguments - show current location or usage
+            if context.level == 0:
+                return create_success_result(
+                    operation="current location",
+                    entity_name="root (/VLMX)"
+                )
+            else:
+                return create_success_result(
+                    operation="current location", 
+                    entity_name=f"company {context.org_name} (/VLMX/{context.org_name})"
+                )
+                
+        elif navigation_target in ["root", "~", "/"]:
+            # Explicit root navigation
+            new_context = Context(level=0)
+            
+            result = create_success_result(
+                operation="navigated",
+                entity_name="root"
+            )
+            result.set_context_switch(new_context)
+            return result
+            
+        elif navigation_target == "..":
+            # Navigate up one level
+            if context.level > 0:
+                new_context = Context(level=context.level - 1)
+                
+                result = create_success_result(
+                    operation="navigated",
+                    entity_name="parent directory"
+                )
+                result.set_context_switch(new_context)
+                return result
+            else:
+                return create_error_result(["Already at root level"])
+                
+        else:
+            # Navigate to specific company (assuming it exists)
+            company_name = navigation_target
+            
+            # Check if company exists
+            if company_exists(company_name, context):
+                new_context = Context(
+                    level=1,  # ORG level
+                    org_id=1,  # Placeholder ID
+                    org_name=company_name
+                )
+                
+                result = create_success_result(
+                    operation="navigated",
+                    entity_name=f"company {company_name}"
+                )
+                result.set_context_switch(new_context)
+                return result
+            else:
+                return create_error_result([f"Company '{company_name}' not found"])
+        
+    except Exception as e:
+        return create_error_result([f"Failed to navigate: {str(e)}"])
+
+
 # ==================== UTILITY FUNCTIONS ====================
 # Note: list_companies and get_company_by_name are imported from storage module
 
@@ -264,7 +387,7 @@ def register_all_commands():
     registered_commands = list(_command_registry.get_all_commands().keys())
     
     # Verify expected commands are registered
-    expected_commands = ["create_company", "delete_company"]
+    expected_commands = ["create_company", "delete_company", "navigate"]
     missing_commands = [cmd for cmd in expected_commands if cmd not in registered_commands]
     
     if missing_commands:

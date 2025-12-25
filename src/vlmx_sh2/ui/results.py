@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..dsl.parser import ParseResult
+    from ..core.context import Context
 
 
 class CommandResult:
@@ -22,6 +23,7 @@ class CommandResult:
         self.attributes: Dict[str, Any] = {}
         self.errors: List[str] = []
         self.missing_optional_words: List[str] = []
+        self.new_context: Optional["Context"] = None  # Context to switch to after command execution
     
     def add_attribute(self, key: str, value: Any) -> None:
         """Add an attribute to display."""
@@ -34,6 +36,10 @@ class CommandResult:
     def add_missing_optional_word(self, word: str) -> None:
         """Add a missing optional word."""
         self.missing_optional_words.append(word)
+    
+    def set_context_switch(self, new_context: "Context") -> None:
+        """Set a new context to switch to after command execution."""
+        self.new_context = new_context
 
 
 def format_command_result(result: CommandResult, parse_result: Optional["ParseResult"] = None) -> str:

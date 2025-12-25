@@ -104,7 +104,7 @@ WORDS: List[Word] = [
     ActionWord(
         id="create",
         description="Create a new entity (company, milestone, etc.)",
-        aliases=["add", "new"],
+        aliases=["init", "new"],
         abbreviations=["c"],
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.CREATE,
@@ -124,6 +124,18 @@ WORDS: List[Word] = [
         requires_entity=True,
         destructive=True,
         warning="This action will permanently delete the entity"
+    ),
+    
+    ActionWord(
+        id="cd",
+        description="Navigate between contexts (SYS, ORG levels)",
+        aliases=["navigate", "goto"],
+        abbreviations=["nav"],
+        action_category=ActionCategory.NAVIGATION,
+        crud_operation=CRUDOperation.NONE,
+        operation_level=OperationLevel.SYSTEM,
+        requires_entity=False,
+        destructive=False,
     ),
     
     # ==================== ENTITIES ====================
