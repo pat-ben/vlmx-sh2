@@ -40,10 +40,9 @@ from .utils import (
     optional_words=set(),
     is_dynamic=True,
     examples=[
-        "add organization name TechCorp",
-        "add brand vision To revolutionize technology",
-        "add metadata category SaaS",
-        "add offering name Cloud Platform"
+        "add brand vision=To revolutionize technology",
+        "add metadata category=SaaS",
+        "add offering name=Cloud_Platform"
     ]
 )
 async def add_dynamic_handler(parse_result: ParseResult, context: Context) -> CommandResult:

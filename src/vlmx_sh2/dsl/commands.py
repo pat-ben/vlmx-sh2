@@ -27,12 +27,8 @@ class CommandWords(BaseModel):
     Ordering and composition logic is handled automatically by syntax.py.
     """
 
-    required_words: Set[str] = Field(
-        default_factory=set, description="Word IDs that must be present"
-    )
-    optional_words: Set[str] = Field(
-        default_factory=set, description="Word IDs that can be present"
-    )
+    required_words: Set[str] = Field(default_factory=set, description="Word IDs that must be present. When dynamic,this should be one ACTION word")
+    optional_words: Set[str] = Field(default_factory=set, description="Word IDs that can be present. When dynamic, this should be empty")
 
     @field_validator("required_words", "optional_words")
     @classmethod
@@ -84,13 +80,8 @@ class Command(BaseModel):
     description: str = Field(description="Human-readable command description")
     is_dynamic: bool = Field(default=False, description="Whether this command accepts any valid entity-attribute combinations from word registry")
     words: CommandWords = Field(description="Command syntax requirements")
-    context: ContextLevel = Field(
-        default=ContextLevel.SYS,
-        description="Minimum context level required: SYS(0), ORG(1), or APP(2)",
-    )
-    handler: Optional[Callable] = Field(
-        default=None, description="Command execution handler"
-    )
+    context: ContextLevel = Field(default=ContextLevel.SYS, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
+    handler: Optional[Callable] = Field(default=None, description="Command execution handler")
     examples: List[str] = Field(default_factory=list, description="Usage examples")
 
     class Config:

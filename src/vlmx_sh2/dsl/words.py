@@ -117,7 +117,7 @@ WORDS: List[Word] = [
         id="delete",
         description="Delete an existing entity",
         aliases=["remove", "drop"],
-        abbreviations=["d"],
+        abbreviations=["d", "rm"],
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.DELETE,
         operation_level=OperationLevel.ROW,
@@ -150,7 +150,7 @@ WORDS: List[Word] = [
         destructive=False,
     ),
     
-    ActionWord(
+    ActionWord( # caution maybe similar to add. To double check!
         id="update",
         description="Update existing attribute values for entities",
         aliases=["modify", "change"],

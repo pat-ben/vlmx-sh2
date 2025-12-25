@@ -31,6 +31,14 @@ class OperationLevel(str, Enum):
     SYSTEM = "system"      # e.g., create, update, delete record
 
 
+class CRUDOperation(str, Enum):
+    """ Specific CRUD operation type."""    
+    CREATE = "create"
+    READ = "read"
+    UPDATE = "update"
+    DELETE = "delete"
+    NONE = "none"
+
 
 class ActionCategory(str, Enum):
     """ Broad category of what an action does. """
@@ -40,13 +48,6 @@ class ActionCategory(str, Enum):
     ANALYSIS = "analysis"
     IMPORT_EXPORT = "import_export"
 
-class CRUDOperation(str, Enum):
-    """ Specific CRUD operation type."""    
-    CREATE = "create"
-    READ = "read"
-    UPDATE = "update"
-    DELETE = "delete"
-    NONE = "none"
 
 class TokenType(str, Enum):
     """Type classification for parsed tokens"""
@@ -55,9 +56,9 @@ class TokenType(str, Enum):
     UNKNOWN = "unknown"  # Token that doesn't match any known pattern
 
 class ContextLevel(IntEnum):
-    SYS = 0
-    ORG = 1
-    APP = 2
+    SYS = 0 # system / root level
+    ORG = 1 # organization level (most of the time company)
+    APP = 2 # application level (could be plugin)
 
 
 ### ENUM for requirements
@@ -84,6 +85,7 @@ class Entity(str, Enum):
     INC = "INC"
     LTD = "LTD"
     GMBH = "GMBH"
+
 
 class Type(str, Enum):
     """Types of organization allowed in VLMX"""
