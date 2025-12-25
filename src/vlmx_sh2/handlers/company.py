@@ -108,10 +108,11 @@ def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> d
     description="Create a new company entity with specified attributes",
     context=ContextLevel.SYS,
     required_words={"create", "company"},
-    optional_words={"entity", "currency"},
+    optional_words={"entity", "currency", "type", "unit", "closing", "incorporation"},
     examples=[
-        "create company ACME-SA --entity=SA --currency=EUR",
-        "create company HoldCo --entity=HOLDING --currency=USD"
+        "create company ACME entity=SA type=company currency=EUR",
+        "create company HoldCo entity=HOLDING currency=USD",
+        "create company TestCorp entity=SA type=company currency=EUR incorporation=2024-12-31"
     ]
 )
 async def create_company_handler(parse_result: ParseResult, context: Context) -> CommandResult:

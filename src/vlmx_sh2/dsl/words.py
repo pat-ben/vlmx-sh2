@@ -212,6 +212,14 @@ WORDS: List[Word] = [
     ),
     
     AttributeWord(
+        id="type",
+        description="Organization type (company, fund, foundation)",
+        aliases=["org_type", "organization_type"],
+        abbreviations=["typ"],
+        entity_models=[OrganizationEntity]
+    ),
+    
+    AttributeWord(
         id="currency",
         description="Currency used for financial data (EUR, USD, GBP, etc.)",
         aliases=["curr"],
@@ -228,10 +236,10 @@ WORDS: List[Word] = [
     ),
     
     AttributeWord(
-        id="fiscal_month",
+        id="closing",
         description="Fiscal year end month (1-12)",
-        aliases=["fiscal_year_end"],
-        abbreviations=["fm"],
+        aliases=["fiscal_month", "fiscal_year_end"],
+        abbreviations=["cl"],
         entity_models=[OrganizationEntity]
     ),
     
