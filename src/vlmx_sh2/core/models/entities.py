@@ -9,7 +9,7 @@ DSL grammar and command structure.
 
 from datetime import date, datetime
 from typing import Optional
-from sqlmodel import SQLModel, Field, ConfigDict
+from sqlmodel import SQLModel, Field
 from ..enums import (Entity, Currency, Unit, Type)
  
 
@@ -32,10 +32,11 @@ Architecture:
 class DatabaseModel(SQLModel):
     """Base class for all database models"""
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        use_enum_values=True
-    )
+    
+    model_config = { # type: ignore[assignment]
+        "from_attributes": True,
+        "use_enum_values": True
+    }
 
     @classmethod
     def table_name(cls) -> str:
