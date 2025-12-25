@@ -8,8 +8,8 @@ DSL grammar and command structure.
 """
 
 from datetime import date, datetime
-from typing import Optional, Union
-from pydantic import BaseModel, Field
+from typing import Optional
+from sqlmodel import SQLModel, Field
 from ..enums import (Entity, Currency, Unit, Type)
  
 
@@ -29,7 +29,7 @@ Architecture:
 # ============================================
 
 
-class DatabaseModel(BaseModel):
+class DatabaseModel(SQLModel):
     """Base class for all database models"""
 
     class Config:
@@ -47,7 +47,7 @@ class DatabaseModel(BaseModel):
 # ============================================
 
 
-class OrganizationEntity(DatabaseModel):
+class OrganizationEntity(DatabaseModel, table=True):
     """
     Python Model: OrganizationEntity
     Database: Organization's name
@@ -55,7 +55,7 @@ class OrganizationEntity(DatabaseModel):
     Description: Core organization information (one record per company database)
     """
 
-    id: Optional[int] = None
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     entity: Entity
     type: Type
@@ -83,17 +83,17 @@ class OrganizationEntity(DatabaseModel):
 # ============================================
 
 
-class MetadataEntity(DatabaseModel):
+class MetadataEntity(DatabaseModel, table=True):
     """
     Python Model: MetadataEntity
     SQL Table: metadata
     Description: Extended company metadata (key-value pairs)
     """
 
-    id: Optional[int] = None
+    id: Optional[int] = Field(default=None, primary_key=True)
     org_id: int = Field(..., description="Reference to organization.id")
     key: str = Field(..., description="Metadata key")
-    value: Union[str, int, float, bool, date, list, dict, None] = Field(..., description="Metadata value (automatically typed and validated)")
+    value: Optional[str] = Field(..., description="Metadata value stored as JSON string")
     
     # timestamp
     created_at: datetime = Field(default_factory=datetime.now)
@@ -108,7 +108,7 @@ class MetadataEntity(DatabaseModel):
 # BRAND ENTITY (Parent - Core brand info only)
 # ============================================
 
-class BrandEntity(DatabaseModel):
+class BrandEntity(DatabaseModel, table=True):
     """
     Python Model: BrandEntity
     SQL Table: brand
@@ -119,7 +119,7 @@ class BrandEntity(DatabaseModel):
     - TargetModel → brand_targets table
     - ValueModel → brand_values table
     """
-    id: Optional[int] = None
+    id: Optional[int] = Field(default=None, primary_key=True)
     org_id: int = Field(default=1, description="Reference to organization.id")
     
     # Core brand elements (single text fields)
@@ -142,7 +142,7 @@ class BrandEntity(DatabaseModel):
 # OFFERING ENTITY RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
-class OfferingEntity(DatabaseModel):
+class OfferingEntity(DatabaseModel, table=True):
     """
     Python Model: OfferingEntity
     SQL Table: brand_offerings
@@ -153,7 +153,7 @@ class OfferingEntity(DatabaseModel):
         key="Premium Service", value="White-label solutions for enterprises"
         key="Consulting", value="Strategic advisory for digital transformation"
     """
-    id: Optional[int] = None
+    id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(..., description="Reference to brand.id")
     key: str = Field(..., description="Offering title/category")
     value: str = Field(
@@ -174,7 +174,7 @@ class OfferingEntity(DatabaseModel):
 # TARGET ENTITY RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
-class TargetEntity(DatabaseModel):
+class TargetEntity(DatabaseModel, table=True):
     """
     Python Model: TargetEntity
     SQL Table: brand_targets
@@ -186,7 +186,7 @@ class TargetEntity(DatabaseModel):
         key="Geographic Focus", value="European Union and Switzerland"
         key="Customer Profile", value="CFOs and finance teams"
     """
-    id: Optional[int] = None
+    id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(..., description="Reference to brand.id")
     key: str = Field(..., description="Target segment title/category")
     value: str = Field(
@@ -207,7 +207,7 @@ class TargetEntity(DatabaseModel):
 # VALUE ENTITY RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
-class ValueEntity(DatabaseModel):
+class ValueEntity(DatabaseModel, table=True):
     """
     Python Model: ValueEntity
     SQL Table: brand_values
@@ -219,7 +219,7 @@ class ValueEntity(DatabaseModel):
         key="Impact", value="We measure success by the positive change we create"
         key="Inclusivity", value="We build products that serve everyone, regardless of background"
     """
-    id: Optional[int] = None
+    id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(..., description="Reference to brand.id")
     key: str = Field(..., description="Value name/title")
     value: str = Field(
