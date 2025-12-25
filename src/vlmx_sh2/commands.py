@@ -3,6 +3,15 @@
 """
 Command syntax definition and registration system.
 
+reerereree
+
+
+
+reerereree
+
+
+
+
 This module handles ONLY:
 1. Defining command syntax (which keywords are required/optional)
 2. Registering commands in the command registry

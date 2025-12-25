@@ -121,10 +121,10 @@ class Tokenizer:
         """
         Tokenize input text into basic tokens.
         
-        Simple approach:
-        1. Split on whitespace to get basic tokens
-        2. Separate command words from attributes using operators
-        3. No regex patterns needed since words are unique
+        Enhanced approach supporting:
+        1. Single dash separator (-) as optional attribute separator
+        2. Attributes without -- prefix (entity=LLC instead of --entity=LLC)
+        3. Traditional command words and values
         
         Args:
             text: Input text to tokenize
@@ -141,10 +141,20 @@ class Tokenizer:
             if not raw_token:
                 continue
             
+            # Skip single dash separator (it's semantic only)
+            if raw_token == '-':
+                position += len(raw_token) + 1
+                continue
+            
+            # Remove -- prefix if present (for backward compatibility)
+            clean_token = raw_token
+            if raw_token.startswith('--'):
+                clean_token = raw_token[2:]
+            
             # Check if this token contains an operator (for attributes)
-            if cls._contains_operator(raw_token):
+            if cls._contains_operator(clean_token):
                 # Parse attribute: key=value, key>value, etc.
-                key, operator, value = cls._parse_attribute_token(raw_token)
+                key, operator, value = cls._parse_attribute_token(clean_token)
                 
                 # Add the key as a token
                 if key:
@@ -166,7 +176,7 @@ class Tokenizer:
             else:
                 # Regular word token (action/modifier/entity/flag)
                 tokens.append(ParsedToken(
-                    text=raw_token,
+                    text=clean_token,
                     position=position,
                     token_type=TokenType.UNKNOWN,
                     confidence=0.0

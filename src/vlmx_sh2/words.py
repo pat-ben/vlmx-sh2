@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Type, Optional, Literal, List, Dict
 from .enums import WordType, OperationLevel, ActionCategory, CRUDOperation
 from .entities import (
-    CompanyEntity, 
+    OrganizationEntity, 
     MetadataEntity, 
     BrandEntity, 
     OfferingEntity, 
@@ -135,7 +135,7 @@ WORDS: List[Word] = [
         description="A business entity that can be managed in the terminal",
         aliases=["business", "firm"],
         abbreviations=["co"],
-        entity_model=CompanyEntity
+        entity_model=OrganizationEntity
     ),
     
     EntityWord(
@@ -186,7 +186,7 @@ WORDS: List[Word] = [
         description="Name or title of the entity",
         aliases=["title"],
         abbreviations=["n"],
-        entity_models=[CompanyEntity, BrandEntity, OfferingEntity, TargetEntity, ValueEntity]
+        entity_models=[OrganizationEntity, BrandEntity, OfferingEntity, TargetEntity, ValueEntity]
     ),
     
     AttributeWord(
@@ -211,7 +211,7 @@ WORDS: List[Word] = [
         description="Legal entity type (SA, LLC, INC, etc.)",
         aliases=["entity_type", "legal_entity"],
         abbreviations=["ent"],
-        entity_models=[CompanyEntity]
+        entity_models=[OrganizationEntity]
     ),
     
     AttributeWord(
@@ -219,7 +219,7 @@ WORDS: List[Word] = [
         description="Currency used for financial data (EUR, USD, GBP, etc.)",
         aliases=["curr"],
         abbreviations=["cur"],
-        entity_models=[CompanyEntity]
+        entity_models=[OrganizationEntity]
     ),
     
     AttributeWord(
@@ -227,7 +227,7 @@ WORDS: List[Word] = [
         description="Unit for financial data (THOUSANDS, MILLIONS, etc.)",
         aliases=["financial_unit"],
         abbreviations=["u"],
-        entity_models=[CompanyEntity]
+        entity_models=[OrganizationEntity]
     ),
     
     AttributeWord(
@@ -235,7 +235,7 @@ WORDS: List[Word] = [
         description="Fiscal year end month (1-12)",
         aliases=["fiscal_year_end"],
         abbreviations=["fm"],
-        entity_models=[CompanyEntity]
+        entity_models=[OrganizationEntity]
     ),
     
     AttributeWord(
@@ -243,7 +243,7 @@ WORDS: List[Word] = [
         description="Date of incorporation",
         aliases=["incorporation_date", "founded"],
         abbreviations=["inc"],
-        entity_models=[CompanyEntity]
+        entity_models=[OrganizationEntity]
     ),
     
     # Brand-specific attributes

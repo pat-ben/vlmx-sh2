@@ -1,3 +1,4 @@
+from ast import FunctionDef
 from enum import Enum, IntEnum
 
 ### ENUM for words
@@ -21,6 +22,12 @@ class OperationLevel(str, Enum):
     ROW = "row"            # e.g., create, update, delete record
     QUERY = "query"        # e.g., show, filter
     SYSTEM = "system"      # e.g., create, update, delete record
+
+class OrganizationType(str, Enum):
+    """Types of organization allowed in VLMX"""
+    COMPANY = "company"  # the most common type of organization
+    FUND = "fund"  # a fund is a cluster of multiple companies
+    FOUNDATION = "individual"  # an individual is a person
 
 class ActionCategory(str, Enum):
     """ Broad category of what an action does. """
