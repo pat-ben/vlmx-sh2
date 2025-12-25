@@ -8,8 +8,8 @@ foundation for natural language command parsing and validation.
 
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Type, Optional, Literal, List, Dict
-from .enums import WordType, OperationLevel, ActionCategory, CRUDOperation
-from .entities import (
+from ..core.enums import WordType, OperationLevel, ActionCategory, CRUDOperation
+from ..core.models.entities import (
     OrganizationEntity, 
     MetadataEntity, 
     BrandEntity, 

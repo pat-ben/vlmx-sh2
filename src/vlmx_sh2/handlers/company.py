@@ -8,13 +8,13 @@ with the storage layer for data persistence.
 
 from datetime import datetime
 
-from .commands import register_command
-from .context import Context
-from .words import get_word, EntityWord
-from .enums import ContextLevel
-from .parser import ParseResult
-from .storage import create_company, delete_company, list_companies
-from .results import CommandResult, create_success_result, create_error_result
+from ..dsl.commands import register_command
+from ..core.context import Context
+from ..dsl.words import get_word, EntityWord
+from ..core.enums import ContextLevel
+from ..dsl.parser import ParseResult
+from ..storage.database import create_company, delete_company, list_companies
+from ..ui.results import CommandResult, create_success_result, create_error_result
 
 
 # ==================== BUSINESS LOGIC UTILITIES ====================
@@ -30,7 +30,7 @@ def validate_attribute_for_entity(attribute_id: str, entity_id: str) -> bool:
     Returns:
         True if the attribute exists on the entity, False otherwise
     """
-    from .words import AttributeWord
+    from ..dsl.words import AttributeWord
     
     # Get the attribute word
     attribute_word = get_word(attribute_id)
@@ -76,7 +76,7 @@ def extract_company_name_from_parse_result(parse_result: ParseResult) -> str:
 
 def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> dict:
     """Extract company attributes from parse result with defaults and validation."""
-    from .enums import Currency, Entity, Unit, Type
+    from ..core.enums import Currency, Entity, Unit, Type
     
     attributes = {}
     
@@ -258,7 +258,7 @@ def register_all_commands():
         int: Number of commands registered
     """
     # Commands are already registered via decorators, but we can verify
-    from .commands import _command_registry
+    from ..dsl.commands import _command_registry
     
     registered_commands = list(_command_registry.get_all_commands().keys())
     

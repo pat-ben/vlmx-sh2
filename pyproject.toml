@@ -11,4 +11,4 @@ dependencies = [
 ]
 
 [project.scripts]
-vlmx = "vlmx_sh2.layout:main"
+vlmx = "vlmx_sh2.main:main"

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .context import Context
+from ..core.context import Context
 
 
 # ==================== PATH UTILITIES ====================

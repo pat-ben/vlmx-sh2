@@ -9,7 +9,7 @@ confirmations. Provides structured result objects and text formatting.
 from typing import Dict, List, Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .parser import ParseResult
+    from ..dsl.parser import ParseResult
 
 
 class CommandResult:

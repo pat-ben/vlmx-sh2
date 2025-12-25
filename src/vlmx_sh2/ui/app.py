@@ -12,10 +12,20 @@ from textual.widgets import Footer, Header, Label, Input
 from textual.containers import VerticalGroup, Container
 from textual.css.query import NoMatches
 
-from .parser import VLMXParser
-from .context import Context
-from .results import CommandResult, format_command_result
-from .handlers import register_all_commands
+try:
+    from ..dsl.parser import VLMXParser
+    from ..core.context import Context
+    from .results import CommandResult, format_command_result
+    from ..handlers.company import register_all_commands
+except ImportError:
+    # Direct execution - add src to path
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from vlmx_sh2.dsl.parser import VLMXParser
+    from vlmx_sh2.core.context import Context
+    from vlmx_sh2.ui.results import CommandResult, format_command_result
+    from vlmx_sh2.handlers.company import register_all_commands
 
 
 
@@ -24,7 +34,7 @@ from .handlers import register_all_commands
 class VLMX(App):
     """VLMX-SH: A command-line style app for managing companies and financial data."""
 
-    CSS_PATH = "design.tcss"
+    CSS_PATH = "styles/design.tcss"
     BINDINGS = [("d", "toggle_dark", "Toggle dark mode")]
 
     def __init__(self, *args, **kwargs):
@@ -177,13 +187,3 @@ class CommandBlock(VerticalGroup):
             self.app.call_after_refresh(self._focus_new_input, new_block)
 
 
-
-
-def main():
-    """Main entry point for the application."""
-    app = VLMX()
-    app.run()
-
-
-if __name__ == "__main__":
-    main()

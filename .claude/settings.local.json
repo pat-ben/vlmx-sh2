@@ -8,7 +8,9 @@
       "Bash(git add:*)",
       "Bash(uv sync:*)",
       "Bash(uv run:*)",
-      "Bash(uv add:*)"
+      "Bash(uv add:*)",
+      "Bash(del:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

@@ -17,7 +17,7 @@ VALUE TYPES:
 """
 
 from typing import List, Optional
-from .enums import WordType
+from ..core.enums import WordType
 
 
 # ==================== WORD ORDER ====================

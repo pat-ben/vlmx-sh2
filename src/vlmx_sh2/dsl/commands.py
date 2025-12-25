@@ -11,8 +11,8 @@ from typing import Any, Callable, Dict, List, Optional, Set
 
 from pydantic import BaseModel, Field, field_validator
 
-from .context import Context
-from .enums import ContextLevel, WordType
+from ..core.context import Context
+from ..core.enums import ContextLevel, WordType
 from .syntax import get_composition_error, is_valid_command, sort_words
 from .words import Word, get_word
 

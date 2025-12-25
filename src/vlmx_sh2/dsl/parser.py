@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from .commands import find_commands, Command
 from .syntax import is_valid_command, get_composition_error
 from .words import get_all_words, get_word, Word
-from .enums import WordType, TokenType
+from ..core.enums import WordType, TokenType
 
 
 # ==================== PARSE RESULT MODELS ====================

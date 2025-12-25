@@ -10,7 +10,7 @@ DSL grammar and command structure.
 from datetime import date, datetime
 from typing import Optional, Union
 from pydantic import BaseModel, Field
-from .enums import (Entity, Currency, Unit, Type)
+from ..enums import (Entity, Currency, Unit, Type)
  
 
 # File: src/vlmx_sh2/models/database.py
