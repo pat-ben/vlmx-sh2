@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.context import Context
 from ..core.enums import Entity, Currency, Unit, Type
+from ..core.mappings import get_entity_json_filename
 
 
 # ==================== PATH UTILITIES ====================
@@ -444,3 +445,159 @@ def get_storage_info(context: Context) -> Dict[str, Any]:
         "context_level": context.level,
         "context_name": context.level_name
     }
+
+
+# ==================== GENERIC ENTITY STORAGE ====================
+
+def load_entity_json(entity_name: str, company_name: str, context: Context) -> Optional[Dict[str, Any]]:
+    """
+    Load JSON data for any entity type.
+    
+    Args:
+        entity_name: The entity word ID (e.g., "brand", "organization", "metadata")
+        company_name: Name of the company
+        context: The execution context
+        
+    Returns:
+        Entity data dictionary or None if not found
+    """
+    # Get the JSON filename for this entity
+    json_filename = get_entity_json_filename(entity_name)
+    if not json_filename:
+        return None
+    
+    # Get the company folder path
+    company_folder = get_company_folder_path(company_name, context)
+    entity_file = company_folder / json_filename
+    
+    if not entity_file.exists():
+        return None
+    
+    try:
+        with open(entity_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Warning: Could not load {entity_name} from {entity_file}: {e}")
+        return None
+
+def save_entity_json(entity_name: str, entity_data: Dict[str, Any], 
+                    company_name: str, context: Context) -> Dict[str, Any]:
+    """
+    Save JSON data for any entity type.
+    
+    Args:
+        entity_name: The entity word ID (e.g., "brand", "organization", "metadata")
+        entity_data: The entity data to save
+        company_name: Name of the company
+        context: The execution context
+        
+    Returns:
+        Result dictionary with success status and details
+    """
+    try:
+        # Get the JSON filename for this entity
+        json_filename = get_entity_json_filename(entity_name)
+        if not json_filename:
+            return {
+                "success": False,
+                "error": f"Unknown entity type: {entity_name}"
+            }
+        
+        # Get the company folder path
+        company_folder = get_company_folder_path(company_name, context)
+        
+        # Create folder if it doesn't exist
+        company_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Save the entity data
+        entity_file = company_folder / json_filename
+        with open(entity_file, 'w', encoding='utf-8') as f:
+            json.dump(entity_data, f, indent=2, default=str, ensure_ascii=False)
+        
+        return {
+            "success": True,
+            "message": f"Successfully saved {entity_name} data",
+            "file_path": str(entity_file)
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to save {entity_name} data: {str(e)}"
+        }
+
+def entity_exists(entity_name: str, company_name: str, context: Context) -> bool:
+    """
+    Check if an entity JSON file exists for a company.
+    
+    Args:
+        entity_name: The entity word ID
+        company_name: Name of the company
+        context: The execution context
+        
+    Returns:
+        True if the entity file exists, False otherwise
+    """
+    # Get the JSON filename for this entity
+    json_filename = get_entity_json_filename(entity_name)
+    if not json_filename:
+        return False
+    
+    # Check if the file exists
+    company_folder = get_company_folder_path(company_name, context)
+    entity_file = company_folder / json_filename
+    return entity_file.exists()
+
+def create_default_entity_data(entity_name: str) -> Dict[str, Any]:
+    """
+    Create default entity data structure for a given entity type.
+    
+    Args:
+        entity_name: The entity word ID
+        
+    Returns:
+        Default entity data dictionary
+    """
+    from datetime import datetime
+    
+    # Base structure with timestamps
+    base_data = {
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
+    }
+    
+    # Entity-specific defaults
+    if entity_name in ["organization", "company", "org"]:
+        return {
+            **base_data,
+            "id": None,
+            "name": None,
+            "entity": None,
+            "type": None,
+            "currency": None,
+            "unit": None,
+            "closing": 12,
+            "incorporation": None,
+            "source_db": None,
+            "last_synced_at": None
+        }
+    elif entity_name in ["brand", "branding", "identity"]:
+        return {
+            **base_data,
+            "id": None,
+            "org_id": 1,
+            "vision": None,
+            "mission": None,
+            "personality": None,
+            "promise": None,
+            "brand": None
+        }
+    elif entity_name in ["metadata", "meta", "info"]:
+        return []  # Metadata is stored as an array of key-value objects
+    else:
+        # Generic entity structure
+        return {
+            **base_data,
+            "id": None,
+            "name": None
+        }

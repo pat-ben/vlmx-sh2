@@ -381,13 +381,18 @@ def register_all_commands():
     Returns:
         int: Number of commands registered
     """
+    # Import and register attribute commands
+    from . import attributes
+    attributes.register_all_commands()
+    
     # Commands are already registered via decorators, but we can verify
     from ..dsl.commands import _command_registry
     
     registered_commands = list(_command_registry.get_all_commands().keys())
     
     # Verify expected commands are registered
-    expected_commands = ["create_company", "delete_company", "navigate"]
+    expected_commands = ["create_company", "delete_company", "navigate", 
+                        "add_attribute", "update_attribute", "show_attribute", "remove_attribute"]
     missing_commands = [cmd for cmd in expected_commands if cmd not in registered_commands]
     
     if missing_commands:

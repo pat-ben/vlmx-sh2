@@ -138,6 +138,44 @@ WORDS: List[Word] = [
         destructive=False,
     ),
     
+    ActionWord(
+        id="add",
+        description="Add or set attribute values to entities",
+        aliases=["set", "assign"],
+        abbreviations=["a"],
+        action_category=ActionCategory.CRUD,
+        crud_operation=CRUDOperation.CREATE,
+        operation_level=OperationLevel.ATTRIBUTE,
+        requires_entity=False,  # Entity is optional, defaults to organization
+        destructive=False,
+    ),
+    
+    ActionWord(
+        id="update",
+        description="Update existing attribute values for entities",
+        aliases=["modify", "change"],
+        abbreviations=["u"],
+        action_category=ActionCategory.CRUD,
+        crud_operation=CRUDOperation.UPDATE,
+        operation_level=OperationLevel.ATTRIBUTE,
+        requires_entity=False,  # Entity is optional, defaults to organization
+        destructive=False,
+    ),
+    
+    ActionWord(
+        id="show",
+        description="Display entity data or specific attributes",
+        aliases=["display", "view", "get"],
+        abbreviations=["s"],
+        action_category=ActionCategory.CRUD,
+        crud_operation=CRUDOperation.READ,
+        operation_level=OperationLevel.QUERY,
+        requires_entity=False,  # Entity is optional, defaults to organization
+        destructive=False,
+    ),
+    
+
+    
     # ==================== ENTITIES ====================
     EntityWord(
         id="company",
