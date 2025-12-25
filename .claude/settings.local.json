@@ -10,7 +10,9 @@
       "Bash(uv run:*)",
       "Bash(uv add:*)",
       "Bash(del:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(timeout 5 uv run:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

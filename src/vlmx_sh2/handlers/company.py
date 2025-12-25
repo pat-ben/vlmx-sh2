@@ -385,6 +385,9 @@ def register_all_commands():
     from . import attributes
     attributes.register_all_commands()
     
+    # Import and register dynamic commands
+    from . import dynamic
+    
     # Commands are already registered via decorators, but we can verify
     from ..dsl.commands import _command_registry
     
@@ -392,7 +395,8 @@ def register_all_commands():
     
     # Verify expected commands are registered
     expected_commands = ["create_company", "delete_company", "navigate", 
-                        "add_attribute", "update_attribute", "show_attribute", "remove_attribute"]
+                        "add_attribute", "update_attribute", "show_attribute", "remove_attribute",
+                        "add_dynamic", "update_dynamic", "show_dynamic", "delete_dynamic"]
     missing_commands = [cmd for cmd in expected_commands if cmd not in registered_commands]
     
     if missing_commands:

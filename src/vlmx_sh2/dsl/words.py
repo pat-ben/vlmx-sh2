@@ -334,13 +334,6 @@ WORDS: List[Word] = [
         entity_models=[BrandEntity]
     ),
     
-    AttributeWord(
-        id="brand",
-        description="Brand name",
-        aliases=["brand_name"],
-        abbreviations=["br"],
-        entity_models=[BrandEntity]
-    ),
 ]
 
 # Auto-build the registry from the list (NO REPETITION!)

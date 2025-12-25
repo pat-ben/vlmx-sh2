@@ -82,6 +82,7 @@ class Command(BaseModel):
 
     command_id: str = Field(description="Unique command identifier")
     description: str = Field(description="Human-readable command description")
+    is_dynamic: bool = Field(default=False, description="Whether this command accepts any valid entity-attribute combinations from word registry")
     words: CommandWords = Field(description="Command syntax requirements")
     context: ContextLevel = Field(
         default=ContextLevel.SYS,
@@ -134,9 +135,18 @@ class Command(BaseModel):
             return False, f"Missing required words: {', '.join(missing_required)}"
 
         # Check no unknown words for this command
-        unknown_words = word_set - self.words.get_all_words()
-        if unknown_words:
-            return False, f"Unknown words for this command: {', '.join(unknown_words)}"
+        if self.is_dynamic:
+            # For dynamic commands, check that non-required words are valid entity/attribute words
+            extra_words = word_set - self.words.required_words
+            for word_id in extra_words:
+                word_obj = get_word(word_id)
+                if not word_obj or word_obj.word_type.value not in ['entity', 'attribute']:
+                    return False, f"Invalid word for dynamic command: {word_id} (must be entity or attribute)"
+        else:
+            # For static commands, use strict word matching
+            unknown_words = word_set - self.words.get_all_words()
+            if unknown_words:
+                return False, f"Unknown words for this command: {', '.join(unknown_words)}"
 
         # Get word objects for composition validation
         word_objects = []
@@ -241,9 +251,29 @@ class CommandRegistry:
             return matching_commands
 
         for command in self._commands.values():
-            command_words = command.words.get_all_words()
-            if word_set.issubset(command_words):
-                matching_commands.append(command)
+            if command.is_dynamic:
+                # For dynamic commands, check if required words are present
+                # and all other words are valid entity/attribute words from registry
+                required_words = command.words.required_words
+                if not required_words.issubset(word_set):
+                    continue  # Missing required words
+                    
+                # Check that non-required words are valid entity or attribute words
+                extra_words = word_set - required_words
+                valid_extra = True
+                for word_id in extra_words:
+                    word_obj = get_word(word_id)
+                    if not word_obj or word_obj.word_type.value not in ['entity', 'attribute']:
+                        valid_extra = False
+                        break
+                
+                if valid_extra:
+                    matching_commands.append(command)
+            else:
+                # For static commands, use the original logic
+                command_words = command.words.get_all_words()
+                if word_set.issubset(command_words):
+                    matching_commands.append(command)
 
         return matching_commands
 
@@ -320,6 +350,7 @@ def register_command(
     required_words: Optional[Set[str]] = None,
     optional_words: Optional[Set[str]] = None,
     examples: Optional[List[str]] = None,
+    is_dynamic: bool = False,
 ):
     """
     Decorator to automatically register a command.
@@ -350,6 +381,7 @@ def register_command(
             words=syntax,
             handler=handler_func,
             examples=examples or [],
+            is_dynamic=is_dynamic,
         )
 
         _command_registry.register(command)
