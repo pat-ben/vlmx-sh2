@@ -1,10 +1,9 @@
-# File: D:\Code\vlmx-sh2\src\vlmx_sh2\results.py
-
 """
-Command results formatting and display module.
+Command result formatting and display.
 
-This module handles formatting command results for user display,
-including success/error status, missing values, and operation confirmations.
+Handles formatting command execution results for user display, including
+success/error status, entity details, missing values, and operation
+confirmations. Provides structured result objects and text formatting.
 """
 
 from typing import Dict, List, Any, Optional, TYPE_CHECKING

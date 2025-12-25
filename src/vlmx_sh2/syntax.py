@@ -1,15 +1,14 @@
-# File: D:\Code\vlmx-sh2\src\vlmx_sh2\commands\composition.py
-
 """
-System-level composition rules for VLMX command syntax.
+Command composition and syntax validation for VLMX DSL.
 
-These rules automatically determine the order and structure of commands
-based on keyword types, so individual commands don't need to specify order.
+Defines automatic composition rules that determine word order and command
+structure based on word types. Validates command syntax without requiring
+individual commands to specify ordering constraints.
 
 COMPOSITION RULES:
 1. All word types are optional
 2. Command cannot be empty (at least 1 word required)
-3. Order: ACTION → MODIFIER → ENTITY → ATTRIBUTES (any order)
+3. Order: ACTION -> MODIFIER -> ENTITY -> ATTRIBUTES (any order)
 4. Composition is automatic based on keyword types
 
 VALUE TYPES:

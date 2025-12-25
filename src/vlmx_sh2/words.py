@@ -1,12 +1,9 @@
-# src/vlmx_sh2/words.py
 """
-Word models for VLMX terminal.
+Word registry and models for VLMX DSL.
 
-Defines the structure for all word types:
-- ActionWord: Actions like create, update, delete, show
-- ModifierWord: Modifiers like holding, operating
-- EntityWord: Entities like company, milestone
-- AttributeWord: Attributes like name, currency, revenue
+Defines all word types (actions, entities, attributes, modifiers) and their
+relationships to database models. The word registry serves as the vocabulary
+foundation for natural language command parsing and validation.
 """
 
 from pydantic import BaseModel, Field, ConfigDict

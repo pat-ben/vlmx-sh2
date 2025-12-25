@@ -1,4 +1,11 @@
 
+"""
+Enum definitions for the VLMX DSL.
+
+Defines word types, operation levels, entity types, currencies, and other
+enumerated values used throughout the command parsing and execution system.
+"""
+
 from enum import Enum, IntEnum
 
 ### ENUM for words

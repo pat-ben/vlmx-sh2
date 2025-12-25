@@ -1,23 +1,10 @@
-# File: D:\Code\vlmx-sh2\src\vlmx_sh2\commands.py
-
 """
-Command syntax definition and registration system.
+Command system for VLMX DSL.
 
-reerereree
-
-
-
-reerereree
-
-
-
-
-This module handles ONLY:
-1. Defining command syntax (which keywords are required/optional)
-2. Registering commands in the command registry
-3. Providing access to registered commands
-
-Keywords are defined in words.py and referenced here by ID.
+Handles command definition, registration, validation, and execution. Commands
+define which words are required/optional and link to handler functions. The
+command registry manages all available commands and provides matching logic
+for user input.
 """
 
 from typing import Any, Callable, Dict, List, Optional, Set

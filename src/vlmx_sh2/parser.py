@@ -1,20 +1,9 @@
-# File: D:\Code\vlmx-sh2\src\vlmx_sh2\parser.py
-
 """
-Minimal parser for VLMX DSL commands.
+Natural language parser for VLMX DSL.
 
-This module provides basic parsing functionality that integrates with:
-- words.py for keyword recognition
-- commands.py for command matching and validation
-- syntax.py for automatic composition rules
-- RapidFuzz for fuzzy matching and suggestions
-
-Architecture:
-1. Tokenize input text
-2. Recognize keywords with fuzzy matching
-3. Extract values (company names, attributes)
-4. Match against registered commands
-5. Validate using automatic composition rules
+Tokenizes user input, recognizes keywords with fuzzy matching, extracts values
+and attributes, matches commands, and validates syntax. Supports both traditional
+flag syntax (--key=value) and simplified key=value format.
 """
 
 from typing import Any, Dict, List, Optional, Tuple

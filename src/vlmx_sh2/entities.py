@@ -1,8 +1,10 @@
-"""This files includes an example of pydantic models that should match
-1:1 SQL tables. Each model represents a table in the database.
-Operational models may differ from the database schema.
-This file is also helpful to design the DSL grammar which should correspond ... to the database.
+"""
+Database entity models for VLMX.
 
+Pydantic models that map 1:1 to SQL tables. Each model represents a database
+table and defines the schema for business entities like organizations, metadata,
+brands, and their relationships. These models serve as the foundation for the
+DSL grammar and command structure.
 """
 
 from datetime import date, datetime

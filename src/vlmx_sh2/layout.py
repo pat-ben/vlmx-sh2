@@ -1,4 +1,11 @@
 
+"""
+Textual UI application for VLMX DSL.
+
+Provides the main terminal UI interface using Textual framework. Handles
+command input, parsing, execution, and result display in a conversational
+command-line style interface.
+"""
 
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Label, Input
@@ -8,7 +15,6 @@ from textual.css.query import NoMatches
 from .parser import VLMXParser
 from .context import Context
 from .results import CommandResult, format_command_result
-from . import handlers  # Import handlers to register commands
 
 
 

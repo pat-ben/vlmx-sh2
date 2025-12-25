@@ -1,4 +1,10 @@
-# databases.py
+"""
+Database schema definitions for VLMX DSL.
+
+Defines database schemas and table structures for different entity types.
+Maps database tables to their corresponding Pydantic models and provides
+schema validation and organization capabilities.
+"""
 
 from pydantic import BaseModel
 from typing import List, Type

@@ -1,10 +1,9 @@
-# File: D:\Code\vlmx-sh2\src\vlmx_sh2\storage.py
-
 """
-Storage utilities for VLMX DSL.
+Data persistence layer for VLMX DSL.
 
-This module handles data persistence using JSON files.
-Provides context-aware storage paths and CRUD operations for company data.
+Handles JSON file-based storage for entities with context-aware paths.
+Provides CRUD operations for companies and other business entities,
+managing file creation, updates, and retrieval operations.
 """
 
 import json

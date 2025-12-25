@@ -1,10 +1,9 @@
-# File: D:\Code\vlmx-sh2\src\vlmx_sh2\handlers.py
-
 """
-Command handlers for VLMX DSL.
+Command handlers and business logic for VLMX DSL.
 
-This module contains the actual implementation of commands registered in commands.py.
-Uses the storage module for data persistence while leveraging the existing architecture.
+Implements the actual execution logic for registered commands. Handles entity
+creation, validation, data transformation, and result formatting. Integrates
+with the storage layer for data persistence.
 """
 
 from datetime import datetime

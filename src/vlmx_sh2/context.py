@@ -1,11 +1,9 @@
-"""Base types for VLMX DSL.
+"""
+Context and session management for VLMX DSL.
 
-This module contains shared types used across the DSL and interpreter modules.
-These are the foundational types that other modules build upon.
-
-Classes:
-- Context: Navigation and session context for commands
-- CommandModel: Base class for all VLMX commands
+Provides navigation context and session state for command execution.
+Manages hierarchical contexts (system, organization, application) and
+tracks current company and plugin state during command sessions.
 """
 
 from __future__ import annotations
