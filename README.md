@@ -8,7 +8,8 @@ VLMX-SH2 is a domain-specific language (DSL) shell that provides a conversationa
 
 **Key Features:**
 - Natural language command parsing with fuzzy matching
-- Flexible syntax supporting both flag-based and simplified formats
+- Dynamic command system that works with any entity-attribute combination
+- Flexible syntax supporting key=value and simplified formats
 - Entity-relationship modeling with automatic validation
 - Contextual session management (system, organization, application levels)
 - JSON-based persistence with automatic schema management
@@ -26,19 +27,25 @@ cd vlmx-sh2
 uv sync
 
 # Run the application
-uv run python -m src.vlmx_sh2.layout
+uv run vlmx
 ```
 
 ### Basic Commands
 ```bash
-# Create a company with simplified syntax
-create company ACME entity=SA currency=EUR
+# Create a company folder with JSON files + fill organization JSON + change context
+create company XX entity=SA currency=USD
 
-# Or use traditional flag syntax  
-create company ACME --entity=SA --currency=EUR
+# Add a vision to the brand table
+add brand vision=This_is_a_test
 
-# Delete a company
-delete company ACME
+# Delete the vision
+delete brand vision
+
+# Navigate one level up
+cd ..
+
+# Go to organization context
+cd [company_name]
 ```
 
 ## Architecture Overview
@@ -132,8 +139,10 @@ ModifierWord(
 
 ### 3. Command System
 
-Commands define the syntax rules for valid user input by specifying which words are required or optional:
+VLMX-SH2 supports both static and dynamic commands:
 
+#### Static Commands
+Commands with fixed syntax rules:
 ```python
 @register_command(
     command_id="create_company",
@@ -146,11 +155,26 @@ async def create_company_handler(parse_result, context):
     # Implementation here
 ```
 
+#### Dynamic Commands
+Flexible commands that work with any valid entity-attribute combination:
+```python
+@register_command(
+    command_id="add_dynamic",
+    description="Add/set attribute values to any entity",
+    required_words={"add"},                   # Only action word required
+    optional_words=set(),                     # Empty for dynamic commands
+    context=ContextLevel.ORG,
+    is_dynamic=True                           # Enables dynamic behavior
+)
+async def add_dynamic_handler(parse_result, context):
+    # Works with: add brand vision=..., add metadata key=..., etc.
+```
+
 #### Command Workflow
 
 1. **Registration**: Commands register via decorators + explicit initialization
 2. **Parsing**: User input tokenized and matched to words
-3. **Validation**: Check required words and syntax rules
+3. **Validation**: Check required words and syntax rules (with dynamic validation for flexible commands)
 4. **Execution**: Handler function called with parsed data
 5. **Response**: Results formatted and displayed
 
@@ -216,6 +240,7 @@ storage_result = create_company(entity_dict, context)
 
 ### Adding New Commands
 
+#### Static Commands
 1. **Define the vocabulary** in `words.py`:
 ```python
 ActionWord(id="update", description="Update existing entity", ...)
@@ -230,16 +255,35 @@ ActionWord(id="update", description="Update existing entity", ...)
 )
 async def update_company_handler(parse_result, context):
     # Implementation
-
-# Add to register_all_commands() verification
-def register_all_commands():
-    expected_commands = ["create_company", "delete_company", "update_company"]  # Add new command
-    # ... rest of function
 ```
 
 3. **Test the command**:
 ```bash
 update company ACME entity=LLC
+```
+
+#### Dynamic Commands
+For flexible commands that work with any entity-attribute combination:
+
+1. **Create the dynamic command**:
+```python
+@register_command(
+    command_id="process_dynamic",
+    description="Process any entity with attributes",
+    required_words={"process"},
+    optional_words=set(),
+    is_dynamic=True,
+    context=ContextLevel.ORG
+)
+async def process_dynamic_handler(parse_result, context):
+    # Works with any valid entity-attribute combination from word registry
+```
+
+2. **Test with any entity-attribute combination**:
+```bash
+process brand vision=New_Vision
+process metadata category=Technology
+process organization name=NewName
 ```
 
 ### Adding New Entity Types
@@ -262,19 +306,34 @@ EntityWord(
 
 3. **Create handlers** for CRUD operations
 
-### Extending Syntax
+### Dynamic Command Examples
 
-The parser supports flexible syntax patterns:
+The new dynamic command system provides powerful flexibility:
 
 ```bash
-# Simple format
-create company ACME entity=SA
+# Dynamic entity operations - works with any entity-attribute combination
+add brand vision=This_is_our_vision
+add metadata category=Technology sector=SaaS
+add organization incorporation=Delaware
+add offering name=Premium_Service price=99
 
-# Traditional flags  
-create company ACME --entity=SA --currency=EUR
+# Update any existing attributes
+update brand mission=Change_the_world
+update organization currency=EUR
+update metadata key=new_value
 
-# Future: Natural language
-create a new SA company called ACME using EUR currency
+# Show entity data or specific attributes
+show brand                    # Shows all brand data
+show organization name currency  # Shows only name and currency
+show metadata                # Shows all metadata
+
+# Delete/clear specific attributes
+delete brand vision          # Sets vision to null
+delete metadata key         # Removes the key-value pair completely
+
+# Navigation commands
+cd ..                       # Go up one level
+cd ACME                    # Enter company context
 ```
 
 ## File Structure
