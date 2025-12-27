@@ -8,7 +8,6 @@ with the storage layer for data persistence.
 
 from datetime import datetime
 
-from ..dsl.commands import register_command
 from ..core.context import Context
 from ..dsl.words import get_word, EntityWord
 from ..core.enums import ContextLevel
@@ -101,21 +100,12 @@ def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> d
     return attributes
 
 
-# ==================== COMMAND HANDLERS ====================
+# ==================== LEGACY HANDLERS (TO BE REMOVED) ====================
 
-@register_command(
-    command_id="create_company",
-    description="Create a new company entity with specified attributes",
-    context=ContextLevel.SYS,
-    required_words={"create", "company"},
-    optional_words={"entity", "currency", "type", "unit", "closing", "incorporation"},
-    examples=[
-        "create company ACME entity=SA type=company currency=EUR",
-        "create company HoldCo entity=HOLDING currency=USD",
-        "create company TestCorp entity=SA type=company currency=EUR incorporation=2024-12-31"
-    ]
-)
-async def create_company_handler(parse_result: ParseResult, context: Context) -> CommandResult:
+# Note: These static command handlers are being replaced by dynamic handlers in words.py
+# They are kept temporarily for reference but should not be used
+
+async def legacy_create_company_handler(parse_result: ParseResult, context: Context) -> CommandResult:
     """
     Handler for creating companies.
     
@@ -201,17 +191,7 @@ async def create_company_handler(parse_result: ParseResult, context: Context) ->
         return create_error_result([f"Failed to create entity: {str(e)}"])
 
 
-@register_command(
-    command_id="delete_company",
-    description="Delete an existing company entity",
-    context=ContextLevel.SYS,
-    required_words={"delete", "company"},
-    examples=[
-        "delete company ACME-SA",
-        "delete company HoldCo"
-    ]
-)
-async def delete_company_handler(parse_result: ParseResult, context: Context) -> CommandResult:
+async def legacy_delete_company_handler(parse_result: ParseResult, context: Context) -> CommandResult:
     """
     Handler for deleting companies.
     
@@ -252,20 +232,7 @@ async def delete_company_handler(parse_result: ParseResult, context: Context) ->
         return create_error_result([f"Failed to delete company: {str(e)}"])
 
 
-@register_command(
-    command_id="navigate",
-    description="Navigate between contexts (SYS root or ORG company)",
-    context=ContextLevel.SYS,  # Can be used from any level
-    required_words={"cd"},
-    optional_words=set(),
-    examples=[
-        "cd",  # Show current location
-        "cd ~",  # Navigate to root (SYS level)  
-        "cd ACME",  # Navigate to company ACME (ORG level)
-        "cd ..",  # Navigate up one level (to parent)
-    ]
-)
-async def navigate_handler(parse_result: ParseResult, context: Context) -> CommandResult:
+async def legacy_navigate_handler(parse_result: ParseResult, context: Context) -> CommandResult:
     """
     Handler for context navigation using cd command.
     
@@ -367,37 +334,16 @@ async def navigate_handler(parse_result: ParseResult, context: Context) -> Comma
 # Note: list_companies and get_company_by_name are imported from storage module
 
 
-# ==================== COMMAND REGISTRATION ====================
+# ==================== LEGACY COMMAND REGISTRATION ====================
 
 def register_all_commands():
     """
-    Explicitly register all command handlers.
-    
-    This function ensures all commands are registered when called.
-    The @register_command decorators above have already executed
-    during module import, but this function serves as an explicit
-    entry point for command registration and makes dependencies clear.
-    
-    Returns:
-        int: Number of commands registered
+    Legacy function for backward compatibility.
+    In the new system, no command registration is needed.
     """
-    # Import and register dynamic commands
-    from . import dynamic
-    
-    # Commands are already registered via decorators, but we can verify
-    from ..dsl.commands import _command_registry
-    
-    registered_commands = list(_command_registry.get_all_commands().keys())
-    
-    # Verify expected commands are registered
-    expected_commands = ["create_company", "delete_company", "navigate", 
-                        "add_dynamic", "update_dynamic", "show_dynamic", "delete_dynamic"]
-    missing_commands = [cmd for cmd in expected_commands if cmd not in registered_commands]
-    
-    if missing_commands:
-        raise RuntimeError(f"Expected commands not registered: {missing_commands}")
-    
-    return len(registered_commands)
+    # In the new dynamic system, we don't register commands
+    # All functionality is handled through direct handler invocation
+    return 0  # Return 0 to indicate no commands were registered
 
 
 # ==================== DEBUG INFO ====================

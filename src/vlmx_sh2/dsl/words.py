@@ -7,7 +7,7 @@ foundation for natural language command parsing and validation.
 """
 
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Type, Optional, Literal, List, Dict, Callable
+from typing import Type, Optional, Literal, List, Dict, Any, Callable
 from ..core.enums import WordType, ActionCategory, CRUDOperation, ContextLevel
 from ..core.models.entities import (
     CompanyEntity, 
@@ -18,6 +18,189 @@ from ..core.models.entities import (
     ValuesEntity
 )
 
+# Forward declarations for handlers - will be imported after registry is built
+create_handler: Optional[Callable] = None
+delete_handler: Optional[Callable] = None
+navigate_handler: Optional[Callable] = None
+add_handler: Optional[Callable] = None
+update_handler: Optional[Callable] = None
+show_handler: Optional[Callable] = None
+
+# ==================== SHORTCUTS SYSTEM ====================
+
+SHORTCUTS: Dict[str, List[str]] = {
+    "cc": ["create", "company"],
+    "cb": ["create", "brand"],
+    "cm": ["create", "metadata"],
+    "co": ["create", "offering"],
+    "ct": ["create", "target"],
+    "cv": ["create", "values"],
+    "sb": ["show", "brand"],
+    "sc": ["show", "company"],
+    "sm": ["show", "metadata"],
+    "so": ["show", "offering"],
+    "st": ["show", "target"],
+    "sv": ["show", "values"],
+    "ub": ["update", "brand"],
+    "uc": ["update", "company"],
+    "um": ["update", "metadata"],
+    "uo": ["update", "offering"],
+    "ut": ["update", "target"],
+    "uv": ["update", "values"],
+    "ab": ["add", "brand"],
+    "ac": ["add", "company"],
+    "am": ["add", "metadata"],
+    "ao": ["add", "offering"],
+    "at": ["add", "target"],
+    "av": ["add", "values"],
+    "db": ["delete", "brand"],
+    "dc": ["delete", "company"],
+    "dm": ["delete", "metadata"],
+    "do": ["delete", "offering"],
+    "dt": ["delete", "target"],
+    "dv": ["delete", "values"],
+}
+
+def expand_shortcuts(input_text: str) -> str:
+    """
+    Expand shortcuts in user input before parsing.
+    
+    Args:
+        input_text: Original user input
+        
+    Returns:
+        Input with shortcuts expanded to full words
+    """
+    tokens = input_text.strip().split()
+    if not tokens:
+        return input_text
+    
+    first_token = tokens[0].lower()
+    if first_token in SHORTCUTS:
+        expanded_words = SHORTCUTS[first_token]
+        remaining_tokens = tokens[1:] if len(tokens) > 1 else []
+        return " ".join(expanded_words + remaining_tokens)
+    
+    return input_text
+
+# ==================== PLACEHOLDER HANDLERS ====================
+
+async def create_handler_impl(entity_model, entity_value, attributes, context):
+    """Dynamic create handler that works with any entity type"""
+    try:
+        from ..storage.database import create_company
+        from datetime import datetime
+        from ..core.enums import Currency, Legal, Unit, Type
+        
+        # For company creation, use the existing storage logic
+        if entity_model.__name__ == 'CompanyEntity':
+            # Set up default attributes
+            entity_data = {
+                "name": entity_value or f"Company_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "entity": Legal(attributes.get('entity', 'SA').upper()),
+                "type": Type.COMPANY,
+                "currency": Currency(attributes.get('currency', 'EUR').upper()),
+                "unit": Unit.THOUSANDS,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+                "source_db": None,
+                "last_synced_at": None
+            }
+            
+            # Convert to dict for JSON storage
+            entity_dict = {
+                "name": entity_data["name"],
+                "entity": entity_data["entity"].value,
+                "type": entity_data["type"].value,
+                "currency": entity_data["currency"].value,
+                "unit": entity_data["unit"].value,
+                "created_at": entity_data["created_at"].isoformat(),
+                "updated_at": entity_data["updated_at"].isoformat(),
+                "source_db": entity_data["source_db"],
+                "last_synced_at": entity_data["last_synced_at"]
+            }
+            
+            # Use storage module to create company
+            storage_result = create_company(entity_dict, context)
+            
+            if storage_result.get("success", False):
+                from ..ui.results import create_success_result
+                from ..core.context import Context as NewContext
+                
+                # Create success result
+                result = create_success_result(
+                    operation="created",
+                    entity_name=f"company {entity_data['name']}",
+                    attributes={
+                        "entity": entity_data["entity"].value,
+                        "currency": entity_data["currency"].value,
+                        "type": entity_data["type"].value
+                    }
+                )
+                
+                # Create new context at organization level
+                new_context = NewContext(
+                    level=1,
+                    org_id=1,
+                    org_name=entity_data["name"],
+                    org_db_path=None
+                )
+                result.set_context_switch(new_context)
+                
+                return result
+            else:
+                from ..ui.results import create_error_result
+                return create_error_result([storage_result.get("error", "Failed to create company")])
+        
+        else:
+            # For other entity types, create a simple success result
+            from ..ui.results import create_success_result
+            return create_success_result(
+                operation="created",
+                entity_name=f"{entity_model.__name__.replace('Entity', '').lower()} {entity_value or 'unnamed'}",
+                attributes=attributes
+            )
+    
+    except Exception as e:
+        from ..ui.results import create_error_result
+        return create_error_result([f"Failed to create entity: {str(e)}"])
+
+async def add_handler_impl(entity_model, entity_value, attributes, context):
+    """Simplified add handler for dynamic commands"""
+    pass
+
+async def update_handler_impl(entity_model, entity_value, attributes, context):
+    """Simplified update handler for dynamic commands"""
+    pass
+
+async def show_handler_impl(entity_model, entity_value, attributes, context):
+    """Simplified show handler for dynamic commands"""
+    pass
+
+async def delete_handler_impl(entity_model, entity_value, attributes, context):
+    """Simplified delete handler for dynamic commands"""
+    pass
+
+async def navigate_handler_impl(entity_model, entity_value, attributes, context):
+    """Simplified navigate handler for dynamic commands"""
+    # Basic navigation logic - this will be enhanced later
+    if entity_value == "~" or entity_value == "root":
+        # Navigate to root
+        return {"success": True, "message": "Navigated to root"}
+    elif entity_value:
+        # Navigate to specific entity
+        return {"success": True, "message": f"Navigated to {entity_value}"}
+    else:
+        # Show current location
+        return {"success": True, "message": "Current location"}
+
+# Set the handler references
+create_handler = create_handler_impl
+add_handler = add_handler_impl
+update_handler = update_handler_impl
+show_handler = show_handler_impl
+delete_handler = delete_handler_impl
+navigate_handler = navigate_handler_impl
 
 # ==================== BASE WORD ====================
 
@@ -43,7 +226,7 @@ class ActionWord(BaseWord):
     """
     
     word_type: Literal[WordType.ACTION] = WordType.ACTION
-    handler: Callable[[ActionWord, List[str]], None] = Field(description="Function to handle this action")
+    handler: Any = Field(description="Function to handle this action")
     action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
     crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
     database: bool = Field(default=False, description="Whether this action operates at the database level")

@@ -13,7 +13,10 @@
       "Bash(mkdir:*)",
       "Bash(timeout 5 uv run:*)",
       "Bash(grep:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(PYTHONPATH=src uv run python test_refactor.py)",
+      "Bash(timeout 3 uv run:*)",
+      "Bash(PYTHONPATH=src uv run python test_create_company.py)"
     ],
     "deny": [],
     "ask": []

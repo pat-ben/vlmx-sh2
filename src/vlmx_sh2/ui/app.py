@@ -16,7 +16,6 @@ try:
     from ..dsl.parser import VLMXParser
     from ..core.context import Context
     from .results import CommandResult, format_command_result
-    from ..handlers.company import register_all_commands
 except ImportError:
     # Direct execution - add src to path
     import sys
@@ -25,7 +24,6 @@ except ImportError:
     from vlmx_sh2.dsl.parser import VLMXParser
     from vlmx_sh2.core.context import Context
     from vlmx_sh2.ui.results import CommandResult, format_command_result
-    from vlmx_sh2.handlers.company import register_all_commands
 
 
 
@@ -40,10 +38,7 @@ class VLMX(App):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Register all command handlers explicitly
-        self.registered_commands_count = register_all_commands()
-        
-        # Initialize parser and context after command registration
+        # Initialize parser and context - no command registration needed in new system
         self.parser = VLMXParser()
         self.context = Context(level=0)
 
@@ -60,9 +55,10 @@ class VLMX(App):
         )
     
     def get_system_info(self) -> dict:
-        """Get system information including registered commands count."""
+        """Get system information."""
+        from ..dsl.words import get_all_words
         return {
-            "registered_commands": self.registered_commands_count,
+            "word_registry_size": len(get_all_words()),
             "context_level": self.context.level,
             "parser_ready": self.parser is not None
         }
@@ -135,27 +131,23 @@ class CommandBlock(VerticalGroup):
                         self.show_output(f"  → {suggestion}", is_error=True)
                 return
             
-            if not parse_result.best_command:
-                self.show_output("No matching command found", is_error=True)
+            if not parse_result.action_handler:
+                self.show_output("No action handler found", is_error=True)
                 if parse_result.suggestions:
                     for suggestion in parse_result.suggestions:
                         self.show_output(f"  → {suggestion}", is_error=True)
                 return
             
-            # Execute the command using the new handler signature
-            command_id = parse_result.best_command.command_id
-            
-            # Get the handler function
-            handler = parse_result.best_command.handler
-            if not handler:
-                self.show_output(f"No handler found for command: {command_id}", is_error=True)
+            # Execute using the new simplified system
+            try:
+                result = await self.parser.execute_parsed_command(parse_result, self.context)
+            except Exception as e:
+                self.show_output(f"Execution failed: {str(e)}", is_error=True)
                 return
             
-            # Execute the handler with ParseResult
-            result = await handler(parse_result, self.context)
-            
-            # Display the result using the results.py formatting
+            # Display the result
             if isinstance(result, CommandResult):
+                # Use the existing CommandResult formatting
                 formatted_result = format_command_result(result, parse_result)
                 
                 # Split the formatted result into lines and display each
@@ -167,14 +159,18 @@ class CommandBlock(VerticalGroup):
                 # Check if the result requests a context switch
                 if result.success and result.new_context:
                     self.context = result.new_context
-            else:
-                # Fallback for handlers that still return dicts
+                    
+            elif isinstance(result, dict):
+                # Handle simple dictionary results from our placeholder handlers
                 if result.get("success", False):
                     message = result.get("message", "Command executed successfully")
-                    self.show_output(message)
+                    self.show_output(f"✓ {message}")
                 else:
                     error = result.get("error", "Command failed")
-                    self.show_output(f"Error: {error}", is_error=True)
+                    self.show_output(f"✗ {error}", is_error=True)
+            else:
+                # Handle other result types
+                self.show_output(f"Result: {str(result)}")
                 
         except Exception as e:
             self.show_output(f"Execution Error: {str(e)}", is_error=True)

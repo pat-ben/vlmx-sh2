@@ -10,7 +10,7 @@ from typing import List
 
 from ..core.context import Context
 from ..core.enums import ContextLevel
-from ..dsl.commands import register_command
+# Note: This file is now legacy - dynamic commands are handled directly through words.py
 from ..dsl.parser import ParseResult
 from ..dsl.words import Word
 from ..handlers.company import validate_attribute_for_entity
@@ -33,19 +33,7 @@ from .utils import (
 # ==================== ADD COMMAND ====================
 
 
-@register_command(
-    command_id="add_dynamic",
-    description="Add/set attribute values to any entity",
-    context=ContextLevel.ORG,
-    required_words={"add"},
-    optional_words=set(),
-    is_dynamic=True,
-    examples=[
-        "add brand vision=To revolutionize technology",
-        "add metadata category=SaaS",
-        "add offering name=Cloud_Platform",
-    ],
-)
+# @register_command - DISABLED: Now using dynamic system in words.py
 async def add_dynamic_handler(
     parse_result: ParseResult, context: Context
 ) -> CommandResult:
@@ -119,20 +107,7 @@ async def add_dynamic_handler(
 # ==================== UPDATE COMMAND ====================
 
 
-@register_command(
-    command_id="update_dynamic",
-    description="Update existing attribute values for any entity",
-    context=ContextLevel.ORG,
-    required_words={"update"},
-    optional_words=set(),
-    is_dynamic=True,
-    examples=[
-        "update organization name TechCorp Plus",
-        "update brand mission To change the world",
-        "update metadata category Enterprise",
-        "update offering name Premium Platform",
-    ],
-)
+# @register_command - DISABLED: Now using dynamic system in words.py
 async def update_dynamic_handler(
     parse_result: ParseResult, context: Context
 ) -> CommandResult:
@@ -220,21 +195,7 @@ async def update_dynamic_handler(
 # ==================== SHOW COMMAND ====================
 
 
-@register_command(
-    command_id="show_dynamic",
-    description="Display entity data or specific attributes for any entity",
-    context=ContextLevel.ORG,
-    required_words={"show"},
-    optional_words=set(),
-    is_dynamic=True,
-    examples=[
-        "show organization",
-        "show brand",
-        "show organization name",
-        "show brand vision mission",
-        "show metadata",
-    ],
-)
+# @register_command - DISABLED: Now using dynamic system in words.py
 async def show_dynamic_handler(
     parse_result: ParseResult, context: Context
 ) -> CommandResult:
@@ -296,20 +257,7 @@ async def show_dynamic_handler(
 # ==================== DELETE COMMAND ====================
 
 
-@register_command(
-    command_id="delete_dynamic",
-    description="Clear attribute values (set to null) for any entity",
-    context=ContextLevel.ORG,
-    required_words={"delete"},
-    optional_words=set(),
-    is_dynamic=True,
-    examples=[
-        "delete brand mission",
-        "delete organization incorporation",
-        "delete brand vision",
-        "delete metadata key",
-    ],
-)
+# @register_command - DISABLED: Now using dynamic system in words.py
 async def delete_dynamic_handler(
     parse_result: ParseResult, context: Context
 ) -> CommandResult:

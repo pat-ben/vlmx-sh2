@@ -6,10 +6,12 @@ requires-python = ">=3.11"
 dependencies = [
     "mypy",
     "pydantic",
-    "rapidfuzz",
     "sqlmodel>=0.0.29",
     "textual",
 ]
 
 [project.scripts]
 vlmx = "vlmx_sh2.main:main"
+
+[tool.uv]
+package = true

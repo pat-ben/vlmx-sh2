@@ -8,12 +8,9 @@ flag syntax (--key=value) and simplified key=value format.
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from rapidfuzz import fuzz, process
 from pydantic import BaseModel, Field
 
-from .commands import find_commands, Command
-from .syntax import is_valid_command, get_composition_error
-from .words import get_all_words, get_word, Word
+from .words import get_all_words, get_word, Word, expand_shortcuts, ActionWord, EntityWord, AttributeWord
 from ..core.enums import WordType, TokenType
 
 
@@ -44,15 +41,15 @@ class ParsedToken(BaseModel):
 
 
 class ParseResult(BaseModel):
-    """Complete parse result with tokens, commands, and validation."""
+    """Complete parse result with tokens and validation."""
     
     input_text: str = Field(description="Original input text")
     tokens: List[ParsedToken] = Field(default_factory=list, description="Parsed tokens")
     recognized_words: List[Word] = Field(default_factory=list, description="Successfully recognized words")
     entity_values: Dict[str, Any] = Field(default_factory=dict, description="Extracted entity values (company names, etc.)")
     attribute_values: Dict[str, str] = Field(default_factory=dict, description="Extracted attribute values")
-    matching_commands: List[Command] = Field(default_factory=list, description="Commands that could match")
-    best_command: Optional[Command] = Field(default=None, description="Best matching command")
+    action_handler: Optional[Any] = Field(default=None, description="Handler function for the action")
+    entity_model: Optional[Any] = Field(default=None, description="Entity model class for the target entity")
     is_valid: bool = Field(default=False, description="Whether the parse is valid")
     errors: List[str] = Field(default_factory=list, description="Parse errors")
     suggestions: List[str] = Field(default_factory=list, description="Suggestions for improvement")
@@ -81,9 +78,9 @@ class ParseResult(BaseModel):
         return [word for word in self.recognized_words if word.word_type == WordType.FIELD]
     
     @property
-    def has_complete_command(self) -> bool:
-        """True if we have a valid command with all required words."""
-        return self.is_valid and self.best_command is not None
+    def has_complete_action(self) -> bool:
+        """True if we have a valid action and handler."""
+        return self.is_valid and self.action_handler is not None
     
     @property
     def word_types_present(self) -> List[WordType]:
@@ -91,13 +88,10 @@ class ParseResult(BaseModel):
         return list(set(word.word_type for word in self.recognized_words))
     
     @property
-    def missing_required_words(self) -> List[str]:
-        """Get list of required words missing for the best command."""
-        if not self.best_command:
-            return []
-        
-        present_word_ids = {word.id for word in self.recognized_words}
-        return list(self.best_command.words.required_words - present_word_ids)
+    def has_action_and_entity(self) -> bool:
+        """True if we have both an action and entity word."""
+        word_types = set(self.word_types_present)
+        return WordType.ACTION in word_types and WordType.ENTITY in word_types
 
 
 # ==================== TOKENIZATION ====================
@@ -195,18 +189,11 @@ class Tokenizer:
 # ==================== WORD RECOGNITION ====================
 
 class WordRecognizer:
-    """Recognizes keywords using exact and fuzzy matching, leveraging Word objects."""
+    """Recognizes keywords using exact matching and aliases."""
     
-    def __init__(self, fuzzy_threshold: float = 80.0):
-        """
-        Initialize word recognizer.
-        
-        Args:
-            fuzzy_threshold: Minimum confidence score for fuzzy matches (0-100)
-        """
-        self.fuzzy_threshold = fuzzy_threshold
+    def __init__(self):
+        """Initialize word recognizer."""
         self.word_registry = get_all_words()
-        self.word_list = list(self.word_registry.keys())
         
         # Build comprehensive alias mapping for faster lookup
         self.alias_to_word = {}
@@ -220,10 +207,6 @@ class WordRecognizer:
             for alias in word.aliases:
                 self.alias_to_word[alias.lower()] = word_id
             
-            # Add abbreviations with their original casing and lowercase
-            for abbrev in word.abbreviations:
-                self.alias_to_word[abbrev.lower()] = word_id
-            
             # Group words by type for better command matching
             self.words_by_type[word.word_type].append(word)
     
@@ -233,7 +216,7 @@ class WordRecognizer:
     
     def recognize_word(self, token_text: str) -> Tuple[Optional[Word], float, List[str]]:
         """
-        Recognize a word using exact and fuzzy matching.
+        Recognize a word using exact matching and aliases.
         
         Args:
             token_text: Text to recognize
@@ -243,34 +226,41 @@ class WordRecognizer:
         """
         token_lower = token_text.lower()
         
-        # Try exact match first (including aliases)
+        # Try exact match (including aliases)
         if token_lower in self.alias_to_word:
             word_id = self.alias_to_word[token_lower]
             word = get_word(word_id)
             return word, 100.0, []
         
-        # Try fuzzy matching
-        matches = process.extract(
-            token_lower,
-            self.word_list,
-            scorer=fuzz.WRatio,
-            limit=5
-        )
-        
-        if matches and matches[0][1] >= self.fuzzy_threshold:
-            # Best match is above threshold
-            best_word_id = matches[0][0]
-            confidence = matches[0][1]
-            word = get_word(best_word_id)
-            
-            # Get suggestions from other high-scoring matches
-            suggestions = [match[0] for match in matches[1:4] if match[1] >= self.fuzzy_threshold * 0.7]
-            
-            return word, confidence, suggestions
-        
-        # No good match found
-        suggestions = [match[0] for match in matches[:3] if match[1] >= 50.0]
+        # No match found - provide basic suggestions based on similar word types
+        suggestions = self._get_basic_suggestions(token_text)
         return None, 0.0, suggestions
+    
+    def _get_basic_suggestions(self, token_text: str) -> List[str]:
+        """Get basic suggestions for unrecognized tokens."""
+        suggestions = []
+        
+        # Suggest common action words
+        if len(token_text) <= 6 and token_text.lower().startswith(('c', 's', 'u', 'd', 'a')):
+            if token_text.lower().startswith('c'):
+                suggestions.extend(['create', 'cd'])
+            elif token_text.lower().startswith('s'):
+                suggestions.extend(['show'])
+            elif token_text.lower().startswith('u'):
+                suggestions.extend(['update'])
+            elif token_text.lower().startswith('d'):
+                suggestions.extend(['delete'])
+            elif token_text.lower().startswith('a'):
+                suggestions.extend(['add'])
+        
+        # Suggest common entity words
+        if len(token_text) >= 3:
+            common_entities = ['company', 'brand', 'metadata', 'offering', 'target', 'values']
+            for entity in common_entities:
+                if entity.startswith(token_text.lower()[:3]):
+                    suggestions.append(entity)
+        
+        return suggestions[:3]  # Limit to top 3 suggestions
     
     def process_tokens(self, tokens: List[ParsedToken]) -> List[ParsedToken]:
         """
@@ -480,15 +470,10 @@ class ValueExtractor:
 class VLMXParser:
     """Main parser for VLMX DSL commands."""
     
-    def __init__(self, fuzzy_threshold: float = 80.0):
-        """
-        Initialize the parser.
-        
-        Args:
-            fuzzy_threshold: Minimum confidence for fuzzy word matching
-        """
+    def __init__(self):
+        """Initialize the parser."""
         self.tokenizer = Tokenizer()
-        self.word_recognizer = WordRecognizer(fuzzy_threshold)
+        self.word_recognizer = WordRecognizer()
         self.value_extractor = ValueExtractor()
     
     def parse(self, input_text: str) -> ParseResult:
@@ -504,17 +489,20 @@ class VLMXParser:
         result = ParseResult(input_text=input_text)
         
         try:
-            # Step 1: Tokenize
-            tokens = self.tokenizer.tokenize(input_text)
+            # Step 1: Expand shortcuts
+            expanded_input = expand_shortcuts(input_text)
             
-            # Step 2: Recognize words
+            # Step 2: Tokenize
+            tokens = self.tokenizer.tokenize(expanded_input)
+            
+            # Step 3: Recognize words
             tokens = self.word_recognizer.process_tokens(tokens)
             
-            # Step 3: Extract values and attributes
+            # Step 4: Extract values and attributes
             result.attribute_values = self.value_extractor.extract_attribute_values(tokens)
             result.entity_values = self.value_extractor.extract_entity_values(tokens)
             
-            # Step 4: Collect recognized words
+            # Step 5: Collect recognized words
             recognized_words = []
             for token in tokens:
                 if token.word:
@@ -523,25 +511,26 @@ class VLMXParser:
             result.tokens = tokens
             result.recognized_words = recognized_words
             
-            # Step 5: Validate composition
+            # Step 6: Extract action handler and entity model
             if recognized_words:
-                composition_error = get_composition_error(recognized_words)
-                if composition_error:
-                    result.errors.append(f"Composition error: {composition_error}")
-                else:
-                    result.is_valid = is_valid_command(recognized_words)
-            
-            # Step 6: Find and rank matching commands
-            if recognized_words:
-                word_ids = [w.id for w in recognized_words]
-                matching_commands = find_commands(word_ids)
-                result.matching_commands = matching_commands
+                action_words = [w for w in recognized_words if isinstance(w, ActionWord)]
+                entity_words = [w for w in recognized_words if isinstance(w, EntityWord)]
                 
-                if matching_commands:
-                    # Pick the best command using smart ranking
-                    result.best_command = self._select_best_command(matching_commands, recognized_words)
+                if action_words:
+                    # Get the handler from the action word
+                    action_word = action_words[0]  # Take the first action word
+                    result.action_handler = action_word.handler
+                    
+                if entity_words:
+                    # Get the entity model from the entity word
+                    entity_word = entity_words[0]  # Take the first entity word
+                    result.entity_model = entity_word.entity_model
+                
+                # Validate that we have the minimum requirements
+                if action_words:
+                    result.is_valid = True
             
-            # Step 7: Generate suggestions
+            # Step 8: Generate suggestions
             result.suggestions = self._generate_suggestions(result)
             
         except Exception as e:
@@ -549,46 +538,26 @@ class VLMXParser:
         
         return result
     
-    def _select_best_command(self, commands: List[Command], recognized_words: List[Word]) -> Optional[Command]:
+    def _validate_handler_requirements(self, result: ParseResult) -> bool:
         """
-        Select the best matching command from a list of candidates.
+        Validate that the parse result has the minimum requirements for handler execution.
         
-        Ranking criteria:
-        1. Commands with more satisfied required words
-        2. Commands with fewer total required words (more specific)
-        3. Commands that match the word types present
+        Requirements:
+        1. Must have an action word with handler
+        2. For most actions, must have an entity word (unless action doesn't require entity)
         """
-        if not commands:
-            return None
+        if not result.action_handler:
+            result.errors.append("No action handler found")
+            return False
         
-        if len(commands) == 1:
-            return commands[0]
+        # Check if action requires entity
+        action_words = result.action_words
+        if action_words and action_words[0].requires_entity:
+            if not result.entity_words:
+                result.errors.append("Action requires an entity word")
+                return False
         
-        word_ids = {w.id for w in recognized_words}
-        word_types = {w.word_type for w in recognized_words}
-        
-        def score_command(cmd: Command) -> tuple:
-            # Count satisfied required words (higher is better)
-            satisfied_required = len(cmd.words.required_words & word_ids)
-            
-            # Count total required words (lower is better for specificity)
-            total_required = len(cmd.words.required_words)
-            
-            # Check if command uses the word types we have
-            cmd_word_types = set()
-            for word_id in cmd.words.get_all_words():
-                word_obj = get_word(word_id)
-                if word_obj:
-                    cmd_word_types.add(word_obj.word_type)
-            
-            type_match = len(word_types & cmd_word_types)
-            
-            # Return tuple for sorting (higher satisfied, lower total, higher type match)
-            return (satisfied_required, -total_required, type_match)
-        
-        # Sort commands by score (descending)
-        sorted_commands = sorted(commands, key=score_command, reverse=True)
-        return sorted_commands[0]
+        return True
     
     def _generate_suggestions(self, result: ParseResult) -> List[str]:
         """Generate helpful suggestions based on parse result and command analysis."""
@@ -599,30 +568,67 @@ class VLMXParser:
             if token.token_type == TokenType.UNKNOWN and token.suggestions:
                 suggestions.append(f"Did you mean '{token.suggestions[0]}' instead of '{token.text}'?")
         
-        # Suggest missing required words for best command
-        if result.best_command and result.missing_required_words:
-            missing_words = result.missing_required_words
-            suggestions.append(f"Missing required words: {', '.join(missing_words)}")
-        
         # Suggest word type completion based on DSL patterns
         word_types_present = set(result.word_types_present)
         
         # If we have ACTION but no ENTITY, suggest adding an entity
         if WordType.ACTION in word_types_present and WordType.ENTITY not in word_types_present:
-            suggestions.append("Consider adding an entity word (e.g., 'company', 'milestone')")
+            action_words = result.action_words
+            if action_words and action_words[0].requires_entity:
+                suggestions.append("Consider adding an entity word (e.g., 'company', 'brand', 'metadata')")
         
         # If we have ENTITY but no ACTION, suggest adding an action
         if WordType.ENTITY in word_types_present and WordType.ACTION not in word_types_present:
-            suggestions.append("Consider adding an action word (e.g., 'create', 'delete', 'show')")
+            suggestions.append("Consider adding an action word (e.g., 'create', 'add', 'update', 'show', 'delete')")
         
         # Suggest common attribute patterns
         if result.action_words and result.entity_words and not result.attribute_values:
             action = result.action_words[0].id
             entity = result.entity_words[0].id
             if action == 'create' and entity == 'company':
-                suggestions.append("Consider adding attributes like --entity=SA --currency=EUR")
+                suggestions.append("Consider adding attributes like entity=SA currency=EUR")
+            elif action in ['add', 'update'] and entity in ['brand', 'metadata', 'offering']:
+                suggestions.append("Consider adding attributes like name=value or key=value")
         
         return suggestions
+
+    async def execute_parsed_command(self, parse_result: ParseResult, context) -> Any:
+        """
+        Execute a parsed command by calling the action handler directly.
+        
+        Args:
+            parse_result: The result from parsing user input
+            context: Execution context
+            
+        Returns:
+            Result from handler execution
+        """
+        if not parse_result.is_valid:
+            raise ValueError(f"Cannot execute invalid parse result: {parse_result.errors}")
+        
+        if not parse_result.action_handler:
+            raise ValueError("No action handler available for execution")
+        
+        # Validate handler requirements
+        if not self._validate_handler_requirements(parse_result):
+            raise ValueError(f"Handler requirements not met: {parse_result.errors}")
+        
+        # Call the handler with the parsed data
+        # Handler signature: handler(entity_model, entity_value, attributes, context)
+        entity_value = None
+        if parse_result.entity_values:
+            # Get the first entity value
+            entity_value = next(iter(parse_result.entity_values.values()))
+        
+        try:
+            return await parse_result.action_handler(
+                entity_model=parse_result.entity_model,
+                entity_value=entity_value,
+                attributes=parse_result.attribute_values,
+                context=context
+            )
+        except Exception as e:
+            raise RuntimeError(f"Handler execution failed: {str(e)}")
 
 
 
