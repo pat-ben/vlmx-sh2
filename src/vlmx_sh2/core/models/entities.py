@@ -209,9 +209,9 @@ class TargetEntity(DatabaseModel, table=True):
 # VALUE ENTITY RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
-class ValueEntity(DatabaseModel, table=True):
+class ValuesEntity(DatabaseModel, table=True):
     """
-    Python Model: ValueEntity
+    Python Model: ValuesEntity
     SQL Table: brand_values
     Description: Company core values (key-value pairs)
     
