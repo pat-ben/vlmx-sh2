@@ -21,7 +21,9 @@
       "Bash(PYTHONPATH=src uv run python test_delete_debug.py)",
       "Bash(PYTHONPATH=src uv run python test_delete_command.py)",
       "Bash(PYTHONPATH=src uv run python simple_delete_test.py)",
-      "Bash(PYTHONPATH=src uv run python test_delete_realistic.py)"
+      "Bash(PYTHONPATH=src uv run python test_delete_realistic.py)",
+      "Bash(PYTHONPATH=src python -c \"from src.vlmx_sh2.core.models.database.company import CompanyEntity, CompanyDatabase; print(''Import successful'')\")",
+      "Bash(PYTHONPATH=src python -c \"from src.vlmx_sh2.dsl.words import CompanyEntity; print(''Import from words.py successful'')\")"
     ],
     "deny": [],
     "ask": []

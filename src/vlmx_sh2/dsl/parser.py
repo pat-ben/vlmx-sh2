@@ -10,7 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
-from .words import get_all_words, get_word, Word, expand_shortcuts, ActionWord, EntityWord, AttributeWord
+from .words import get_all_words, get_word, expand_shortcuts
+from ..core.models.words import Word, ActionWord, EntityWord, AttributeWord
 from ..core.enums import WordType, TokenType
 
 

@@ -5,8 +5,9 @@ Contains shared business logic utilities used by the dynamic handlers.
 The actual handlers are now implemented in words.py as dynamic functions.
 """
 
-from ..core.context import Context
-from ..dsl.words import get_word, EntityWord
+from ..core.models.context import Context
+from ..dsl.words import get_word
+from ..core.models.words import EntityWord, AttributeWord
 
 
 # ==================== BUSINESS LOGIC UTILITIES ====================
@@ -22,7 +23,6 @@ def validate_attribute_for_entity(attribute_id: str, entity_id: str) -> bool:
     Returns:
         True if the attribute exists on the entity, False otherwise
     """
-    from ..dsl.words import AttributeWord
     
     # Get the attribute word
     attribute_word = get_word(attribute_id)

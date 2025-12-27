@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from vlmx_sh2.ui.app import VLMX, CommandBlock
 from vlmx_sh2.dsl.parser import VLMXParser
-from vlmx_sh2.core.context import Context
+from vlmx_sh2.core.models.context import Context
 
 def test_app_initialization():
     """Test that the VLMX app can be initialized with our refactored system."""

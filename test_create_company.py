@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from vlmx_sh2.dsl.parser import VLMXParser
-from vlmx_sh2.core.context import Context
+from vlmx_sh2.core.models.context import Context
 
 async def test_create_company():
     """Test creating a company and check if files are created."""
