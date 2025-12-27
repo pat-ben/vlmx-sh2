@@ -601,3 +601,175 @@ def create_default_entity_data(entity_name: str) -> Dict[str, Any]:
             "id": None,
             "name": None
         }
+
+
+# ==================== GENERIC ENTITY OPERATIONS ====================
+
+def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> Dict[str, Any]:
+    """
+    Generic entity creation - works for ANY entity type.
+    
+    Args:
+        entity_type: Entity type name (e.g., 'company', 'brand', 'metadata')
+        data: Validated entity data
+        context: Execution context
+        
+    Returns:
+        Result dictionary with success status and details
+    """
+    try:
+        if entity_type == 'company':
+            # Use existing company creation logic
+            return create_company(data, context)
+        else:
+            # For other entities, we need a company context
+            if context.level == 0 or not context.org_name:
+                return {
+                    "success": False,
+                    "error": "Must be in organization context to create non-company entities"
+                }
+            
+            # Save the entity data using generic storage
+            return save_entity_json(entity_type, data, context.org_name, context)
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to create {entity_type}: {str(e)}"
+        }
+
+
+def load_entity(entity_type: str, company_name: str, context: Context) -> Optional[Dict[str, Any]]:
+    """
+    Generic entity loading - works for ANY entity type.
+    
+    Args:
+        entity_type: Entity type name (e.g., 'company', 'brand', 'metadata')
+        company_name: Name of the company (for non-company entities)
+        context: Execution context
+        
+    Returns:
+        Entity data dictionary or None if not found
+    """
+    try:
+        if entity_type == 'company':
+            return load_company_organization(company_name, context)
+        else:
+            return load_entity_json(entity_type, company_name, context)
+    except Exception as e:
+        print(f"Warning: Failed to load {entity_type}: {e}")
+        return None
+
+
+def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, context: Context) -> Dict[str, Any]:
+    """
+    Generic entity saving - works for ANY entity type.
+    
+    Args:
+        entity_type: Entity type name (e.g., 'company', 'brand', 'metadata')
+        data: Entity data to save
+        company_name: Name of the company (for non-company entities)
+        context: Execution context
+        
+    Returns:
+        Result dictionary with success status and details
+    """
+    try:
+        if entity_type == 'company':
+            # Use existing company update logic
+            return update_company(company_name, data, context)
+        else:
+            return save_entity_json(entity_type, data, company_name, context)
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to save {entity_type}: {str(e)}"
+        }
+
+
+def update_entity(entity_type: str, entity_name: str, updates: Dict, context: Context) -> Dict[str, Any]:
+    """
+    Generic entity update - works for ANY entity type.
+    
+    Args:
+        entity_type: Entity type name (e.g., 'company', 'brand', 'metadata')
+        entity_name: Name of the entity to update
+        updates: Dictionary of updates to apply
+        context: Execution context
+        
+    Returns:
+        Result dictionary with success status and details
+    """
+    try:
+        if entity_type == 'company':
+            return update_company(entity_name, updates, context)
+        else:
+            # For other entities, load current data, apply updates, and save
+            current_data = load_entity_json(entity_type, entity_name, context)
+            if current_data is None:
+                return {
+                    "success": False,
+                    "error": f"Entity '{entity_type}' not found"
+                }
+            
+            # Apply updates
+            updated_data = current_data.copy()
+            updated_data.update(updates)
+            updated_data['updated_at'] = datetime.now().isoformat()
+            
+            return save_entity_json(entity_type, updated_data, entity_name, context)
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to update {entity_type}: {str(e)}"
+        }
+
+
+def delete_entity(entity_type: str, entity_name: str, context: Context) -> Dict[str, Any]:
+    """
+    Generic entity deletion - works for ANY entity type.
+    
+    Args:
+        entity_type: Entity type name (e.g., 'company', 'brand', 'metadata')
+        entity_name: Name of the entity to delete
+        context: Execution context
+        
+    Returns:
+        Result dictionary with success status and details
+    """
+    try:
+        if entity_type == 'company':
+            return delete_company(entity_name, context)
+        else:
+            # For other entities, remove the JSON file
+            from .mappings import get_entity_json_filename
+            import os
+            
+            json_filename = get_entity_json_filename(entity_type)
+            if not json_filename:
+                return {
+                    "success": False,
+                    "error": f"Unknown entity type: {entity_type}"
+                }
+            
+            company_folder = get_company_folder_path(entity_name, context)
+            entity_file = company_folder / json_filename
+            
+            if entity_file.exists():
+                os.remove(entity_file)
+                return {
+                    "success": True,
+                    "message": f"Successfully deleted {entity_type} data"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Entity '{entity_type}' not found"
+                }
+                
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to delete {entity_type}: {str(e)}"
+        }

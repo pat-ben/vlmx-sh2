@@ -9,7 +9,7 @@ with any entity-attribute combination dynamically.
 from typing import Dict, Any, Optional
 from ..models.context import Context
 from ..storage.mappings import DEFAULT_ENTITY
-from ..dsl.parser import ParseResult
+from ..models.parser import ParseResult
 from ..dsl.words import get_word
 from ..models.words import EntityWord, AttributeWord
 

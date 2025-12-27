@@ -10,8 +10,8 @@ import os
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from vlmx_sh2.dsl.parser import VLMXParser
-from vlmx_sh2.dsl.words import expand_shortcuts, SHORTCUTS
+from vlmx_sh2.parser import VLMXParser
+from vlmx_sh2.dsl.macros import expand_shortcuts, SHORTCUTS
 from vlmx_sh2.models.context import Context
 
 def test_shortcuts():
