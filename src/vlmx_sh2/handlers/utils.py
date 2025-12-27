@@ -168,7 +168,7 @@ def format_entity_data_for_display(entity_data: Dict[str, Any],
         else:
             lines.append(f"{key}: (not set)")
     
-    return "\\n".join(lines) if lines else "No attributes to display"
+    return "\n".join(lines) if lines else "No attributes to display"
 
 def create_updated_entity_data(current_data: Dict[str, Any], 
                              updates: Dict[str, str]) -> Dict[str, Any]:

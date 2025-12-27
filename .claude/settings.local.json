@@ -16,7 +16,12 @@
       "Bash(rm:*)",
       "Bash(PYTHONPATH=src uv run python test_refactor.py)",
       "Bash(timeout 3 uv run:*)",
-      "Bash(PYTHONPATH=src uv run python test_create_company.py)"
+      "Bash(PYTHONPATH=src uv run python test_create_company.py)",
+      "Bash(PYTHONPATH=src uv run python test_all_handlers.py)",
+      "Bash(PYTHONPATH=src uv run python test_delete_debug.py)",
+      "Bash(PYTHONPATH=src uv run python test_delete_command.py)",
+      "Bash(PYTHONPATH=src uv run python simple_delete_test.py)",
+      "Bash(PYTHONPATH=src uv run python test_delete_realistic.py)"
     ],
     "deny": [],
     "ask": []

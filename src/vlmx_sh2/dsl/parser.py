@@ -614,18 +614,22 @@ class VLMXParser:
             raise ValueError(f"Handler requirements not met: {parse_result.errors}")
         
         # Call the handler with the parsed data
-        # Handler signature: handler(entity_model, entity_value, attributes, context)
+        # Handler signature: handler(entity_model, entity_value, attributes, context, attribute_words)
         entity_value = None
         if parse_result.entity_values:
             # Get the first entity value
             entity_value = next(iter(parse_result.entity_values.values()))
+        
+        # For delete operations, we need to pass the list of attribute words to delete
+        attribute_words_to_process = [w.id for w in parse_result.attribute_words]
         
         try:
             return await parse_result.action_handler(
                 entity_model=parse_result.entity_model,
                 entity_value=entity_value,
                 attributes=parse_result.attribute_values,
-                context=context
+                context=context,
+                attribute_words=attribute_words_to_process
             )
         except Exception as e:
             raise RuntimeError(f"Handler execution failed: {str(e)}")

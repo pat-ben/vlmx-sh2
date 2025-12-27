@@ -85,7 +85,7 @@ def expand_shortcuts(input_text: str) -> str:
 
 # ==================== PLACEHOLDER HANDLERS ====================
 
-async def create_handler_impl(entity_model, entity_value, attributes, context):
+async def create_handler_impl(entity_model, entity_value, attributes, context, attribute_words=None):
     """Dynamic create handler that works with any entity type"""
     try:
         from ..storage.database import create_company
@@ -165,23 +165,198 @@ async def create_handler_impl(entity_model, entity_value, attributes, context):
         from ..ui.results import create_error_result
         return create_error_result([f"Failed to create entity: {str(e)}"])
 
-async def add_handler_impl(entity_model, entity_value, attributes, context):
-    """Simplified add handler for dynamic commands"""
-    pass
+async def add_handler_impl(entity_model, entity_value, attributes, context, attribute_words=None):
+    """Dynamic add handler for setting attributes on entities"""
+    try:
+        from ..ui.results import create_success_result, create_error_result
+        from ..storage.database import save_entity_json, load_entity_json, entity_exists, create_default_entity_data
+        from ..handlers.utils import get_company_name_from_context, create_updated_entity_data
+        
+        # Get current company name from context
+        company_name = get_company_name_from_context(context)
+        if not company_name:
+            return create_error_result(["Must be in organization context to add attributes"])
+        
+        if not attributes:
+            return create_error_result(["No attributes specified. Use format: add entity attribute=value"])
+        
+        # Determine entity type from entity_model
+        entity_name = entity_model.__name__.replace('Entity', '').lower()
+        
+        # Create entity if it doesn't exist
+        if not entity_exists(entity_name, company_name, context):
+            default_data = create_default_entity_data(entity_name)
+            save_entity_json(entity_name, default_data, company_name, context)
+        
+        # Load current entity data
+        current_data = load_entity_json(entity_name, company_name, context) or {}
+        
+        # Create updated data with new attributes
+        updated_data = create_updated_entity_data(current_data, attributes)
+        
+        # Save the updated entity
+        save_result = save_entity_json(entity_name, updated_data, company_name, context)
+        if not save_result.get("success", False):
+            return create_error_result([save_result.get("error", f"Failed to save {entity_name} data")])
+        
+        return create_success_result(
+            operation="added",
+            entity_name=entity_name,
+            attributes=attributes
+        )
+        
+    except Exception as e:
+        from ..ui.results import create_error_result
+        return create_error_result([f"Failed to add attributes: {str(e)}"])
 
-async def update_handler_impl(entity_model, entity_value, attributes, context):
-    """Simplified update handler for dynamic commands"""
-    pass
+async def update_handler_impl(entity_model, entity_value, attributes, context, attribute_words=None):
+    """Dynamic update handler for modifying existing attributes"""
+    try:
+        from ..ui.results import create_success_result, create_error_result
+        from ..storage.database import save_entity_json, load_entity_json, entity_exists
+        from ..handlers.utils import get_company_name_from_context, create_updated_entity_data
+        
+        # Get current company name from context
+        company_name = get_company_name_from_context(context)
+        if not company_name:
+            return create_error_result(["Must be in organization context to update attributes"])
+        
+        if not attributes:
+            return create_error_result(["No attributes specified. Use format: update entity attribute=value"])
+        
+        # Determine entity type from entity_model
+        entity_name = entity_model.__name__.replace('Entity', '').lower()
+        
+        # Check if entity exists
+        if not entity_exists(entity_name, company_name, context):
+            return create_error_result([f"Entity '{entity_name}' does not exist for company '{company_name}'"])
+        
+        # Load current entity data
+        current_data = load_entity_json(entity_name, company_name, context)
+        if current_data is None:
+            return create_error_result([f"No data found for {entity_name}"])
+        
+        # Create updated data
+        updated_data = create_updated_entity_data(current_data, attributes)
+        
+        # Save the updated entity
+        save_result = save_entity_json(entity_name, updated_data, company_name, context)
+        if not save_result.get("success", False):
+            return create_error_result([save_result.get("error", f"Failed to save {entity_name} data")])
+        
+        return create_success_result(
+            operation="updated",
+            entity_name=entity_name,
+            attributes=attributes
+        )
+        
+    except Exception as e:
+        from ..ui.results import create_error_result
+        return create_error_result([f"Failed to update attributes: {str(e)}"])
 
-async def show_handler_impl(entity_model, entity_value, attributes, context):
-    """Simplified show handler for dynamic commands"""
-    pass
+async def show_handler_impl(entity_model, entity_value, attributes, context, attribute_words=None):
+    """Dynamic show handler for displaying entity data"""
+    try:
+        from ..ui.results import create_success_result, create_error_result
+        from ..storage.database import load_entity_json, entity_exists
+        from ..handlers.utils import get_company_name_from_context, format_entity_data_for_display
+        
+        # Get current company name from context
+        company_name = get_company_name_from_context(context)
+        if not company_name:
+            return create_error_result(["Must be in organization context to view entities"])
+        
+        # Determine entity type from entity_model
+        entity_name = entity_model.__name__.replace('Entity', '').lower()
+        
+        # Check if entity exists
+        if not entity_exists(entity_name, company_name, context):
+            return create_error_result([f"Entity '{entity_name}' does not exist for company '{company_name}'"])
+        
+        # Load entity data
+        entity_data = load_entity_json(entity_name, company_name, context)
+        if entity_data is None:
+            return create_error_result([f"No data found for {entity_name}"])
+        
+        # Format data for display
+        formatted_data = format_entity_data_for_display(entity_data)
+        
+        return create_success_result(
+            operation="displayed",
+            entity_name=entity_name,
+            attributes={"data": formatted_data}
+        )
+        
+    except Exception as e:
+        from ..ui.results import create_error_result
+        return create_error_result([f"Failed to show entity data: {str(e)}"])
 
-async def delete_handler_impl(entity_model, entity_value, attributes, context):
-    """Simplified delete handler for dynamic commands"""
-    pass
+async def delete_handler_impl(entity_model, entity_value, attributes, context, attribute_words=None):
+    """Dynamic delete handler for removing attribute values"""
+    try:
+        from ..ui.results import create_success_result, create_error_result
+        from ..storage.database import save_entity_json, load_entity_json, entity_exists
+        from ..handlers.utils import get_company_name_from_context
+        
+        # Get current company name from context
+        company_name = get_company_name_from_context(context)
+        if not company_name:
+            return create_error_result(["Must be in organization context to delete attributes"])
+        
+        # Check if we have specific attributes to delete
+        if not attribute_words:
+            return create_error_result(["No attributes specified to delete. Use format: delete entity attribute"])
+        
+        # Determine entity type from entity_model
+        entity_name = entity_model.__name__.replace('Entity', '').lower()
+        
+        # Check if entity exists
+        if not entity_exists(entity_name, company_name, context):
+            return create_error_result([f"Entity '{entity_name}' does not exist for company '{company_name}'"])
+        
+        # Load current entity data
+        current_data = load_entity_json(entity_name, company_name, context)
+        if current_data is None:
+            return create_error_result([f"No data found for {entity_name}"])
+        
+        # Remove the specified attributes
+        updated_data = current_data.copy()
+        removed_attributes = []
+        
+        for attr_name in attribute_words:
+            if attr_name in updated_data:
+                if entity_name == "metadata":
+                    # For metadata, remove the key entirely
+                    del updated_data[attr_name]
+                else:
+                    # For other entities, set to null
+                    updated_data[attr_name] = None
+                removed_attributes.append(attr_name)
+        
+        if not removed_attributes:
+            return create_error_result([f"None of the specified attributes exist in {entity_name}: {', '.join(attribute_words)}"])
+        
+        # Update timestamp
+        from datetime import datetime
+        if 'updated_at' in updated_data:
+            updated_data['updated_at'] = datetime.now().isoformat()
+        
+        # Save the updated entity
+        save_result = save_entity_json(entity_name, updated_data, company_name, context)
+        if not save_result.get("success", False):
+            return create_error_result([save_result.get("error", f"Failed to save {entity_name} data")])
+        
+        return create_success_result(
+            operation="deleted",
+            entity_name=entity_name,
+            attributes={"removed_attributes": ", ".join(removed_attributes)}
+        )
+        
+    except Exception as e:
+        from ..ui.results import create_error_result
+        return create_error_result([f"Failed to delete attributes: {str(e)}"])
 
-async def navigate_handler_impl(entity_model, entity_value, attributes, context):
+async def navigate_handler_impl(entity_model, entity_value, attributes, context, attribute_words=None):
     """Simplified navigate handler for dynamic commands"""
     # Basic navigation logic - this will be enhanced later
     if entity_value == "~" or entity_value == "root":
