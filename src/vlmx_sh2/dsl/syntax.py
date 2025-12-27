@@ -52,7 +52,7 @@ class WordOrder:
             WordType.ACTION: cls.ACTION,
             WordType.MODIFIER: cls.MODIFIER,
             WordType.ENTITY: cls.ENTITY,
-            WordType.ATTRIBUTE: cls.ATTRIBUTE,
+            WordType.FIELD: cls.ATTRIBUTE,
         }
         return mapping.get(word_type, 999)  # Unknown types go last
 
@@ -108,14 +108,14 @@ class SyntaxRules:
             
             # ATTRIBUTES can be in any order among themselves
             # So we skip strict order checking for attributes
-            if word.word_type == WordType.ATTRIBUTE:
+            if word.word_type == WordType.FIELD:
                 # Attributes must come after ACTION, MODIFIER, ENTITY
                 if last_order > 0 and last_order < WordOrder.ATTRIBUTE:
                     continue  # This is fine, attributes can follow anything earlier
                 elif last_order == 0:
                     # Attribute cannot be first unless it's the only word type
                     has_non_attributes = any(
-                        w.word_type != WordType.ATTRIBUTE 
+                        w.word_type != WordType.FIELD 
                         for w in words
                     )
                     if has_non_attributes:
@@ -160,7 +160,7 @@ class SyntaxRules:
         actions = [w for w in words if w.word_type == WordType.ACTION]
         modifiers = [w for w in words if w.word_type == WordType.MODIFIER]
         entities = [w for w in words if w.word_type == WordType.ENTITY]
-        attributes = [w for w in words if w.word_type == WordType.ATTRIBUTE]
+        attributes = [w for w in words if w.word_type == WordType.FIELD]
         
         # Combine in correct order (attributes maintain their original relative order)
         return actions + modifiers + entities + attributes
@@ -187,17 +187,17 @@ class SyntaxRules:
         """
         if not current_words:
             # Empty command can start with any word type
-            return [WordType.ACTION, WordType.MODIFIER, WordType.ENTITY, WordType.ATTRIBUTE]
+            return [WordType.ACTION, WordType.MODIFIER, WordType.ENTITY, WordType.FIELD]
         
         # Get the highest order word type we've seen so far (excluding attributes)
         max_order = 0
         for word in current_words:
-            if word.word_type != WordType.ATTRIBUTE:
+            if word.word_type != WordType.FIELD:
                 order = WordOrder.get_order(word.word_type)
                 max_order = max(max_order, order)
         
         # Can always add attributes
-        valid_types = [WordType.ATTRIBUTE]
+        valid_types = [WordType.FIELD]
         
         # Can add any word type that comes after our current position
         if max_order < WordOrder.ACTION:

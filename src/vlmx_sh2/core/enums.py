@@ -13,11 +13,9 @@ from enum import Enum, IntEnum
 
 class WordType(Enum):
     ACTION = "action"  # verbs only (eg. create, update, delete)
-    MODIFIER = "modifier"  # adjectives or nouns that modify an entity (only one adjective per entity). Additional filers can be added with where"
     ENTITY = "entity"  # noun only :An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
-    ATTRIBUTE = "attribute"  # noun or adjective: attributes are Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
-    FILTER = "filter"  # preposition: Filters are used to filter entities (eg. where id=5)
-
+    FIELD = "field"  # noun or adjective: Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
+    
 
 ### ENUM for operations
 
@@ -26,10 +24,7 @@ class OperationLevel(str, Enum):
     DATABASE = "database"  # e.g., backup, restore
     TABLE = "table"        # e.g., create table, drop table
     ATTRIBUTE = "attribute"  # e.g., update, delete attribute
-    ROW = "row"            # e.g., create, update, delete record
-    QUERY = "query"        # e.g., show, filter
-    SYSTEM = "system"      # e.g., create, update, delete record
-
+    
 
 class CRUDOperation(str, Enum):
     """ Specific CRUD operation type."""    
@@ -73,8 +68,8 @@ class RequirementType(Enum):
 ### Company Enums
 
 
-class Entity(str, Enum):
-    """Company entity types"""
+class Legal(str, Enum):
+    """Company legal entity types"""
 
     SA = "SA"
     SARL = "SARL"

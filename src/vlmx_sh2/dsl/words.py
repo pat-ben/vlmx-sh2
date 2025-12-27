@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Type, Optional, Literal, List, Dict
 from ..core.enums import WordType, OperationLevel, ActionCategory, CRUDOperation
 from ..core.models.entities import (
-    OrganizationEntity, 
+    CompanyEntity, 
     MetadataEntity, 
     BrandEntity, 
     OfferingEntity, 
@@ -84,7 +84,7 @@ class AttributeWord(BaseWord):
     Can belong to multiple entities (e.g., 'name' exists on both Company and Milestone).
     """
     
-    word_type: Literal[WordType.ATTRIBUTE] = WordType.ATTRIBUTE
+    word_type: Literal[WordType.FIELD] = WordType.FIELD
     entity_models: List[Type[BaseModel]] = Field(description="Reference to the Pydantic model representing this entity")
     number_format_mode: str = Field(default="not_applicable", description="Number formatting mode for this attribute")
     currency_mode: str = Field(default="not_applicable", description="Currency mode for this attribute")
@@ -182,7 +182,7 @@ WORDS: List[Word] = [
         description="A business entity that can be managed in the terminal",
         aliases=["business", "firm"],
         abbreviations=["co"],
-        entity_model=OrganizationEntity
+        entity_model=CompanyEntity
     ),
     
     EntityWord(
@@ -233,7 +233,7 @@ WORDS: List[Word] = [
         description="Name or title of the entity",
         aliases=["title"],
         abbreviations=["n"],
-        entity_models=[OrganizationEntity, BrandEntity, OfferingEntity, TargetEntity, ValueEntity]
+        entity_models=[CompanyEntity, BrandEntity, OfferingEntity, TargetEntity, ValueEntity]
     ),
     
     AttributeWord(
@@ -258,7 +258,7 @@ WORDS: List[Word] = [
         description="Legal entity type (SA, LLC, INC, etc.)",
         aliases=["entity_type", "legal_entity"],
         abbreviations=["ent"],
-        entity_models=[OrganizationEntity]
+        entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
@@ -266,7 +266,7 @@ WORDS: List[Word] = [
         description="Organization type (company, fund, foundation)",
         aliases=["org_type", "organization_type"],
         abbreviations=["typ"],
-        entity_models=[OrganizationEntity]
+        entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
@@ -274,7 +274,7 @@ WORDS: List[Word] = [
         description="Currency used for financial data (EUR, USD, GBP, etc.)",
         aliases=["curr"],
         abbreviations=["cur"],
-        entity_models=[OrganizationEntity]
+        entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
@@ -282,7 +282,7 @@ WORDS: List[Word] = [
         description="Unit for financial data (THOUSANDS, MILLIONS, etc.)",
         aliases=["financial_unit"],
         abbreviations=["u"],
-        entity_models=[OrganizationEntity]
+        entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
@@ -290,7 +290,7 @@ WORDS: List[Word] = [
         description="Fiscal year end month (1-12)",
         aliases=["fiscal_month", "fiscal_year_end"],
         abbreviations=["cl"],
-        entity_models=[OrganizationEntity]
+        entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
@@ -298,7 +298,7 @@ WORDS: List[Word] = [
         description="Date of incorporation",
         aliases=["incorporation_date", "founded"],
         abbreviations=["inc"],
-        entity_models=[OrganizationEntity]
+        entity_models=[CompanyEntity]
     ),
     
     # Brand-specific attributes

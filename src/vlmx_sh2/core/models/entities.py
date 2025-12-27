@@ -10,7 +10,7 @@ DSL grammar and command structure.
 from datetime import date, datetime
 from typing import Optional
 from sqlmodel import SQLModel, Field
-from ..enums import (Entity, Currency, Unit, Type)
+from ..enums import (Legal, Currency, Unit, Type)
  
 
 # File: src/vlmx_sh2/models/database.py
@@ -49,20 +49,20 @@ class DatabaseModel(SQLModel):
 # ============================================
 
 
-class OrganizationEntity(DatabaseModel, table=True):
+class CompanyEntity(DatabaseModel, table=True):
     """
-    Python Model: OrganizationEntity
-    Database: Organization's name
-    SQL Table: organization
-    Description: Core organization information (one record per company database)
+    Python Model: CompanyEntity
+    Database: Company's name
+    SQL Table: company
+    Description: Core company information (one record per company database)
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    entity: Entity
-    type: Type
+    legal: Legal
+    type: Type = Type.COMPANY
     currency: Currency
-    unit: Unit
+    unit: Unit = Unit.THOUSANDS
     closing: int = 12
     incorporation: Optional[date] = None
     
@@ -93,7 +93,7 @@ class MetadataEntity(DatabaseModel, table=True):
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    org_id: int = Field(..., description="Reference to organization.id")
+    co_id: int = Field(..., description="Reference to company.id")
     key: str = Field(..., description="Metadata key")
     value: Optional[str] = Field(..., description="Metadata value stored as JSON string")
     
@@ -122,7 +122,7 @@ class BrandEntity(DatabaseModel, table=True):
     - ValueModel → brand_values table
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    org_id: int = Field(default=1, description="Reference to organization.id")
+    co_id: int = Field(default=1, description="Reference to company.id")
     
     # Core brand elements (single text fields)
     vision: Optional[str] = Field(None, description="Company vision statement")

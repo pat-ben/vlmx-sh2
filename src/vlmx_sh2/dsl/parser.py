@@ -78,7 +78,7 @@ class ParseResult(BaseModel):
     @property
     def attribute_words(self) -> List[Word]:
         """Get all ATTRIBUTE type words from recognized words."""
-        return [word for word in self.recognized_words if word.word_type == WordType.ATTRIBUTE]
+        return [word for word in self.recognized_words if word.word_type == WordType.FIELD]
     
     @property
     def has_complete_command(self) -> bool:
@@ -374,7 +374,7 @@ class ValueExtractor:
             # Check if current token is an attribute word and next is a value
             if (current_token.token_type == TokenType.WORD and 
                 current_token.word and 
-                current_token.word.word_type == WordType.ATTRIBUTE and
+                current_token.word.word_type == WordType.FIELD and
                 next_token.token_type == TokenType.VALUE):
                 attributes[current_token.text] = next_token.text
             

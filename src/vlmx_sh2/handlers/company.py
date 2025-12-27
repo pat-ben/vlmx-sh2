@@ -76,16 +76,16 @@ def extract_company_name_from_parse_result(parse_result: ParseResult) -> str:
 
 def extract_company_attributes_from_parse_result(parse_result: ParseResult) -> dict:
     """Extract company attributes from parse result with defaults and validation."""
-    from ..core.enums import Currency, Entity, Unit, Type
+    from ..core.enums import Currency, Legal, Unit, Type
     
     attributes = {}
     
     # Extract entity from attributes (entity=SA)
     entity_str = parse_result.attribute_values.get('entity', 'SA')
     try:
-        attributes['entity'] = Entity(entity_str.upper())
+        attributes['entity'] = Legal(entity_str.upper())
     except ValueError:
-        attributes['entity'] = Entity.SA  # Default fallback
+        attributes['entity'] = Legal.SA  # Default fallback
     
     # Extract currency from attributes (currency=EUR)  
     currency_str = parse_result.attribute_values.get('currency', 'EUR')

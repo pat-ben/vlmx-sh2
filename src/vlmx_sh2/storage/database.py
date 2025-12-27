@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..core.context import Context
-from ..core.enums import Entity, Currency, Unit, Type
+from ..core.enums import Legal, Currency, Unit, Type
 from ..core.mappings import get_entity_json_filename
 
 
