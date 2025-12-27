@@ -7,8 +7,8 @@ foundation for natural language command parsing and validation.
 """
 
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Type, Optional, Literal, List, Dict
-from ..core.enums import WordType, OperationLevel, ActionCategory, CRUDOperation
+from typing import Type, Optional, Literal, List, Dict, Callable
+from ..core.enums import WordType, OperationLevel, ActionCategory, CRUDOperation, ContextLevel
 from ..core.models.entities import (
     CompanyEntity, 
     MetadataEntity, 
@@ -27,9 +27,9 @@ class BaseWord(BaseModel):
     """
     
     id: str = Field(description="Unique word identifier (e.g., 'create', 'company', 'currency')")
+    context: ContextLevel = Field(default=ContextLevel.SYS, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
     description: str = Field(description="Human-readable description of the word")
     aliases: List[str] = Field(default_factory=list, description="Alternative names for this word (e.g., ['add', 'new'] for 'create')")
-    abbreviations: List[str] = Field(default_factory=list, description="Short forms of the word (e.g., ['c'] for 'create')")
     deprecated: bool = Field(default=False, description="Whether this word is deprecated and should not be used")
     replaced_by: Optional[str] = Field(default=None, description="If deprecated, which word replaces this one")    
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -43,25 +43,13 @@ class ActionWord(BaseWord):
     """
     
     word_type: Literal[WordType.ACTION] = WordType.ACTION
+    handler: Callable[[ActionWord, List[str]], None] = Field(description="Function to handle this action")
     action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
     crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
-    operation_level: OperationLevel = Field(description="Level at which this action operates (database, table, row, query)")
+    database: bool = Field(default=False, description="Whether this action operates at the database level")
     requires_entity: bool = Field(default=True, description="Whether this action requires an entity to operate on")
     destructive: bool = Field(default=False, description="Whether this action permanently destroys data (e.g., delete, drop)")
     warning: Optional[str] = Field(default=None, description="Warning message to display when using this word")
-
-
-# ==================== MODIFIER WORD ====================
-
-class ModifierWord(BaseWord):
-    """
-    Modifier word - modifies entity behavior like holding, operating.
-    Could be used to change organization track (eg. operating or holding company)
-    """
-    
-    word_type: Literal[WordType.MODIFIER] = WordType.MODIFIER
-    applies_to: List[str] = Field(default_factory=list, description="Entity IDs this modifier can apply to (e.g., ['company'])")
-    mutually_exclusive_with: List[str] = Field(default_factory=list, description="Other modifier IDs that cannot be used together with this one")
 
 
 # ==================== ENTITY WORD ====================
@@ -73,6 +61,7 @@ class EntityWord(BaseWord):
     
     word_type: Literal[WordType.ENTITY] = WordType.ENTITY
     entity_model: Type[BaseModel] = Field(description="Reference to the Pydantic model representing this entity")
+    wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
 
 
 # ==================== ATTRIBUTE WORD ====================
@@ -92,7 +81,7 @@ class AttributeWord(BaseWord):
 
 # ==================== UNION TYPE ====================
 
-Word = ActionWord | EntityWord | AttributeWord | ModifierWord
+Word = ActionWord | EntityWord | AttributeWord
 
 # ==================== WORD REGISTRATIONS ====================
 
@@ -103,70 +92,63 @@ WORDS: List[Word] = [
     # ==================== ACTIONS ====================
     ActionWord(
         id="create",
+        context=ContextLevel.SYS,
         description="Create a new entity (company, milestone, etc.)",
-        aliases=["init", "new"],
-        abbreviations=["c"],
+        aliases=["initialize","init", "new","c"],
+        handler=create_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.CREATE,
-        operation_level=OperationLevel.TABLE,
-        requires_entity=True,
-        destructive=False,
+        database=True,
     ),
     
     ActionWord(
         id="delete",
+        context=ContextLevel.SYS,
         description="Delete an existing entity",
-        aliases=["remove", "drop"],
-        abbreviations=["d", "rm"],
+        aliases=["remove", "drop","d","rm"],
+        handler=delete_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.DELETE,
-        operation_level=OperationLevel.ROW,
-        requires_entity=True,
+        database=True,        
         destructive=True,
         warning="This action will permanently delete the entity"
     ),
     
     ActionWord(
         id="cd",
+        context=ContextLevel.SYS,
         description="Navigate between contexts (SYS, ORG levels)",
-        aliases=["navigate", "goto"],
-        abbreviations=["nav"],
+        aliases=["navigate", "goto","change","nav"],
+        handler=navigate_handler,
         action_category=ActionCategory.NAVIGATION,
         crud_operation=CRUDOperation.NONE,
-        operation_level=OperationLevel.SYSTEM,
-        requires_entity=False,
-        destructive=False,
+        requires_entity=False
     ),
     
     ActionWord(
         id="add",
+        context=ContextLevel.ORG,
         description="Add or set attribute values to entities",
-        aliases=["set", "assign"],
-        abbreviations=["a"],
+        aliases=["set", "assign","a"],
+        handler=add_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.CREATE,
-        operation_level=OperationLevel.ATTRIBUTE,
-        requires_entity=False,  # Entity is optional, defaults to organization
-        destructive=False,
     ),
     
-    ActionWord( # caution maybe similar to add. To double check!
+    ActionWord(
         id="update",
+        context=ContextLevel.ORG,
         description="Update existing attribute values for entities",
-        aliases=["modify", "change"],
-        abbreviations=["u"],
+        aliases=["modify", "change","u"],
+        handler=update_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.UPDATE,
-        operation_level=OperationLevel.ATTRIBUTE,
-        requires_entity=False,  # Entity is optional, defaults to organization
-        destructive=False,
     ),
     
     ActionWord(
         id="show",
         description="Display entity data or specific attributes",
-        aliases=["display", "view", "get"],
-        abbreviations=["s"],
+        aliases=["display", "view", "get","read","s"],
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.READ,
         operation_level=OperationLevel.QUERY,

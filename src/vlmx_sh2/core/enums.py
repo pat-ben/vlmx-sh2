@@ -22,7 +22,7 @@ class WordType(Enum):
 class OperationLevel(str, Enum):
     """Level at which an action operates"""
     DATABASE = "database"  # e.g., backup, restore
-    TABLE = "table"        # e.g., create table, drop table
+    ENTITY = "entity"        # e.g., create table, drop table
     ATTRIBUTE = "attribute"  # e.g., update, delete attribute
     
 
