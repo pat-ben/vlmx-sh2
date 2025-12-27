@@ -5,9 +5,9 @@ Contains shared business logic utilities used by the dynamic handlers.
 The actual handlers are now implemented in words.py as dynamic functions.
 """
 
-from ..core.models.context import Context
+from ..models.context import Context
 from ..dsl.words import get_word
-from ..core.models.words import EntityWord, AttributeWord
+from ..models.words import EntityWord, AttributeWord
 
 
 # ==================== BUSINESS LOGIC UTILITIES ====================

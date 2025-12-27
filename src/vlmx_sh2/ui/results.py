@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..dsl.parser import ParseResult
-    from ..core.models.context import Context
+    from ..models.context import Context
 
 
 class CommandResult:

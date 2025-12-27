@@ -7,9 +7,11 @@ foundation for natural language command parsing and validation.
 """
 
 from typing import List, Dict, Any, Callable, Optional
-from ..core.enums import WordType, ActionCategory, CRUDOperation, ContextLevel
-from ..core.models.words import BaseWord, ActionWord, EntityWord, AttributeWord, Word
-from ..core.models.schema.company import (
+from ..models.words import (
+    WordType, ActionCategory, CRUDOperation, ContextLevel,
+    BaseWord, ActionWord, EntityWord, AttributeWord, Word
+)
+from ..models.schema.company import (
     CompanyEntity, 
     MetadataEntity, 
     BrandEntity, 
@@ -125,7 +127,7 @@ async def create_handler_impl(entity_model, entity_value, attributes, context, a
             
             if storage_result.get("success", False):
                 from ..ui.results import create_success_result
-                from ..core.models.context import Context as NewContext
+                from ..models.context import Context as NewContext
                 
                 # Create success result
                 result = create_success_result(

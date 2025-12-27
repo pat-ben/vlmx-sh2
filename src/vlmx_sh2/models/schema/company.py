@@ -9,7 +9,7 @@ OfferingEntity, TargetEntity, and ValuesEntity.
 from datetime import date, datetime
 from typing import Optional
 from sqlmodel import Field
-from ...enums import Legal, Currency, Unit, Type as EntityType
+from .enums import Legal, Currency, Unit, Type
 from .base import DatabaseSchema, DatabaseModel
 
 
@@ -39,7 +39,7 @@ class CompanyEntity(DatabaseModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     legal: Legal
-    type: EntityType = EntityType.COMPANY
+    type: Type = Type.COMPANY
     currency: Currency
     unit: Unit = Unit.THOUSANDS
     closing: int = 12

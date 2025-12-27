@@ -7,11 +7,11 @@ with any entity-attribute combination dynamically.
 """
 
 from typing import Dict, Any, Optional
-from ..core.models.context import Context
-from ..core.mappings import DEFAULT_ENTITY
+from ..models.context import Context
+from ..storage.mappings import DEFAULT_ENTITY
 from ..dsl.parser import ParseResult
 from ..dsl.words import get_word
-from ..core.models.words import EntityWord
+from ..models.words import EntityWord
 
 def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
     """

@@ -11,11 +11,17 @@ from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field
 
 from .words import get_all_words, get_word, expand_shortcuts
-from ..core.models.words import Word, ActionWord, EntityWord, AttributeWord
-from ..core.enums import WordType, TokenType
+from ..models.words import WordType, Word, ActionWord, EntityWord
+from enum import Enum
 
 
 # ==================== PARSE RESULT MODELS ====================
+
+class TokenType(str, Enum):
+    """Type classification for parsed tokens"""
+    WORD = "word"        # Token that matches a Word in the registry
+    VALUE = "value"      # Token representing a value (company name, etc.)
+    UNKNOWN = "unknown"  # Token that doesn't match any known pattern
 
 class ParsedToken(BaseModel):
     """Represents a single parsed token from the input."""

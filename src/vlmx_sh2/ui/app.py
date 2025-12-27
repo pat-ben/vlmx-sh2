@@ -14,7 +14,7 @@ from textual.css.query import NoMatches
 
 try:
     from ..dsl.parser import VLMXParser
-    from ..core.models.context import Context
+    from ..models.context import Context
     from .results import CommandResult, format_command_result
 except ImportError:
     # Direct execution - add src to path
@@ -22,7 +22,7 @@ except ImportError:
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from vlmx_sh2.dsl.parser import VLMXParser
-    from vlmx_sh2.core.models.context import Context
+    from vlmx_sh2.models.context import Context
     from vlmx_sh2.ui.results import CommandResult, format_command_result
 
 

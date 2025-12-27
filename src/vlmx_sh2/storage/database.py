@@ -12,9 +12,9 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..core.models.context import Context
-from ..core.enums import Legal, Currency, Unit, Type
-from ..core.mappings import get_entity_json_filename
+from ..models.context import Context
+from ..models.schema.enums import Legal, Currency, Unit, Type
+from .mappings import get_entity_json_filename
 
 
 # ==================== PATH UTILITIES ====================

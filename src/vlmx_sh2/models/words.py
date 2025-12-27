@@ -7,11 +7,22 @@ of different word categories in natural language command parsing.
 """
 
 from pydantic import BaseModel, Field, ConfigDict
+from enum import Enum, IntEnum
 from typing import Type, Optional, Literal, List, Any
-from ..enums import WordType, ActionCategory, CRUDOperation, ContextLevel
 
 
-# ==================== BASE WORD ====================
+# ==================== BASE WORD MODEL====================
+
+class WordType(Enum):
+    ACTION = "action"  # verbs only (eg. create, update, delete)
+    ENTITY = "entity"  # noun only :An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
+    FIELD = "field"  # noun or adjective: Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
+    
+class ContextLevel(IntEnum):
+    SYS = 0 # system / root level
+    ORG = 1 # organization level (most of the time company)
+    APP = 2 # application level (could be plugin)
+
 
 class BaseWord(BaseModel):
     """
@@ -27,7 +38,24 @@ class BaseWord(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-# ==================== ACTION WORD ====================
+# ==================== ACTION WORD MODEL ====================
+
+class ActionCategory(str, Enum):
+    """ Broad category of what an action does. """
+    CRUD = "crud"
+    NAVIGATION = "navigation"
+    SYSTEM = "system"
+    ANALYSIS = "analysis"
+    IMPORT_EXPORT = "import_export"
+
+class CRUDOperation(str, Enum):
+    """ Specific CRUD operation type."""    
+    CREATE = "create"
+    READ = "read"
+    UPDATE = "update"
+    DELETE = "delete"
+    NONE = "none"
+
 
 class ActionWord(BaseWord):
     """
@@ -44,7 +72,7 @@ class ActionWord(BaseWord):
     warning: Optional[str] = Field(default=None, description="Warning message to display when using this word")
 
 
-# ==================== ENTITY WORD ====================
+# ==================== ENTITY WORD MODEL ====================
 
 class EntityWord(BaseWord):
     """
@@ -56,7 +84,7 @@ class EntityWord(BaseWord):
     wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
 
 
-# ==================== ATTRIBUTE WORD ====================
+# ==================== ATTRIBUTE WORD MODEL ====================
 
 class AttributeWord(BaseWord):
     """
