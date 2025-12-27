@@ -11,7 +11,7 @@ from ..models.context import Context
 from ..storage.mappings import DEFAULT_ENTITY
 from ..dsl.parser import ParseResult
 from ..dsl.words import get_word
-from ..models.words import EntityWord
+from ..models.words import EntityWord, AttributeWord
 
 def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
     """
@@ -82,6 +82,31 @@ def extract_target_entity_name_from_parse_result(parse_result: ParseResult) -> O
     
     return None
 
+def validate_attribute_for_entity(attribute_id: str, entity_id: str) -> bool:
+    """
+    Validate if an attribute exists on an entity using the Words Registry.
+    
+    Args:
+        attribute_id: ID of the attribute word
+        entity_id: ID of the entity word
+        
+    Returns:
+        True if the attribute exists on the entity, False otherwise
+    """
+    
+    # Get the attribute word
+    attribute_word = get_word(attribute_id)
+    if not attribute_word or not isinstance(attribute_word, AttributeWord):
+        return False
+    
+    # Get the entity word
+    entity_word = get_word(entity_id)
+    if not entity_word or not isinstance(entity_word, EntityWord):
+        return False
+    
+    # Check if the entity model is in the attribute's entity_models list
+    return entity_word.entity_model in attribute_word.entity_models
+
 def validate_entity_attribute_combination(entity_word_id: str, attribute_name: str) -> bool:
     """
     Validate if an attribute can be used with an entity.
@@ -95,7 +120,6 @@ def validate_entity_attribute_combination(entity_word_id: str, attribute_name: s
     Returns:
         True if the combination is valid, False otherwise
     """
-    from ..handlers.company import validate_attribute_for_entity
     return validate_attribute_for_entity(attribute_name, entity_word_id)
 
 def get_entity_model_from_entity_id(entity_id: str):
