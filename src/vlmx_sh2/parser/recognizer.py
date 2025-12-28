@@ -9,7 +9,7 @@ words, values, or unknown tokens.
 from typing import List, Optional, Tuple
 from ..dsl.words import get_all_words, get_word
 from ..models.words import WordType, Word
-from ..models.parser import ParsedToken, TokenType
+from ..models.parser import Token, RecognizedToken, TokenType
 
 
 class WordRecognizer:
@@ -86,56 +86,62 @@ class WordRecognizer:
         
         return suggestions[:3]  # Limit to top 3 suggestions
     
-    def process_tokens(self, tokens: List[ParsedToken]) -> List[ParsedToken]:
+    def process_tokens(self, tokens: List[Token]) -> List[RecognizedToken]:
         """
-        Process tokens to recognize words and update token types.
-        
-        Classifies tokens as:
-        - WORD: Matches a word in the registry
-        - VALUE: Looks like a company name or attribute value
-        - UNKNOWN: Doesn't match any known pattern
+        Process tokens to recognize words and classify token types.
         
         Args:
-            tokens: List of tokens to process
+            tokens: List of Token objects from tokenizer
             
         Returns:
-            Updated list of tokens
+            List of RecognizedToken objects with classification
         """
-        for token in tokens:
-            if token.token_type == TokenType.UNKNOWN:
-                # First try to recognize as a word from registry
-                word, confidence, suggestions = self.recognize_word(token.text)
-                
-                if word:
-                    token.word = word
-                    token.confidence = confidence
-                    token.suggestions = suggestions
-                    token.token_type = TokenType.WORD
-                else:
-                    token.suggestions = suggestions
-                    # Classify as VALUE if it looks like a company name or attribute value
-                    if self._is_value_token(token.text):
-                        token.token_type = TokenType.VALUE
-                    else:
-                        token.token_type = TokenType.UNKNOWN
+        recognized_tokens = []
         
-        return tokens
+        for token in tokens:
+            # Try to recognize as a word
+            word, confidence, suggestions = self.recognize_word(token.text)
+            
+            # Determine token type
+            if word:
+                token_type = TokenType.WORD
+            elif self._is_value_token(token.text):
+                token_type = TokenType.VALUE
+            else:
+                token_type = TokenType.UNKNOWN
+            
+            # Create RecognizedToken from Token
+            recognized_token = RecognizedToken(
+                # Inherit Token fields
+                text=token.text,
+                position=token.position,
+                was_quoted=token.was_quoted,
+                operator_after=token.operator_after,
+                
+                # Add recognition results
+                token_type=token_type,
+                word=word,
+                confidence=confidence,
+                suggestions=suggestions
+            )
+            
+            recognized_tokens.append(recognized_token)
+        
+        return recognized_tokens
     
     def _is_value_token(self, text: str) -> bool:
         """
-        Determine if a token should be classified as a VALUE.
-        
-        Values are typically:
-        - Company names (uppercase, with hyphens/underscores)
-        - Attribute values (SA, EUR, etc.)
-        - Mixed case identifiers
+        Determine if a token represents a value (company name, attribute value, etc.).
         
         Args:
-            text: Token text to classify
+            text: Token text to evaluate
             
         Returns:
-            True if the token should be classified as VALUE
+            True if token appears to be a value
         """
+        if not text or text.isspace():
+            return False
+            
         # Company names and entity values are often uppercase
         if text.isupper():
             return True

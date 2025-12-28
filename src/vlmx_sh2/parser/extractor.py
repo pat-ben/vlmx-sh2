@@ -7,7 +7,7 @@ intelligent attribute-value pairing.
 """
 
 from typing import Any, Dict, List
-from ..models.parser import ParsedToken, TokenType
+from ..models.parser import RecognizedToken, TokenType
 from ..models.words import WordType
 
 
@@ -15,7 +15,7 @@ class ValueExtractor:
     """Extracts entity values and attribute values from tokens."""
     
     @staticmethod
-    def extract_attribute_values(tokens: List[ParsedToken]) -> Dict[str, str]:
+    def extract_attribute_values(tokens: List[RecognizedToken]) -> Dict[str, str]:
         """
         Extract attribute key-value pairs from tokens.
         
@@ -52,7 +52,7 @@ class ValueExtractor:
         return attributes
     
     @staticmethod
-    def extract_entity_values(tokens: List[ParsedToken]) -> Dict[str, Any]:
+    def extract_entity_values(tokens: List[RecognizedToken]) -> Dict[str, Any]:
         """
         Extract entity values (like company names) from tokens.
         

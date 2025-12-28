@@ -7,7 +7,7 @@ parsing natural language commands into structured data.
 """
 
 from typing import Any, List
-from ..models.parser import ParseResult, ParsedToken, TokenType
+from ..models.parser import RecognizedToken, TokenType, ParseResult
 from ..models.words import WordType, ActionWord, EntityWord
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
@@ -40,23 +40,23 @@ class VLMXParser:
             # Step 1: Expand shortcuts
             expanded_input = expand_macros(input_text)
             
-            # Step 2: Tokenize
+            # Step 2: Tokenize → Returns List[Token]
             tokens = self.tokenizer.tokenize(expanded_input)
             
-            # Step 3: Recognize words
-            tokens = self.word_recognizer.process_tokens(tokens)
+            # Step 3: Recognize → Returns List[RecognizedToken]
+            recognized_tokens = self.word_recognizer.process_tokens(tokens)
             
-            # Step 4: Extract values and attributes
-            result.attribute_values = self.value_extractor.extract_attribute_values(tokens)
-            result.entity_values = self.value_extractor.extract_entity_values(tokens)
+            # Step 4: Extract values and attributes → Uses List[RecognizedToken]
+            result.attribute_values = self.value_extractor.extract_attribute_values(recognized_tokens)
+            result.entity_values = self.value_extractor.extract_entity_values(recognized_tokens)
             
             # Step 5: Collect recognized words
             recognized_words = []
-            for token in tokens:
+            for token in recognized_tokens:
                 if token.word:
                     recognized_words.append(token.word)
             
-            result.tokens = tokens
+            result.tokens = recognized_tokens  # Store RecognizedToken objects
             result.recognized_words = recognized_words
             
             # Step 6: Extract action handler and entity model

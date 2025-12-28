@@ -1,0 +1,39 @@
+"""
+Enums for VLMX DSL parser.
+
+Contains all enum types used throughout the parsing pipeline.
+"""
+
+from enum import Enum
+
+
+class Operator(str, Enum):
+    """Operators for field assignments and comparisons"""
+    EQUAL = "="
+    GREATER = ">"
+    LESS = "<"
+    GREATER_EQUAL = ">="
+    LESS_EQUAL = "<="
+    NOT_EQUAL = "!="
+
+
+class QueryKeyword(str, Enum):
+    """Query keywords for filtering"""
+    WHERE = "where"
+    AND = "and"
+    OR = "or"
+
+
+class Bracket(str, Enum):
+    """Brackets and parentheses"""
+    PAREN_OPEN = "("
+    PAREN_CLOSE = ")"
+    BRACKET_OPEN = "["
+    BRACKET_CLOSE = "]"
+
+
+class TokenType(str, Enum):
+    """Type classification for parsed tokens (set by recognizer)"""
+    WORD = "word"        # Token that matches a Word in the registry
+    VALUE = "value"      # Token representing a value (company name, etc.)
+    UNKNOWN = "unknown"  # Token that doesn't match any known pattern

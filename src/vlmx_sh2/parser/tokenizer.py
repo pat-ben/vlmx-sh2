@@ -7,14 +7,14 @@ The tokenizer's sole responsibility is text processing - no semantic classificat
 
 import re
 from typing import List, Dict, Any
-from ..models.parser import ParsedToken, Operator, QueryKeyword, Bracket
+from ..models.parser import Token, Operator, QueryKeyword, Bracket
 
 
 class Tokenizer:
     """Clean three-stage tokenizer for VLMX DSL input."""
     
     @classmethod
-    def tokenize(cls, text: str) -> List[ParsedToken]:
+    def tokenize(cls, text: str) -> List[Token]:
         """
         Tokenize input text into organized tokens with metadata.
         
@@ -27,22 +27,22 @@ class Tokenizer:
             text: Input text to tokenize
             
         Returns:
-            List of ParsedToken objects with metadata
+            List of Token objects with metadata
             
         Examples:
             >>> tokenize('create company "ACME"')
             [
-                ParsedToken(text="create", position=0, was_quoted=False),
-                ParsedToken(text="company", position=1, was_quoted=False),
-                ParsedToken(text="ACME", position=2, was_quoted=True),
+                Token(text="create", position=0, was_quoted=False),
+                Token(text="company", position=1, was_quoted=False),
+                Token(text="ACME", position=2, was_quoted=True),
             ]
             
             >>> tokenize('vision="Our vision" currency=EUR')
             [
-                ParsedToken(text="vision", position=0, operator_after=Operator.EQUAL),
-                ParsedToken(text="Our vision", position=1, was_quoted=True),
-                ParsedToken(text="currency", position=2, operator_after=Operator.EQUAL),
-                ParsedToken(text="EUR", position=3),
+                Token(text="vision", position=0, operator_after=Operator.EQUAL),
+                Token(text="Our vision", position=1, was_quoted=True),
+                Token(text="currency", position=2, operator_after=Operator.EQUAL),
+                Token(text="EUR", position=3),
             ]
         """
         # Stage 1: Extract quoted strings
@@ -188,7 +188,7 @@ class Tokenizer:
         return full_list
     
     @classmethod
-    def _build_shortlist(cls, full_list: List[Dict[str, Any]]) -> List[ParsedToken]:
+    def _build_shortlist(cls, full_list: List[Dict[str, Any]]) -> List[Token]:
         """
         Build short-listed array excluding operators/keywords.
         
@@ -204,8 +204,8 @@ class Tokenizer:
                 {"text": "text", "was_quoted": True, "is_excluded": False},
             ]
             Output: [
-                ParsedToken(text="vision", position=0, operator_after=Operator.EQUAL),
-                ParsedToken(text="text", position=1, was_quoted=True),
+                Token(text="vision", position=0, operator_after=Operator.EQUAL),
+                Token(text="text", position=1, was_quoted=True),
             ]
         """
         tokens = []
@@ -220,7 +220,7 @@ class Tokenizer:
                     if next_item["is_excluded"] and next_item["text"] in [op.value for op in Operator]:
                         operator_after = Operator(next_item["text"])
                 
-                tokens.append(ParsedToken(
+                tokens.append(Token(
                     text=item["text"],
                     position=position,
                     was_quoted=item["was_quoted"],
