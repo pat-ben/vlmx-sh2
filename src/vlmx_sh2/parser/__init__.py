@@ -14,12 +14,12 @@ from .parser import VLMXParser
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
 from .extractor import ValueExtractor
-from .utils import expand_shortcuts
+from .utils import expand_macros
 
 __all__ = [
     'VLMXParser',
     'Tokenizer',
     'WordRecognizer',
     'ValueExtractor',
-    'expand_shortcuts',
+    'expand_macros',
 ]

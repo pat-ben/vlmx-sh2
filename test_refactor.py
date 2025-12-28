@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from vlmx_sh2.parser import VLMXParser
-from vlmx_sh2.dsl.macros import expand_shortcuts, SHORTCUTS
+from vlmx_sh2.dsl.macros import expand_macros, MACROS
 from vlmx_sh2.models.context import Context
 
 def test_shortcuts():
@@ -27,7 +27,7 @@ def test_shortcuts():
     ]
     
     for test_input in test_cases:
-        expanded = expand_shortcuts(test_input)
+        expanded = expand_macros(test_input)
         print(f"Input: '{test_input}'")
         print(f"Expanded: '{expanded}'")
         print()

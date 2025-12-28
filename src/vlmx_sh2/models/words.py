@@ -31,8 +31,7 @@ class BaseWord(BaseModel):
     
     id: str = Field(description="Unique word identifier (e.g., 'create', 'company', 'currency')")
     context: ContextLevel = Field(default=ContextLevel.SYS, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
-    description: str = Field(description="Human-readable description of the word")
-    aliases: List[str] = Field(default_factory=list, description="Alternative names for this word (e.g., ['add', 'new'] for 'create')")
+    description: str = Field(description="Human-readable description of the word")    
     deprecated: bool = Field(default=False, description="Whether this word is deprecated and should not be used")
     replaced_by: Optional[str] = Field(default=None, description="If deprecated, which word replaces this one")    
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -62,6 +61,7 @@ class ActionWord(BaseWord):
     Action word - represents commands like create, update, delete, show.
     """
     
+    aliases: List[str] = Field(default_factory=list, description="Alternative names for this word (e.g., ['add', 'new'] for 'create')")
     word_type: Literal[WordType.ACTION] = WordType.ACTION
     handler: Any = Field(description="Function to handle this action")
     action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")

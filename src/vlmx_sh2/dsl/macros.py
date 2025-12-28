@@ -11,57 +11,45 @@ from typing import Dict, List
 
 # ==================== SHORTCUTS SYSTEM ====================
 
-SHORTCUTS: Dict[str, List[str]] = {
+MACROS: Dict[str, List[str]] = {
     "cc": ["create", "company"],
-    "cb": ["create", "brand"],
-    "cm": ["create", "metadata"],
-    "co": ["create", "offering"],
-    "ct": ["create", "target"],
-    "cv": ["create", "values"],
-    "sb": ["show", "brand"],
-    "sc": ["show", "company"],
-    "sm": ["show", "metadata"],
-    "so": ["show", "offering"],
-    "st": ["show", "target"],
-    "sv": ["show", "values"],
-    "ub": ["update", "brand"],
-    "uc": ["update", "company"],
-    "um": ["update", "metadata"],
-    "uo": ["update", "offering"],
-    "ut": ["update", "target"],
-    "uv": ["update", "values"],
-    "ab": ["add", "brand"],
-    "ac": ["add", "company"],
-    "am": ["add", "metadata"],
-    "ao": ["add", "offering"],
-    "at": ["add", "target"],
-    "av": ["add", "values"],
-    "db": ["delete", "brand"],
     "dc": ["delete", "company"],
+    "am": ["add", "metadata"],
+    "um": ["update", "metadata"],
     "dm": ["delete", "metadata"],
-    "do": ["delete", "offering"],
+    "ab": ["add", "brand"],
+    "ub": ["update", "brand"],
+    "db": ["delete", "brand"],
+    "av": ["add", "value"],
+    "uv": ["update", "value"],
+    "dv": ["delete", "value"],
+    "at": ["add", "target"],
+    "ut": ["update", "target"],
     "dt": ["delete", "target"],
-    "dv": ["delete", "values"],
+    "ao": ["add", "offering"],
+    "uo": ["update", "offering"],
+    "do": ["delete", "offering"]    
+
 }
 
 
-def expand_shortcuts(input_text: str) -> str:
+def expand_macros(input_text: str) -> str:
     """
-    Expand shortcuts in user input before parsing.
+    Expand macros in user input before parsing.
     
     Args:
         input_text: Original user input
         
     Returns:
-        Input with shortcuts expanded to full words
+        Input with macros expanded to full words
     """
     tokens = input_text.strip().split()
     if not tokens:
         return input_text
     
     first_token = tokens[0].lower()
-    if first_token in SHORTCUTS:
-        expanded_words = SHORTCUTS[first_token]
+    if first_token in MACROS:
+        expanded_words = MACROS[first_token]
         remaining_tokens = tokens[1:] if len(tokens) > 1 else []
         return " ".join(expanded_words + remaining_tokens)
     

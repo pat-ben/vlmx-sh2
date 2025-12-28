@@ -12,7 +12,7 @@ from ..models.words import WordType, ActionWord, EntityWord
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
 from .extractor import ValueExtractor
-from .utils import expand_shortcuts
+from .utils import expand_macros
 
 
 class VLMXParser:
@@ -38,7 +38,7 @@ class VLMXParser:
         
         try:
             # Step 1: Expand shortcuts
-            expanded_input = expand_shortcuts(input_text)
+            expanded_input = expand_macros(input_text)
             
             # Step 2: Tokenize
             tokens = self.tokenizer.tokenize(expanded_input)

@@ -6,10 +6,10 @@ relationships to database models. The word registry serves as the vocabulary
 foundation for natural language command parsing and validation.
 """
 
-from typing import List, Dict, Any, Callable, Optional
+from typing import List, Dict
 from ..models.words import (
     WordType, ActionCategory, CRUDOperation, ContextLevel,
-    BaseWord, ActionWord, EntityWord, AttributeWord, Word
+    ActionWord, EntityWord, AttributeWord, Word
 )
 from ..models.schema.company import (
     CompanyEntity, 
@@ -20,7 +20,7 @@ from ..models.schema.company import (
     ValuesEntity
 )
 
-# Import dynamic handlers from the new handlers module
+# Import dynamic handlers from the handlers module
 from ..handlers.crud import (
     create_handler,
     add_handler,
@@ -29,8 +29,6 @@ from ..handlers.crud import (
     delete_handler
 )
 from ..handlers.navigation import navigate_handler
-
-
 
 
 # ==================== WORD REGISTRATIONS ====================
@@ -44,7 +42,7 @@ WORDS: List[Word] = [
         id="create",
         context=ContextLevel.SYS,
         description="Create a new entity (company, milestone, etc.)",
-        aliases=["initialize","init", "new","c"],
+        aliases=["c","post"],
         handler=create_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.CREATE,
@@ -55,7 +53,7 @@ WORDS: List[Word] = [
         id="delete",
         context=ContextLevel.SYS,
         description="Delete an existing entity",
-        aliases=["remove", "drop","d","rm"],
+        aliases=["d","remove","rm"],
         handler=delete_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.DELETE,
@@ -68,7 +66,7 @@ WORDS: List[Word] = [
         id="cd",
         context=ContextLevel.SYS,
         description="Navigate between contexts (SYS, ORG levels)",
-        aliases=["navigate", "goto","change","nav"],
+        aliases=[],
         handler=navigate_handler,
         action_category=ActionCategory.NAVIGATION,
         crud_operation=CRUDOperation.NONE,
@@ -79,7 +77,7 @@ WORDS: List[Word] = [
         id="add",
         context=ContextLevel.ORG,
         description="Add or set attribute values to entities",
-        aliases=["set", "assign","a"],
+        aliases=["a","set"],
         handler=add_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.CREATE,
@@ -89,7 +87,7 @@ WORDS: List[Word] = [
         id="update",
         context=ContextLevel.ORG,
         description="Update existing attribute values for entities",
-        aliases=["modify", "change","u"],
+        aliases=["u","put", "patch"],
         handler=update_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.UPDATE,
@@ -99,7 +97,7 @@ WORDS: List[Word] = [
         id="show",
         context=ContextLevel.ORG,
         description="Display entity data or specific attributes",
-        aliases=["display", "view", "get","read","s"],
+        aliases=["s","read","get"],
         handler=show_handler,
         action_category=ActionCategory.CRUD,
         crud_operation=CRUDOperation.READ        ,
@@ -112,42 +110,36 @@ WORDS: List[Word] = [
     EntityWord(
         id="company",
         description="A business entity that can be managed in the terminal",
-        aliases=["business", "firm","co"],
         entity_model=CompanyEntity        
     ),
     
     EntityWord(
         id="metadata",
         description="Key-value metadata for extending company information",
-        aliases=["meta", "info","md"],
         entity_model=MetadataEntity
     ),
     
     EntityWord(
         id="brand",
         description="Company brand identity (vision, mission, personality)",
-        aliases=["branding", "identity", "br"],
         entity_model=BrandEntity
     ),
     
     EntityWord(
         id="offering",
         description="Company product or service offerings",
-        aliases=["product", "service","o"],
         entity_model=OfferingEntity
     ),
     
     EntityWord(
         id="target",
         description="Target audience or market segments",
-        aliases=["audience", "segment","tgt"],
         entity_model=TargetEntity
     ),
     
     EntityWord(
         id="values",
         description="Company core values",
-        aliases=["values", "principles","val"],
         entity_model=ValuesEntity
     ),
     
@@ -158,64 +150,55 @@ WORDS: List[Word] = [
     AttributeWord(
         id="name",
         description="Name or title of the entity",
-        aliases=["n"],
         entity_models=[CompanyEntity, BrandEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
     AttributeWord(
         id="key",
         description="Key identifier or category",
-        aliases=["k"],
         entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
     AttributeWord(
         id="value",
         description="Value or description content",
-        aliases=[],
         entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
     # Company-specific attributes
     AttributeWord(
         id="legal",
-        description="Legal entity type (SA, LLC, INC, etc.)",
-        aliases=["entity", "e"],   
+        description="Legal entity type (SA, LLC, INC, etc.)",   
         entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
         id="type",
         description="Organization type (company, fund, foundation)",
-        aliases=[],
         entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
         id="currency",
         description="Currency used for financial data (EUR, USD, GBP, etc.)",
-        aliases=["curr"],
         entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
         id="unit",
         description="Unit for financial data (THOUSANDS, MILLIONS, etc.)",
-        aliases=["u"],
         entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
         id="closing",
         description="Fiscal year end month (1-12)",
-        aliases=["cl"],
         entity_models=[CompanyEntity]
     ),
     
     AttributeWord(
         id="incorporation",
         description="Date of incorporation",
-        aliases=["inc", "founded"],
         entity_models=[CompanyEntity]
     ),
     
@@ -223,28 +206,24 @@ WORDS: List[Word] = [
     AttributeWord(
         id="vision",
         description="Company vision statement",
-        aliases=["vis"],
         entity_models=[BrandEntity]
     ),
     
     AttributeWord(
         id="mission",
         description="Company mission statement",
-        aliases=["miss"],
         entity_models=[BrandEntity]
     ),
     
     AttributeWord(
         id="personality",
         description="Brand personality description",
-        aliases=["perso"],
         entity_models=[BrandEntity]
     ),
     
     AttributeWord(
         id="promise",
         description="Brand promise to customers",
-        aliases=["prom"],
         entity_models=[BrandEntity]
     ),
     
