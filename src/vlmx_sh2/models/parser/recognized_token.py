@@ -137,14 +137,3 @@ class RecognizedToken(Token):
     def is_field_word(self) -> bool:
         """True if this is a FIELD word."""
         return self.is_word and self.word_type == WordType.FIELD
-    
-    # Legacy property names for backward compatibility
-    @property
-    def is_recognized_word(self) -> bool:
-        """Legacy alias for is_word."""
-        return self.is_word
-    
-    @property
-    def is_recognized(self) -> bool:
-        """Legacy alias for is_word."""
-        return self.is_word

@@ -12,6 +12,7 @@ from .enums import Operator, QueryKeyword, Bracket, TokenType, ValueContext
 from .token import Token
 from .recognized_token import RecognizedToken
 from .parse_result import ParseResult
+from .parsed_command import ParsedCommand
 
 __all__ = [
     # Enums
@@ -25,4 +26,5 @@ __all__ = [
     "Token",
     "RecognizedToken",
     "ParseResult",
+    "ParsedCommand",
 ]

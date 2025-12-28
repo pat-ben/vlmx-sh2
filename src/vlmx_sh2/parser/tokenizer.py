@@ -195,7 +195,7 @@ class Tokenizer:
         For each non-excluded token:
         - Check if next token is an operator → set operator_after
         - Assign 0-indexed position in short-list
-        - Create ParsedToken object
+        - Create Token object
         
         Example:
             Input: [

@@ -7,11 +7,11 @@ parsing natural language commands into structured data.
 """
 
 from typing import Any, List
-from ..models.parser import RecognizedToken, TokenType, ValueContext, ParseResult
+from ..models.parser import RecognizedToken, TokenType, ValueContext, ParseResult, ParsedCommand
 from ..models.words import WordType, ActionWord, EntityWord
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
-from .extractor import ValueExtractor
+from .command_builder import CommandBuilder
 from .utils import expand_macros
 
 
@@ -22,7 +22,7 @@ class VLMXParser:
         """Initialize the parser."""
         self.tokenizer = Tokenizer()
         self.word_recognizer = WordRecognizer()
-        self.value_extractor = ValueExtractor()
+        self.command_builder = CommandBuilder()
     
     def parse(self, input_text: str) -> ParseResult:
         """
@@ -46,37 +46,26 @@ class VLMXParser:
             # Step 3: Recognize → Returns List[RecognizedToken]
             recognized_tokens = self.word_recognizer.process_tokens(tokens)
             
-            # Step 4: Extract values and attributes → Uses List[RecognizedToken]
-            result.attribute_values = self.value_extractor.extract_attribute_values(recognized_tokens)
-            result.entity_values = self.value_extractor.extract_entity_values(recognized_tokens)
-            
-            # Step 5: Collect recognized words
-            recognized_words = []
-            for token in recognized_tokens:
-                if token.word:
-                    recognized_words.append(token.word)
-            
-            result.tokens = recognized_tokens  # Store RecognizedToken objects
-            result.recognized_words = recognized_words
-            
-            # Step 6: Extract action handler and entity model
-            if recognized_words:
-                action_words = [w for w in recognized_words if isinstance(w, ActionWord)]
-                entity_words = [w for w in recognized_words if isinstance(w, EntityWord)]
+            # Step 4: Build command → Returns ParsedCommand
+            try:
+                command = self.command_builder.build(recognized_tokens, input_text)
                 
-                if action_words:
-                    # Get the handler from the action word
-                    action_word = action_words[0]  # Take the first action word
-                    result.action_handler = action_word.handler
-                    
-                if entity_words:
-                    # Get the entity model from the entity word
-                    entity_word = entity_words[0]  # Take the first entity word
-                    result.entity_model = entity_word.entity_model
+                # Step 5: Populate result from command
+                result.tokens = recognized_tokens
+                result.recognized_words = [t.word for t in recognized_tokens if t.word]
+                result.attribute_values = command.attributes
+                result.entity_values = {f'{command.entity.id}_name': command.entity_name} if command.entity_name else {}
+                result.action_handler = command.action_handler
+                result.entity_model = command.entity_model
+                result.is_valid = True
                 
-                # Validate that we have the minimum requirements
-                if action_words:
-                    result.is_valid = True
+                # Step 6: Store the command object for handlers
+                result.command = command  # NEW! Make command available
+            except ValueError as e:
+                # Handle missing action/entity gracefully
+                result.tokens = recognized_tokens
+                result.recognized_words = [t.word for t in recognized_tokens if t.word]
+                result.errors.append(str(e))
             
             # Step 7: Generate suggestions
             result.suggestions = self._generate_suggestions(result)
@@ -162,7 +151,19 @@ class VLMXParser:
             raise ValueError(f"Handler requirements not met: {parse_result.errors}")
         
         # Call the handler with the parsed data
-        # Handler signature: handler(entity_model, entity_value, attributes, context, attribute_words)
+        # NEW: Use ParsedCommand if available, fallback to legacy format
+        if hasattr(parse_result, 'command') and parse_result.command:
+            # New handler signature: handler(command: ParsedCommand, context: Context)
+            try:
+                return await parse_result.action_handler(
+                    command=parse_result.command,
+                    context=context
+                )
+            except TypeError:
+                # Fallback to old signature if handler not updated yet
+                pass
+        
+        # Legacy handler signature: handler(entity_model, entity_value, attributes, context, attribute_words)
         entity_value = None
         if parse_result.entity_values:
             # Get the first entity value

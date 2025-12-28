@@ -9,22 +9,40 @@ unified behavior across all entity-attribute combinations.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+# NEW: Import ParsedCommand for new handler signatures
+try:
+    from ..models.parser import ParsedCommand
+    from ..models.context import Context
+except ImportError:
+    # Fallback for development/testing
+    ParsedCommand = None
+    Context = None
+
 
 async def create_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None
+    entity_model=None, entity_value=None, attributes=None, context=None, attribute_words=None,
+    command: 'ParsedCommand' = None
 ):
     """
     Truly dynamic create handler - works for ANY entity type.
-    No hardcoded entity-specific logic.
+    Supports both legacy and new ParsedCommand signatures.
     """
     from ..storage.database import create_entity
     from ..ui.results import create_error_result, create_success_result
 
-    try:
-        # 1. Determine entity type from model
+    # NEW: Support both signatures
+    if command is not None:
+        # Use ParsedCommand structure
+        entity_model = command.entity_model
+        entity_value = command.entity_name
+        attributes = command.attributes
+        entity_type = command.entity.id
+    else:
+        # Legacy parameters
         entity_type = entity_model.__name__.replace("Entity", "").lower()
 
-        # 2. Prepare entity data with defaults
+    try:
+        # Prepare entity data with defaults
         entity_data = {
             "name": entity_value
             or f"{entity_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -366,3 +384,4 @@ async def delete_handler(
 
     except Exception as e:
         return create_error_result([f"Failed to delete attributes: {str(e)}"])
+

@@ -17,10 +17,19 @@ class ParseResult(BaseModel):
     input_text: str = Field(description="Original input text")
     tokens: List[RecognizedToken] = Field(default_factory=list, description="Recognized tokens with classification")
     recognized_words: List[Word] = Field(default_factory=list, description="Successfully recognized words")
+    
+    # Legacy fields (keep for backward compatibility during transition)
     entity_values: Dict[str, Any] = Field(default_factory=dict, description="Extracted entity values (company names, etc.)")
     attribute_values: Dict[str, str] = Field(default_factory=dict, description="Extracted attribute values")
     action_handler: Optional[Any] = Field(default=None, description="Handler function for the action")
     entity_model: Optional[Any] = Field(default=None, description="Entity model class for the target entity")
+    
+    # NEW: Structured command object
+    command: Optional[Any] = Field(
+        default=None,
+        description="Structured command object (preferred over legacy fields)"
+    )
+    
     is_valid: bool = Field(default=False, description="Whether the parse is valid")
     errors: List[str] = Field(default_factory=list, description="Parse errors")
     suggestions: List[str] = Field(default_factory=list, description="Suggestions for improvement")
