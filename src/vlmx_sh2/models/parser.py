@@ -56,6 +56,7 @@ class ParsedToken(BaseModel):
     operator_after: Optional[Operator] = Field(default=None, description="Operator that appeared after this token in original input")
     
     # Fields set by Recognizer (keep these, don't remove):
+    token_type: TokenType = Field(default=TokenType.UNKNOWN, description="Classification of token (set by recognizer)")
     word: Optional[Word] = Field(default=None, description="Recognized word object if this matches word registry")
     confidence: float = Field(default=0.0, description="Confidence score for recognition")
     suggestions: List[str] = Field(default_factory=list, description="Alternative suggestions for this token")
