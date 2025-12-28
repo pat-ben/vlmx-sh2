@@ -1,233 +1,253 @@
 """
 Tokenizer for VLMX DSL parser.
 
-Handles tokenization of user input into basic tokens, supporting
-key=value format with quoted string values and traditional command words.
-Provides enhanced attribute parsing and value extraction.
+A three-stage tokenization system that extracts and organizes tokens with metadata.
+The tokenizer's sole responsibility is text processing - no semantic classification.
 """
 
-from typing import List, Tuple
-from ..models.parser import ParsedToken, TokenType
+import re
+from typing import List, Dict, Any
+from ..models.parser import ParsedToken, Operator, QueryKeyword, Bracket
 
 
 class Tokenizer:
-    """Advanced tokenizer for VLMX DSL input with quoted string support."""
+    """Clean three-stage tokenizer for VLMX DSL input."""
     
     @classmethod
     def tokenize(cls, text: str) -> List[ParsedToken]:
         """
-        Tokenize input text into basic tokens.
+        Tokenize input text into organized tokens with metadata.
         
-        Enhanced approach supporting:
-        1. Attributes in key=value format (entity=SA, currency=EUR)
-        2. Quoted values spanning multiple tokens (vision="Build the future")
-        3. Traditional command words and values
+        Three-stage process:
+        1. Extract quoted strings
+        2. Build full ordered list
+        3. Build short-listed array (exclude operators/keywords)
         
         Args:
             text: Input text to tokenize
             
         Returns:
-            List of ParsedToken objects
+            List of ParsedToken objects with metadata
             
         Examples:
-            >>> tokenize("create company ACME")
-            [ParsedToken(text="create", position=0), ...]
+            >>> tokenize('create company "ACME"')
+            [
+                ParsedToken(text="create", position=0, was_quoted=False),
+                ParsedToken(text="company", position=1, was_quoted=False),
+                ParsedToken(text="ACME", position=2, was_quoted=True),
+            ]
             
-            >>> tokenize('vision="Build the future"')
-            [ParsedToken(text="vision", position=0), ParsedToken(text="Build the future", position=8, token_type=VALUE)]
+            >>> tokenize('vision="Our vision" currency=EUR')
+            [
+                ParsedToken(text="vision", position=0, operator_after=Operator.EQUAL),
+                ParsedToken(text="Our vision", position=1, was_quoted=True),
+                ParsedToken(text="currency", position=2, operator_after=Operator.EQUAL),
+                ParsedToken(text="EUR", position=3),
+            ]
         """
-        tokens = []
-        tokens_list = text.split()
-        i = 0
-        current_position = 0
+        # Stage 1: Extract quoted strings
+        raw_tokens = cls._extract_quoted_strings(text)
         
-        while i < len(tokens_list):
-            raw_token = tokens_list[i].strip()
-            if not raw_token:
-                i += 1
-                current_position = cls._calculate_next_position(text, current_position, raw_token)
-                continue
-            
-            clean_token = raw_token.strip()
-            
-            # Check if this token contains an operator (for attributes)
-            if cls._contains_operator(clean_token):
-                # Parse attribute: key=value, key>value, etc.
-                key, operator, value_start = cls._parse_attribute_token(clean_token)
-                
-                # Add the key as a token
-                if key:
-                    tokens.append(ParsedToken(
-                        text=key,
-                        position=current_position,
-                        token_type=TokenType.UNKNOWN,
-                        confidence=0.0
-                    ))
-                
-                # Check if value starts with a quote - indicating multi-token quoted value
-                if value_start and (value_start.startswith('"') or value_start.startswith("'")):
-                    # Extract complete quoted value
-                    complete_value, tokens_consumed = cls._extract_quoted_value(tokens_list, i)
-                    
-                    if complete_value:
-                        value_position = current_position + len(key) + len(operator)
-                        tokens.append(ParsedToken(
-                            text=complete_value,
-                            position=value_position,
-                            token_type=TokenType.VALUE,
-                            confidence=0.0
-                        ))
-                    
-                    # Skip consumed tokens
-                    for j in range(tokens_consumed):
-                        if i + j < len(tokens_list):
-                            current_position = cls._calculate_next_position(text, current_position, tokens_list[i + j])
-                    i += tokens_consumed
-                    continue
-                elif value_start is not None and value_start != '':
-                    # Regular unquoted value (non-empty)
-                    value_position = current_position + len(key) + len(operator)
-                    tokens.append(ParsedToken(
-                        text=value_start,
-                        position=value_position,
-                        token_type=TokenType.VALUE,
-                        confidence=0.0
-                    ))
-                elif value_start == '':
-                    # Empty value (from empty quotes or no value)
-                    value_position = current_position + len(key) + len(operator)
-                    tokens.append(ParsedToken(
-                        text='',
-                        position=value_position,
-                        token_type=TokenType.VALUE,
-                        confidence=0.0
-                    ))
-            else:
-                # Regular word token (action/modifier/entity/attribute)
-                tokens.append(ParsedToken(
-                    text=clean_token,
-                    position=current_position,
-                    token_type=TokenType.UNKNOWN,
-                    confidence=0.0
-                ))
-            
-            current_position = cls._calculate_next_position(text, current_position, raw_token)
-            i += 1
+        # Stage 2: Build full ordered list with metadata
+        full_list = cls._build_full_list(raw_tokens)
+        
+        # Stage 3: Build short-listed array
+        tokens = cls._build_shortlist(full_list)
         
         return tokens
     
     @classmethod
-    def _extract_quoted_value(cls, tokens_list: List[str], start_idx: int) -> Tuple[str, int]:
+    def _extract_quoted_strings(cls, text: str) -> List[str]:
         """
-        Extract a quoted value that may span multiple tokens.
+        Extract tokens from text, treating quoted strings as single tokens.
         
-        Args:
-            tokens_list: List of raw tokens from text.split()
-            start_idx: Index where the quoted value starts
-        
-        Returns:
-            Tuple of (complete_value_without_quotes, number_of_tokens_consumed)
+        Handles both single and double quotes.
+        Multi-word quoted strings are kept as one token.
+        Key=value pairs with quoted values are kept as single tokens.
         
         Example:
-            Input: ['vision="This', 'is', 'my', 'vision"']
-            Returns: ("This is my vision", 4)
+            Input: 'create "ACME INTL" vision="Our vision"'
+            Output: ['create', '"ACME INTL"', 'vision="Our vision"']
         """
-        if start_idx >= len(tokens_list):
-            return "", 0
+        tokens = []
+        i = 0
+        current_token = ""
+        in_quotes = False
+        quote_char = None
         
-        current_token = tokens_list[start_idx]
-        
-        # Find the operator and extract the initial value part
-        key, operator, initial_value = cls._parse_attribute_token(current_token)
-        if not initial_value:
-            return "", 1
-        
-        # Determine quote type
-        quote_char = initial_value[0] if initial_value and initial_value[0] in '"\'' else None
-        if not quote_char:
-            return initial_value, 1
-        
-        # Check if quote is already closed in the same token
-        if len(initial_value) > 1 and initial_value.endswith(quote_char):
-            # Complete quoted value in single token: key="value"
-            return initial_value[1:-1], 1
-        
-        # Multi-token quoted value: key="start of value continues in next tokens"
-        value_parts = [initial_value[1:]]  # Remove opening quote
-        tokens_consumed = 1
-        
-        # Continue gathering tokens until closing quote is found
-        for i in range(start_idx + 1, len(tokens_list)):
-            token = tokens_list[i]
-            tokens_consumed += 1
+        while i < len(text):
+            char = text[i]
             
-            if token.endswith(quote_char):
-                # Found closing quote
-                value_parts.append(token[:-1])  # Remove closing quote
-                break
+            if not in_quotes:
+                if char in '"\'':
+                    # Starting a quoted string - don't break current token
+                    in_quotes = True
+                    quote_char = char
+                    current_token += char
+                elif char.isspace():
+                    # End of regular token
+                    if current_token.strip():
+                        tokens.append(current_token.strip())
+                        current_token = ""
+                elif char in [bracket.value for bracket in Bracket]:
+                    # Handle brackets as separate tokens using Bracket enum
+                    if current_token.strip():
+                        tokens.append(current_token.strip())
+                        current_token = ""
+                    tokens.append(char)
+                else:
+                    current_token += char
             else:
-                # Intermediate token - add as-is
-                value_parts.append(token)
+                # Inside quotes
+                current_token += char
+                if char == quote_char:
+                    # End of quoted string
+                    in_quotes = False
+                    quote_char = None
+            
+            i += 1
         
-        # Join all parts with spaces to reconstruct the original quoted content
-        complete_value = ' '.join(value_parts)
-        return complete_value, tokens_consumed
+        # Add final token if exists
+        if current_token.strip():
+            tokens.append(current_token.strip())
+        
+        return tokens
     
     @classmethod
-    def _calculate_next_position(cls, original_text: str, current_pos: int, token: str) -> int:
+    def _build_full_list(cls, raw_tokens: List[str]) -> List[Dict[str, Any]]:
         """
-        Calculate the next position in the original text after processing a token.
+        Build full ordered list with ALL elements and metadata.
         
-        Args:
-            original_text: The original input text
-            current_pos: Current position in text
-            token: Token that was just processed
+        For each token:
+        - Strip quotes if present (mark as was_quoted=True)
+        - Identify if it's an excluded element (operator, keyword, bracket)
+        - Separate key=value into ["key", "=", "value"]
+        
+        Example:
+            Input: ['create', '"ACME"', 'vision="text"']
+            Output: [
+                {"text": "create", "was_quoted": False, "is_excluded": False},
+                {"text": "ACME", "was_quoted": True, "is_excluded": False},
+                {"text": "vision", "was_quoted": False, "is_excluded": False},
+                {"text": "=", "was_quoted": False, "is_excluded": True},
+                {"text": "text", "was_quoted": True, "is_excluded": False},
+            ]
+        """
+        full_list = []
+        
+        for token in raw_tokens:
+            # Check if this is a key=value token (contains operator)
+            operator_match = cls._find_operator_in_token(token)
             
+            if operator_match:
+                key, operator, value = operator_match
+                
+                # Add key
+                full_list.append({
+                    "text": key,
+                    "was_quoted": False,
+                    "is_excluded": False
+                })
+                
+                # Add operator
+                full_list.append({
+                    "text": operator,
+                    "was_quoted": False,
+                    "is_excluded": True
+                })
+                
+                # Add value (handle quotes)
+                was_quoted = False
+                if value and ((value.startswith('"') and value.endswith('"')) or 
+                             (value.startswith("'") and value.endswith("'"))):
+                    was_quoted = True
+                    value = value[1:-1]  # Strip quotes
+                
+                full_list.append({
+                    "text": value,
+                    "was_quoted": was_quoted,
+                    "is_excluded": False
+                })
+            else:
+                # Regular token (not key=value)
+                text = token
+                was_quoted = False
+                
+                # Handle quotes
+                if text and ((text.startswith('"') and text.endswith('"')) or 
+                           (text.startswith("'") and text.endswith("'"))):
+                    was_quoted = True
+                    text = text[1:-1]  # Strip quotes
+                
+                full_list.append({
+                    "text": text,
+                    "was_quoted": was_quoted,
+                    "is_excluded": cls._is_excluded(text)
+                })
+        
+        return full_list
+    
+    @classmethod
+    def _build_shortlist(cls, full_list: List[Dict[str, Any]]) -> List[ParsedToken]:
+        """
+        Build short-listed array excluding operators/keywords.
+        
+        For each non-excluded token:
+        - Check if next token is an operator → set operator_after
+        - Assign 0-indexed position in short-list
+        - Create ParsedToken object
+        
+        Example:
+            Input: [
+                {"text": "vision", "was_quoted": False, "is_excluded": False},
+                {"text": "=", "was_quoted": False, "is_excluded": True},
+                {"text": "text", "was_quoted": True, "is_excluded": False},
+            ]
+            Output: [
+                ParsedToken(text="vision", position=0, operator_after=Operator.EQUAL),
+                ParsedToken(text="text", position=1, was_quoted=True),
+            ]
+        """
+        tokens = []
+        position = 0
+        
+        for i, item in enumerate(full_list):
+            if not item["is_excluded"]:
+                # Check if next item is an operator
+                operator_after = None
+                if i + 1 < len(full_list):
+                    next_item = full_list[i + 1]
+                    if next_item["is_excluded"] and next_item["text"] in [op.value for op in Operator]:
+                        operator_after = Operator(next_item["text"])
+                
+                tokens.append(ParsedToken(
+                    text=item["text"],
+                    position=position,
+                    was_quoted=item["was_quoted"],
+                    operator_after=operator_after
+                ))
+                position += 1
+        
+        return tokens
+    
+    @classmethod
+    def _find_operator_in_token(cls, token: str) -> tuple[str, str, str] | None:
+        """
+        Find operator in token and split into key, operator, value.
+        
         Returns:
-            Next position in the original text
+            Tuple of (key, operator, value) or None if no operator found
         """
-        # Find the actual token in the text starting from current_pos
-        remaining_text = original_text[current_pos:]
-        token_start = remaining_text.find(token.strip())
-        
-        if token_start == -1:
-            # Fallback: advance by token length + 1 for space
-            return current_pos + len(token) + 1
-        
-        # Move to position after this token
-        next_pos = current_pos + token_start + len(token)
-        
-        # Skip any following whitespace to get to next token position
-        while next_pos < len(original_text) and original_text[next_pos].isspace():
-            next_pos += 1
-        
-        return next_pos
-    
-    @classmethod
-    def _contains_operator(cls, token: str) -> bool:
-        """Check if token contains an attribute operator."""
-        operators = ['=', '>', '<', '>=', '<=', '!=']
-        return any(op in token for op in operators)
-    
-    @classmethod
-    def _parse_attribute_token(cls, token: str) -> Tuple[str, str, str]:
-        """
-        Parse attribute token into key, operator, value.
-        
-        Enhanced to handle quoted values properly by preserving quotes
-        for subsequent processing by _extract_quoted_value.
-        
-        Args:
-            token: Token containing key=value syntax
-            
-        Returns:
-            Tuple of (key, operator, value)
-            
-        Note:
-            Value retains quotes if present for multi-token processing.
-            Use _extract_quoted_value for complete quote handling.
-        """
-        operators = ['>=', '<=', '!=', '=', '>', '<']  # Order matters for multi-char operators
+        # Check operators in order of precedence (longer operators first)
+        # Use Operator enum values to ensure consistency
+        operators = [
+            Operator.GREATER_EQUAL.value,  # ">="
+            Operator.LESS_EQUAL.value,     # "<="
+            Operator.NOT_EQUAL.value,      # "!="
+            Operator.EQUAL.value,          # "="
+            Operator.GREATER.value,        # ">"
+            Operator.LESS.value,           # "<"
+        ]
         
         for operator in operators:
             if operator in token:
@@ -235,12 +255,36 @@ class Tokenizer:
                 if len(parts) == 2:
                     key = parts[0].strip()
                     value = parts[1].strip()
-                    
-                    # Only strip quotes if it's a complete quoted value in one token
-                    if (value.startswith('"') and value.endswith('"') and len(value) >= 2) or \
-                       (value.startswith("'") and value.endswith("'") and len(value) >= 2):
-                        value = value[1:-1]  # Remove surrounding quotes
-                    
                     return key, operator, value
         
-        return token, '', ''
+        return None
+    
+    @classmethod
+    def _is_excluded(cls, text: str) -> bool:
+        """
+        Check if a token should be excluded from short-list.
+        
+        Excluded:
+        - Operators: Uses Operator enum values (=, >, <, >=, <=, !=)
+        - Query keywords: Uses QueryKeyword enum values (where, and, or) - case-insensitive
+        - Brackets: Uses Bracket enum values ((, ), [, ])
+        """
+        if not text:
+            return False
+        
+        # Operators - use Operator enum values
+        operator_values = [op.value for op in Operator]
+        if text in operator_values:
+            return True
+        
+        # Query keywords (case-insensitive) - use QueryKeyword enum values
+        query_keyword_values = [kw.value for kw in QueryKeyword]
+        if text.lower() in query_keyword_values:
+            return True
+        
+        # Brackets - use Bracket enum values
+        bracket_values = [bracket.value for bracket in Bracket]
+        if text in bracket_values:
+            return True
+        
+        return False

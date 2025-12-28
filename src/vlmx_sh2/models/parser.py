@@ -15,6 +15,30 @@ from .words import WordType, Word
 
 # ==================== TOKEN MODELS ====================
 
+class Operator(str, Enum):
+    """Operators for field assignments and comparisons"""
+    EQUAL = "="
+    GREATER = ">"
+    LESS = "<"
+    GREATER_EQUAL = ">="
+    LESS_EQUAL = "<="
+    NOT_EQUAL = "!="
+
+
+class QueryKeyword(str, Enum):
+    """Query keywords for filtering"""
+    WHERE = "where"
+    AND = "and"
+    OR = "or"
+
+
+class Bracket(str, Enum):
+    """Brackets and parentheses"""
+    PAREN_OPEN = "("
+    PAREN_CLOSE = ")"
+    BRACKET_OPEN = "["
+    BRACKET_CLOSE = "]"
+
 class TokenType(str, Enum):
     """Type classification for parsed tokens"""
     WORD = "word"        # Token that matches a Word in the registry
@@ -25,11 +49,15 @@ class TokenType(str, Enum):
 class ParsedToken(BaseModel):
     """Represents a single parsed token from the input."""
     
-    text: str = Field(description="The actual text of the token")
-    position: int = Field(description="Position in the original input")
-    token_type: TokenType = Field(description="Type of token using TokenType enum")
-    word: Optional[Word] = Field(default=None, description="Recognized word object if this is a keyword")
-    confidence: float = Field(default=0.0, description="Confidence score for recognition (0-100)")
+    # Core fields set by Tokenizer:
+    text: str = Field(description="The actual text of the token (quotes stripped)")
+    position: int = Field(description="Position in short-listed array (0-indexed)")
+    was_quoted: bool = Field(default=False, description="Whether this token was originally in quotes")
+    operator_after: Optional[Operator] = Field(default=None, description="Operator that appeared after this token in original input")
+    
+    # Fields set by Recognizer (keep these, don't remove):
+    word: Optional[Word] = Field(default=None, description="Recognized word object if this matches word registry")
+    confidence: float = Field(default=0.0, description="Confidence score for recognition")
     suggestions: List[str] = Field(default_factory=list, description="Alternative suggestions for this token")
     
     class Config:
@@ -38,7 +66,7 @@ class ParsedToken(BaseModel):
     @property
     def is_recognized_word(self) -> bool:
         """True if this token represents a recognized word."""
-        return self.word is not None and self.token_type == TokenType.WORD
+        return self.word is not None
     
     @property
     def word_type(self) -> Optional[WordType]:
