@@ -7,7 +7,7 @@ intelligent attribute-value pairing.
 """
 
 from typing import Any, Dict, List
-from ..models.parser import RecognizedToken, TokenType
+from ..models.parser import RecognizedToken, TokenType, ValueContext
 from ..models.words import WordType
 
 

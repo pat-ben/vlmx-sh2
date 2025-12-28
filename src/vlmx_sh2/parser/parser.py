@@ -7,7 +7,7 @@ parsing natural language commands into structured data.
 """
 
 from typing import Any, List
-from ..models.parser import RecognizedToken, TokenType, ParseResult
+from ..models.parser import RecognizedToken, TokenType, ValueContext, ParseResult
 from ..models.words import WordType, ActionWord, EntityWord
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer

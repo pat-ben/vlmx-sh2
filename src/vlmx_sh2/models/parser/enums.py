@@ -37,3 +37,10 @@ class TokenType(str, Enum):
     WORD = "word"        # Token that matches a Word in the registry
     VALUE = "value"      # Token representing a value (company name, etc.)
     UNKNOWN = "unknown"  # Token that doesn't match any known pattern
+
+
+class ValueContext(str, Enum):
+    """Context classification for VALUE tokens."""
+    ENTITY = "entity"  # Entity value (company name, fund name, etc.)
+    FIELD = "field"    # Field/attribute value (currency, vision, etc.)
+    

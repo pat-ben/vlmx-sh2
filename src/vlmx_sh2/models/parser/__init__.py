@@ -8,7 +8,7 @@ Provides stage-based models for the parsing pipeline:
 - Enums: All parser-related enums
 """
 
-from .enums import Operator, QueryKeyword, Bracket, TokenType
+from .enums import Operator, QueryKeyword, Bracket, TokenType, ValueContext
 from .token import Token
 from .recognized_token import RecognizedToken
 from .parse_result import ParseResult
@@ -19,6 +19,7 @@ __all__ = [
     "QueryKeyword",
     "Bracket",
     "TokenType",
+    "ValueContext",
     
     # Models
     "Token",
