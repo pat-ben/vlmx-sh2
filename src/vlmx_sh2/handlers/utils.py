@@ -17,21 +17,22 @@ def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
     """
     Extract the target entity from parse result.
     
-    Looks for entity words in the recognized words and returns the first one found.
-    If no entity is specified, defaults to "organization".
-    
     Args:
         parse_result: The parsed command result
         
     Returns:
-        Entity word ID (e.g., "brand", "organization", "metadata")
+        Entity word ID (e.g., "brand", "company", "metadata")
     """
-    # Look for entity words in recognized words
+    # Use command object if available (single source of truth)
+    if parse_result.command:
+        return parse_result.command.entity.id
+    
+    # Fallback: look in recognized words
     for word in parse_result.recognized_words:
         if hasattr(word, 'word_type') and word.word_type.value == 'entity':
             return word.id
     
-    # Default to organization if no entity specified
+    # Default
     return DEFAULT_ENTITY
 
 def extract_attributes_from_parse_result(parse_result: ParseResult) -> Dict[str, str]:
@@ -44,7 +45,11 @@ def extract_attributes_from_parse_result(parse_result: ParseResult) -> Dict[str,
     Returns:
         Dictionary of attribute names to values
     """
-    return parse_result.attribute_values.copy()
+    # Use command object (single source of truth)
+    if parse_result.command:
+        return parse_result.command.attributes.copy()
+    
+    return {}
 
 def get_company_name_from_context(context: Context) -> Optional[str]:
     """
@@ -64,7 +69,7 @@ def extract_target_entity_name_from_parse_result(parse_result: ParseResult) -> O
     """
     Extract target entity name from parse result.
     
-    For commands like "show brand ACME" or "update organization TechCorp",
+    For commands like "show brand ACME" or "update company TechCorp",
     this extracts the target entity name (ACME, TechCorp).
     
     Args:
@@ -73,12 +78,9 @@ def extract_target_entity_name_from_parse_result(parse_result: ParseResult) -> O
     Returns:
         Target entity name or None if not found
     """
-    # Check entity_values for company_name or similar
-    if parse_result.entity_values:
-        # Try common entity name patterns
-        for key in ['company_name', 'organization_name', 'brand_name']:
-            if key in parse_result.entity_values:
-                return parse_result.entity_values[key]
+    # Use command object (single source of truth)
+    if parse_result.command:
+        return parse_result.command.entity_name
     
     return None
 
@@ -151,9 +153,9 @@ def extract_specific_attributes_from_tokens(parse_result: ParseResult) -> list[s
     """
     specific_attributes = []
     
-    # Look for attribute words in recognized words
+    # Look for field words in recognized words (FIELD type, not attribute)
     for word in parse_result.recognized_words:
-        if hasattr(word, 'word_type') and word.word_type.value == 'attribute':
+        if hasattr(word, 'word_type') and word.word_type.value == 'field':
             specific_attributes.append(word.id)
     
     return specific_attributes

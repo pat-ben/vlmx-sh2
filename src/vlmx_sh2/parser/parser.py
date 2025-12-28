@@ -32,7 +32,7 @@ class VLMXParser:
             input_text: User input to parse
             
         Returns:
-            ParseResult with all extracted information
+            ParseResult with command object and validation status
         """
         result = ParseResult(input_text=input_text)
         
@@ -46,32 +46,28 @@ class VLMXParser:
             # Step 3: Recognize → Returns List[RecognizedToken]
             recognized_tokens = self.word_recognizer.process_tokens(tokens)
             
+            # Store tokens in result
+            result.tokens = recognized_tokens
+            
             # Step 4: Build command → Returns ParsedCommand
             try:
                 command = self.command_builder.build(recognized_tokens, input_text)
                 
-                # Step 5: Populate result from command
-                result.tokens = recognized_tokens
-                result.recognized_words = [t.word for t in recognized_tokens if t.word]
-                result.attribute_values = command.attributes
-                result.entity_values = {f'{command.entity.id}_name': command.entity_name} if command.entity_name else {}
-                result.action_handler = command.action_handler
-                result.entity_model = command.entity_model
+                # Store command and mark as valid
+                result.command = command
                 result.is_valid = True
                 
-                # Step 6: Store the command object for handlers
-                result.command = command  # NEW! Make command available
             except ValueError as e:
-                # Handle missing action/entity gracefully
-                result.tokens = recognized_tokens
-                result.recognized_words = [t.word for t in recognized_tokens if t.word]
+                # Command building failed (missing action/entity)
                 result.errors.append(str(e))
+                result.is_valid = False
             
-            # Step 7: Generate suggestions
+            # Step 5: Generate suggestions
             result.suggestions = self._generate_suggestions(result)
             
         except Exception as e:
             result.errors.append(f"Parse error: {str(e)}")
+            result.is_valid = False
         
         return result
     
@@ -119,7 +115,7 @@ class VLMXParser:
             suggestions.append("Consider adding an action word (e.g., 'create', 'add', 'update', 'show', 'delete')")
         
         # Suggest common attribute patterns
-        if result.action_words and result.entity_words and not result.attribute_values:
+        if result.action_words and result.entity_words and not result.attributes:
             action = result.action_words[0].id
             entity = result.entity_words[0].id
             if action == 'create' and entity == 'company':
@@ -165,18 +161,18 @@ class VLMXParser:
         
         # Legacy handler signature: handler(entity_model, entity_value, attributes, context, attribute_words)
         entity_value = None
-        if parse_result.entity_values:
+        if parse_result.entity_values:  # Property access - works
             # Get the first entity value
             entity_value = next(iter(parse_result.entity_values.values()))
         
         # For delete operations, we need to pass the list of attribute words to delete
-        attribute_words_to_process = [w.id for w in parse_result.attribute_words]
+        attribute_words_to_process = [w.id for w in parse_result.attribute_words]  # Property access - works
         
         try:
-            return await parse_result.action_handler(
-                entity_model=parse_result.entity_model,
+            return await parse_result.action_handler(  # Property access - works
+                entity_model=parse_result.entity_model,  # Property access - works
                 entity_value=entity_value,
-                attributes=parse_result.attribute_values,
+                attributes=parse_result.attributes,  # Use new property name
                 context=context,
                 attribute_words=attribute_words_to_process
             )

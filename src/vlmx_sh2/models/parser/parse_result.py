@@ -1,41 +1,75 @@
 """
 Parse result model for complete parsing output.
 
-Contains the final result of the parsing pipeline with tokens, words, and values.
+Contains the final result of the parsing pipeline with tokens and structured command.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from .recognized_token import RecognizedToken
+from .parsed_command import ParsedCommand
 from ..words import WordType, Word
 
 
 class ParseResult(BaseModel):
-    """Complete parse result with tokens and validation."""
+    """
+    Complete parse result - clean, no redundancy.
     
-    input_text: str = Field(description="Original input text")
-    tokens: List[RecognizedToken] = Field(default_factory=list, description="Recognized tokens with classification")
-    recognized_words: List[Word] = Field(default_factory=list, description="Successfully recognized words")
+    Contains only essential data from parsing. All command-specific data
+    (action, entity, attributes, etc.) is accessed through the command object.
     
-    # Legacy fields (keep for backward compatibility during transition)
-    entity_values: Dict[str, Any] = Field(default_factory=dict, description="Extracted entity values (company names, etc.)")
-    attribute_values: Dict[str, str] = Field(default_factory=dict, description="Extracted attribute values")
-    action_handler: Optional[Any] = Field(default=None, description="Handler function for the action")
-    entity_model: Optional[Any] = Field(default=None, description="Entity model class for the target entity")
+    Fields:
+        input_text: Original user input
+        tokens: All recognized tokens from parsing
+        command: Structured command object (None if parse failed)
+        is_valid: Whether parsing succeeded
+        errors: List of error messages
+        suggestions: Helpful suggestions for user
+    """
     
-    # NEW: Structured command object
-    command: Optional[Any] = Field(
-        default=None,
-        description="Structured command object (preferred over legacy fields)"
+    # Core parsing data
+    input_text: str = Field(
+        description="Original user input text"
     )
     
-    is_valid: bool = Field(default=False, description="Whether the parse is valid")
-    errors: List[str] = Field(default_factory=list, description="Parse errors")
-    suggestions: List[str] = Field(default_factory=list, description="Suggestions for improvement")
+    tokens: List[RecognizedToken] = Field(
+        default_factory=list,
+        description="All recognized tokens from parsing"
+    )
+    
+    # Structured command (single source of truth)
+    command: Optional[ParsedCommand] = Field(
+        default=None,
+        description="Structured command object (None if parsing failed)"
+    )
+    
+    # Validation and feedback
+    is_valid: bool = Field(
+        default=False,
+        description="True if parsing succeeded and command is ready for execution"
+    )
+    
+    errors: List[str] = Field(
+        default_factory=list,
+        description="Error messages from parsing"
+    )
+    
+    suggestions: List[str] = Field(
+        default_factory=list,
+        description="Helpful suggestions for fixing parse errors"
+    )
     
     class Config:
         arbitrary_types_allowed = True
+    
+    # ==================== CONVENIENCE PROPERTIES ====================
+    # These provide easy access to command data without direct field access
+    
+    @property
+    def recognized_words(self) -> List[Word]:
+        """Get all successfully recognized words from tokens."""
+        return [t.word for t in self.tokens if t.word]
     
     @property
     def action_words(self) -> List[Word]:
@@ -48,23 +82,58 @@ class ParseResult(BaseModel):
         return [word for word in self.recognized_words if word.word_type == WordType.ENTITY]
     
     @property
-    def modifier_words(self) -> List[Word]:
-        """Get all MODIFIER type words from recognized words."""
-        return [word for word in self.recognized_words if word.word_type == WordType.MODIFIER]
-    
-    @property
-    def attribute_words(self) -> List[Word]:
-        """Get all ATTRIBUTE type words from recognized words."""
+    def field_words(self) -> List[Word]:
+        """Get all FIELD type words from recognized words."""
         return [word for word in self.recognized_words if word.word_type == WordType.FIELD]
     
     @property
+    def modifier_words(self) -> List[Word]:
+        """Get all MODIFIER type words from recognized words (currently unused)."""
+        # Note: MODIFIER word type doesn't exist yet in WordType enum
+        return []
+    
+    # Command-related properties (for backward compatibility)
+    
+    @property
+    def action_handler(self):
+        """Get handler function from command."""
+        return self.command.action_handler if self.command else None
+    
+    @property
+    def entity_model(self):
+        """Get entity model class from command."""
+        return self.command.entity_model if self.command else None
+    
+    @property
+    def attributes(self):
+        """Get attributes dictionary from command."""
+        return self.command.attributes if self.command else {}
+    
+    @property
+    def attribute_values(self):
+        """Get attributes dictionary from command (legacy name for compatibility)."""
+        return self.attributes
+    
+    @property
+    def entity_values(self):
+        """Get entity values from command (legacy format for compatibility)."""
+        if self.command and self.command.entity_name:
+            return {f'{self.command.entity.id}_name': self.command.entity_name}
+        return {}
+    
+    @property
+    def entity_name(self) -> Optional[str]:
+        """Get entity name from command."""
+        return self.command.entity_name if self.command else None
+    
+    @property
     def has_complete_action(self) -> bool:
-        """True if we have a valid action and handler."""
-        return self.is_valid and self.action_handler is not None
+        """True if we have a valid command with action handler."""
+        return self.is_valid and self.command is not None and self.command.action_handler is not None
     
     @property
     def word_types_present(self) -> List[WordType]:
-        """Get list of word types present in the recognized words."""
+        """Get list of word types present in recognized words."""
         return list(set(word.word_type for word in self.recognized_words))
     
     @property
@@ -72,3 +141,8 @@ class ParseResult(BaseModel):
         """True if we have both an action and entity word."""
         word_types = set(self.word_types_present)
         return WordType.ACTION in word_types and WordType.ENTITY in word_types
+    
+    @property
+    def attribute_words(self) -> List[Word]:
+        """Get all FIELD type words from recognized words (legacy name)."""
+        return self.field_words
