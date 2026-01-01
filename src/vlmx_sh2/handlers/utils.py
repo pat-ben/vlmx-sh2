@@ -84,21 +84,21 @@ def extract_target_entity_name_from_parse_result(parse_result: ParseResult) -> O
     
     return None
 
-def validate_attribute_for_entity(attribute_id: str, entity_id: str) -> bool:
+def validate_field_for_entity(field_id: str, entity_id: str) -> bool:
     """
-    Validate if an attribute exists on an entity using the Words Registry.
+    Validate if a field exists on an entity using the Words Registry.
     
     Args:
-        attribute_id: ID of the attribute word
+        field_id: ID of the field word
         entity_id: ID of the entity word
         
     Returns:
-        True if the attribute exists on the entity, False otherwise
+        True if the field exists on the entity, False otherwise
     """
     
-    # Get the attribute word
-    attribute_word = get_word(attribute_id)
-    if not attribute_word or not isinstance(attribute_word, AttributeWord):
+    # Get the field word
+    field_word = get_word(field_id)
+    if not field_word or not isinstance(field_word, AttributeWord):
         return False
     
     # Get the entity word
@@ -106,23 +106,23 @@ def validate_attribute_for_entity(attribute_id: str, entity_id: str) -> bool:
     if not entity_word or not isinstance(entity_word, EntityWord):
         return False
     
-    # Check if the entity model is in the attribute's entity_models list
-    return entity_word.entity_model in attribute_word.entity_models
+    # Check if the entity model is in the field's entity_models list
+    return entity_word.entity_model in field_word.entity_models
 
-def validate_entity_attribute_combination(entity_word_id: str, attribute_name: str) -> bool:
+def validate_entity_field_combination(entity_word_id: str, field_name: str) -> bool:
     """
-    Validate if an attribute can be used with an entity.
+    Validate if a field can be used with an entity.
     
-    Uses the Words Registry to check if the attribute is valid for the entity.
+    Uses the Words Registry to check if the field is valid for the entity.
     
     Args:
         entity_word_id: The entity word ID
-        attribute_name: The attribute name
+        field_name: The field name
         
     Returns:
         True if the combination is valid, False otherwise
     """
-    return validate_attribute_for_entity(attribute_name, entity_word_id)
+    return validate_field_for_entity(field_name, entity_word_id)
 
 def get_entity_model_from_entity_id(entity_id: str):
     """
@@ -139,9 +139,9 @@ def get_entity_model_from_entity_id(entity_id: str):
         return entity_word.entity_model
     return None
 
-def extract_specific_attributes_from_tokens(parse_result: ParseResult) -> list[str]:
+def extract_specific_fields_from_tokens(parse_result: ParseResult) -> list[str]:
     """
-    Extract specific attribute names mentioned in the command.
+    Extract specific field names mentioned in the command.
     
     For commands like "show brand vision mission", this extracts ["vision", "mission"].
     
@@ -149,25 +149,25 @@ def extract_specific_attributes_from_tokens(parse_result: ParseResult) -> list[s
         parse_result: The parsed command result
         
     Returns:
-        List of specific attribute names requested
+        List of specific field names requested
     """
-    specific_attributes = []
+    specific_fields = []
     
-    # Look for field words in recognized words (FIELD type, not attribute)
+    # Look for field words in recognized words (FIELD type)
     for word in parse_result.recognized_words:
         if hasattr(word, 'word_type') and word.word_type.value == 'field':
-            specific_attributes.append(word.id)
+            specific_fields.append(word.id)
     
-    return specific_attributes
+    return specific_fields
 
 def format_entity_data_for_display(entity_data: Dict[str, Any], 
-                                 specific_attributes: list[str] = None) -> str:
+                                 specific_fields: list[str] | None = None) -> str:
     """
     Format entity data for user display.
     
     Args:
         entity_data: The entity data dictionary
-        specific_attributes: Specific attributes to show, or None for all
+        specific_fields: Specific fields to show, or None for all
         
     Returns:
         Formatted string for display
@@ -177,13 +177,13 @@ def format_entity_data_for_display(entity_data: Dict[str, Any],
     
     lines = []
     
-    # Filter to specific attributes if requested
-    if specific_attributes:
-        data_to_show = {attr: entity_data.get(attr) for attr in specific_attributes}
+    # Filter to specific fields if requested
+    if specific_fields:
+        data_to_show = {field: entity_data.get(field) for field in specific_fields}
     else:
         data_to_show = entity_data
     
-    # Format each attribute
+    # Format each field
     for key, value in data_to_show.items():
         if value is not None:
             if isinstance(value, str) and len(value) > 50:
@@ -195,7 +195,7 @@ def format_entity_data_for_display(entity_data: Dict[str, Any],
         else:
             lines.append(f"{key}: (not set)")
     
-    return "\n".join(lines) if lines else "No attributes to display"
+    return "\n".join(lines) if lines else "No fields to display"
 
 def create_updated_entity_data(current_data: Dict[str, Any], 
                              updates: Dict[str, str]) -> Dict[str, Any]:

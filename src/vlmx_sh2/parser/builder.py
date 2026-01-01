@@ -56,7 +56,7 @@ class CommandBuilder:
             action=CommandBuilder._extract_action(tokens),
             entity=CommandBuilder._extract_entity(tokens),
             entity_name=CommandBuilder._extract_entity_name(tokens),
-            attributes=CommandBuilder._extract_attributes(tokens),
+            attributes=CommandBuilder._extract_fields(tokens),
             raw_input=raw_input,
             tokens=tokens
         )
@@ -77,7 +77,10 @@ class CommandBuilder:
         """
         for token in tokens:
             if token.is_action_word:
-                return token.word
+                # Type safety: is_action_word ensures this is an ActionWord
+                from ..models.words import ActionWord
+                if token.word and isinstance(token.word, ActionWord):
+                    return token.word
         
         raise ValueError("No action word found in command")
     
@@ -97,7 +100,10 @@ class CommandBuilder:
         """
         for token in tokens:
             if token.is_entity_word:
-                return token.word
+                # Type safety: is_entity_word ensures this is an EntityWord
+                from ..models.words import EntityWord
+                if token.word and isinstance(token.word, EntityWord):
+                    return token.word
         
         raise ValueError("No entity word found in command")
     
@@ -137,11 +143,11 @@ class CommandBuilder:
         return None
     
     @staticmethod
-    def _extract_attributes(tokens: List[RecognizedToken]) -> Dict[str, str]:
+    def _extract_fields(tokens: List[RecognizedToken]) -> Dict[str, str]:
         """
         Extract field-value pairs from tokens.
         
-        Finds attribute assignments by looking for FIELD words followed
+        Finds field assignments by looking for FIELD words followed
         by FIELD values. The recognizer has already classified which
         values are field values vs entity values.
         
@@ -153,10 +159,10 @@ class CommandBuilder:
             
         Examples:
             >>> # From: add fund vision="Our vision" currency=EUR
-            >>> _extract_attributes(tokens)
+            >>> _extract_fields(tokens)
             {'vision': 'Our vision', 'currency': 'EUR'}
         """
-        attributes = {}
+        fields = {}
         
         for i in range(len(tokens) - 1):
             current = tokens[i]
@@ -165,6 +171,6 @@ class CommandBuilder:
             # Simple: FIELD word followed by FIELD value
             # Recognizer already classified these!
             if current.is_field_word and next_token.is_field_value:
-                attributes[current.text] = next_token.text
+                fields[current.text] = next_token.text
         
-        return attributes
+        return fields

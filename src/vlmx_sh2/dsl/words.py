@@ -1,7 +1,7 @@
 """
 Word registry and models for VLMX DSL.
 
-Defines all word types (actions, entities, attributes, modifiers) and their
+Defines all word types (actions, entities, fields, modifiers) and their
 relationships to database models. The word registry serves as the vocabulary
 foundation for natural language command parsing and validation.
 """
@@ -143,9 +143,9 @@ WORDS: List[Word] = [
         entity_model=ValuesEntity
     ),
     
-    # ==================== ATTRIBUTES ====================
+    # ==================== FIELDS ====================
     
-    # Common attributes across multiple entities
+    # Common fields across multiple entities
     
     AttributeWord(
         id="name",
@@ -165,7 +165,7 @@ WORDS: List[Word] = [
         entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
-    # Company-specific attributes
+    # Company-specific fields
     AttributeWord(
         id="legal",
         description="Legal entity type (SA, LLC, INC, etc.)",   
@@ -202,7 +202,7 @@ WORDS: List[Word] = [
         entity_models=[CompanyEntity]
     ),
     
-    # Brand-specific attributes
+    # Brand-specific fields
     AttributeWord(
         id="vision",
         description="Company vision statement",

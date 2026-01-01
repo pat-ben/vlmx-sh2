@@ -3,53 +3,37 @@ Truly dynamic CRUD handlers for VLMX DSL.
 
 Each handler works with ANY entity type without hardcoded entity-specific logic.
 Uses entity_model metadata and generic storage functions to provide
-unified behavior across all entity-attribute combinations.
+unified behavior across all entity-field combinations.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-# NEW: Import ParsedCommand for new handler signatures
-try:
-    from ..models.parser import ParsedCommand
-    from ..models.context import Context
-except ImportError:
-    # Fallback for development/testing
-    ParsedCommand = None
-    Context = None
 
 
 async def create_handler(
-    entity_model=None, entity_value=None, attributes=None, context=None, attribute_words=None,
-    command: 'ParsedCommand' = None
+    entity_model=None, entity_value=None, attributes=None, context=None, attribute_words=None
 ):
     """
     Truly dynamic create handler - works for ANY entity type.
-    Supports both legacy and new ParsedCommand signatures.
     """
     from ..storage.database import create_entity
     from ..ui.results import create_error_result, create_success_result
 
-    # NEW: Support both signatures
-    if command is not None:
-        # Use ParsedCommand structure
-        entity_model = command.entity_model
-        entity_value = command.entity_name
-        attributes = command.attributes
-        entity_type = command.entity.id
-    else:
-        # Legacy parameters
-        entity_type = entity_model.__name__.replace("Entity", "").lower()
+    if entity_model is None:
+        raise ValueError("entity_model is required")
+    entity_type = entity_model.__name__.replace("Entity", "").lower()
 
     try:
         # Prepare entity data with defaults
+        if attributes is None:
+            attributes = {}
+        
         entity_data = {
             "name": entity_value
             or f"{entity_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            **attributes,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
         }
+        entity_data.update(attributes)
 
         # 3. Add entity-specific defaults based on entity type
         if entity_type == "company":
@@ -58,7 +42,7 @@ async def create_handler(
 
                 entity_data.update(
                     {
-                        "entity": Legal(attributes.get("entity", "SA").upper()),
+                        "legal": Legal(attributes.get("legal", "SA").upper()),
                         "type": Type.COMPANY,
                         "currency": Currency(attributes.get("currency", "EUR").upper()),
                         "unit": Unit.THOUSANDS,
@@ -90,20 +74,25 @@ async def create_handler(
 
         # 4. Validate using the entity model (Pydantic validation)
         try:
+            if entity_model is None:
+                raise ValueError("entity_model is required for validation")
             entity_instance = entity_model(**entity_dict)
             validated_data = entity_instance.model_dump()
         except Exception as e:
             return create_error_result([f"Validation failed: {str(e)}"])
 
         # 5. Use generic storage - works for ANY entity
+        if context is None:
+            from ..models.context import Context
+            context = Context(level=0)  # Default system context
+            
         storage_result = create_entity(
             entity_type=entity_type, data=validated_data, context=context
         )
 
-        if not storage_result.get("success", False):
-            return create_error_result(
-                [storage_result.get("error", f"Failed to create {entity_type}")]
-            )
+        if storage_result is None or not storage_result.get("success", False):
+            error_msg = storage_result.get("error", f"Failed to create {entity_type}") if storage_result else f"Failed to create {entity_type}"
+            return create_error_result([error_msg])
 
         # 6. Handle context switch for company creation
         if entity_type == "company":
@@ -138,7 +127,7 @@ async def add_handler(
 ):
     """
     Truly dynamic add handler - works for ANY entity type.
-    Adds/sets attributes on existing entities.
+    Adds/sets fields on existing entities.
     """
     from ..handlers.utils import get_company_name_from_context
     from ..storage.database import (
@@ -154,12 +143,12 @@ async def add_handler(
         company_name = get_company_name_from_context(context)
         if not company_name:
             return create_error_result(
-                ["Must be in organization context to add attributes"]
+                ["Must be in organization context to add fields"]
             )
 
         if not attributes:
             return create_error_result(
-                ["No attributes specified. Use format: add entity attribute=value"]
+                ["No fields specified. Use format: add entity field=value"]
             )
 
         # Determine entity type from entity_model
@@ -173,7 +162,7 @@ async def add_handler(
         # Load current entity data
         current_data = load_entity(entity_type, company_name, context) or {}
 
-        # Create updated data with new attributes
+        # Create updated data with new fields
         updated_data = current_data.copy()
         updated_data.update(attributes)
         updated_data["updated_at"] = datetime.now().isoformat()
@@ -190,7 +179,7 @@ async def add_handler(
         )
 
     except Exception as e:
-        return create_error_result([f"Failed to add attributes: {str(e)}"])
+        return create_error_result([f"Failed to add fields: {str(e)}"])
 
 
 async def update_handler(
@@ -198,7 +187,7 @@ async def update_handler(
 ):
     """
     Truly dynamic update handler - works for ANY entity type.
-    Updates existing attributes on entities.
+    Updates existing fields on entities.
     """
     from ..handlers.utils import get_company_name_from_context
     from ..storage.database import entity_exists, load_entity, save_entity
@@ -209,12 +198,12 @@ async def update_handler(
         company_name = get_company_name_from_context(context)
         if not company_name:
             return create_error_result(
-                ["Must be in organization context to update attributes"]
+                ["Must be in organization context to update fields"]
             )
 
         if not attributes:
             return create_error_result(
-                ["No attributes specified. Use format: update entity attribute=value"]
+                ["No fields specified. Use format: update entity field=value"]
             )
 
         # Determine entity type from entity_model
@@ -248,7 +237,7 @@ async def update_handler(
         )
 
     except Exception as e:
-        return create_error_result([f"Failed to update attributes: {str(e)}"])
+        return create_error_result([f"Failed to update fields: {str(e)}"])
 
 
 async def show_handler(
@@ -256,7 +245,7 @@ async def show_handler(
 ):
     """
     Truly dynamic show handler - works for ANY entity type.
-    Displays entity data or specific attributes.
+    Displays entity data or specific fields.
     """
     from ..handlers.utils import (
         format_entity_data_for_display,
@@ -288,9 +277,9 @@ async def show_handler(
             return create_error_result([f"No data found for {entity_type}"])
 
         # Format data for display
-        specific_attributes = attribute_words if attribute_words else None
+        specific_fields = attribute_words if attribute_words else None
         formatted_data = format_entity_data_for_display(
-            entity_data, specific_attributes
+            entity_data, specific_fields
         )
 
         return create_success_result(
@@ -308,7 +297,7 @@ async def delete_handler(
 ):
     """
     Truly dynamic delete handler - works for ANY entity type.
-    Removes attribute values from entities.
+    Removes field values from entities.
     """
     from ..handlers.utils import get_company_name_from_context
     from ..storage.database import entity_exists, load_entity, save_entity
@@ -319,14 +308,14 @@ async def delete_handler(
         company_name = get_company_name_from_context(context)
         if not company_name:
             return create_error_result(
-                ["Must be in organization context to delete attributes"]
+                ["Must be in organization context to delete fields"]
             )
 
-        # Check if we have specific attributes to delete
+        # Check if we have specific fields to delete
         if not attribute_words:
             return create_error_result(
                 [
-                    "No attributes specified to delete. Use format: delete entity attribute"
+                    "No fields specified to delete. Use format: delete entity field"
                 ]
             )
 
@@ -344,7 +333,7 @@ async def delete_handler(
         if current_data is None:
             return create_error_result([f"No data found for {entity_type}"])
 
-        # Remove the specified attributes
+        # Remove the specified fields
         updated_data = current_data.copy()
         removed_attributes = []
 
@@ -361,7 +350,7 @@ async def delete_handler(
         if not removed_attributes:
             return create_error_result(
                 [
-                    f"None of the specified attributes exist in {entity_type}: {', '.join(attribute_words)}"
+                    f"None of the specified fields exist in {entity_type}: {', '.join(attribute_words)}"
                 ]
             )
 
@@ -383,5 +372,5 @@ async def delete_handler(
         )
 
     except Exception as e:
-        return create_error_result([f"Failed to delete attributes: {str(e)}"])
+        return create_error_result([f"Failed to delete fields: {str(e)}"])
 

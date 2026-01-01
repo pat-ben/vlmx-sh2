@@ -5,7 +5,6 @@ A three-stage tokenization system that extracts and organizes tokens with metada
 The tokenizer's sole responsibility is text processing - no semantic classification.
 """
 
-import re
 from typing import List, Dict, Any
 from ..models.parser import Token, Operator, QueryKeyword, Bracket
 
@@ -29,21 +28,7 @@ class Tokenizer:
         Returns:
             List of Token objects with metadata
             
-        Examples:
-            >>> tokenize('create company "ACME"')
-            [
-                Token(text="create", position=0, was_quoted=False),
-                Token(text="company", position=1, was_quoted=False),
-                Token(text="ACME", position=2, was_quoted=True),
-            ]
-            
-            >>> tokenize('vision="Our vision" currency=EUR')
-            [
-                Token(text="vision", position=0, operator_after=Operator.EQUAL),
-                Token(text="Our vision", position=1, was_quoted=True),
-                Token(text="currency", position=2, operator_after=Operator.EQUAL),
-                Token(text="EUR", position=3),
-            ]
+   
         """
         # Stage 1: Extract quoted strings
         raw_tokens = cls._extract_quoted_strings(text)

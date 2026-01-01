@@ -99,31 +99,6 @@ class Context(BaseModel):
         level_names = {0: "sys", 1: "org", 2: "app"}
         return level_names.get(self.level, f"unknown({self.level})")
 
-    # Legacy compatibility properties
-    @property
-    def company_id(self) -> Optional[int]:
-        """Legacy property for org_id"""
-        return self.org_id
-    
-    @property
-    def company_name(self) -> Optional[str]:
-        """Legacy property for org_name"""
-        return self.org_name
-    
-    @property
-    def company_db_path(self) -> Optional[Path]:
-        """Legacy property for org_db_path"""
-        return self.org_db_path
-    
-    @property
-    def platform_path(self) -> Optional[Path]:
-        """Legacy property for sys_path"""
-        return self.sys_path
-    
-    @property
-    def plugin_id(self) -> Optional[str]:
-        """Legacy property for app_id"""
-        return self.app_id
 
     # Helper methods
     def get(self, key: str, default: Any = None) -> Any:

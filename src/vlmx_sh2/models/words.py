@@ -1,7 +1,7 @@
 """
 Word models for VLMX DSL.
 
-Defines pydantic models for word types (actions, entities, attributes) used in
+Defines pydantic models for word types (actions, entities, fields) used in
 the DSL vocabulary foundation. These models represent the structure and behavior
 of different word categories in natural language command parsing.
 """
@@ -84,19 +84,19 @@ class EntityWord(BaseWord):
     wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
 
 
-# ==================== ATTRIBUTE WORD MODEL ====================
+# ==================== FIELD WORD MODEL ====================
 
 class AttributeWord(BaseWord):
     """
-    Attribute word - represents entity attributes like name, currency, revenue.
+    Field word - represents entity fields like name, currency, revenue.
     
     Can belong to multiple entities (e.g., 'name' exists on both Company and Milestone).
     """
     
     word_type: Literal[WordType.FIELD] = WordType.FIELD
     entity_models: List[Type[BaseModel]] = Field(description="Reference to the Pydantic model representing this entity")
-    number_format_mode: str = Field(default="not_applicable", description="Number formatting mode for this attribute")
-    currency_mode: str = Field(default="not_applicable", description="Currency mode for this attribute")
+    number_format_mode: str = Field(default="not_applicable", description="Number formatting mode for this field")
+    currency_mode: str = Field(default="not_applicable", description="Currency mode for this field")
  
 
 # ==================== UNION TYPE ====================

@@ -33,8 +33,9 @@ class WordRecognizer:
             # Add the word ID itself
             self.alias_to_word[word_id.lower()] = word_id
             
-            # Add all aliases (check if aliases attribute exists)
-            if hasattr(word, 'aliases'):
+            # Add all aliases (only ActionWord has aliases)
+            from ..models.words import ActionWord
+            if isinstance(word, ActionWord):
                 for alias in word.aliases:
                     self.alias_to_word[alias.lower()] = word_id
             

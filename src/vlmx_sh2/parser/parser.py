@@ -7,11 +7,11 @@ parsing natural language commands into structured data.
 """
 
 from typing import Any, List
-from ..models.parser import RecognizedToken, TokenType, ValueContext, ParseResult, ParsedCommand
-from ..models.words import WordType, ActionWord, EntityWord
+from ..models.parser import TokenType, ParseResult
+from ..models.words import WordType
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
-from .command_builder import CommandBuilder
+from .builder import CommandBuilder
 from .utils import expand_macros
 
 
@@ -85,10 +85,13 @@ class VLMXParser:
         
         # Check if action requires entity
         action_words = result.action_words
-        if action_words and action_words[0].requires_entity:
-            if not result.entity_words:
-                result.errors.append("Action requires an entity word")
-                return False
+        if action_words:
+            from ..models.words import ActionWord
+            action_word = action_words[0]
+            if isinstance(action_word, ActionWord) and action_word.requires_entity:
+                if not result.entity_words:
+                    result.errors.append("Action requires an entity word")
+                    return False
         
         return True
     
@@ -107,8 +110,11 @@ class VLMXParser:
         # If we have ACTION but no ENTITY, suggest adding an entity
         if WordType.ACTION in word_types_present and WordType.ENTITY not in word_types_present:
             action_words = result.action_words
-            if action_words and action_words[0].requires_entity:
-                suggestions.append("Consider adding an entity word (e.g., 'company', 'brand', 'metadata')")
+            if action_words:
+                from ..models.words import ActionWord
+                action_word = action_words[0]
+                if isinstance(action_word, ActionWord) and action_word.requires_entity:
+                    suggestions.append("Consider adding an entity word (e.g., 'company', 'brand', 'metadata')")
         
         # If we have ENTITY but no ACTION, suggest adding an action
         if WordType.ENTITY in word_types_present and WordType.ACTION not in word_types_present:
@@ -147,26 +153,13 @@ class VLMXParser:
             raise ValueError(f"Handler requirements not met: {parse_result.errors}")
         
         # Call the handler with the parsed data
-        # NEW: Use ParsedCommand if available, fallback to legacy format
-        if hasattr(parse_result, 'command') and parse_result.command:
-            # New handler signature: handler(command: ParsedCommand, context: Context)
-            try:
-                return await parse_result.action_handler(
-                    command=parse_result.command,
-                    context=context
-                )
-            except TypeError:
-                # Fallback to old signature if handler not updated yet
-                pass
-        
-        # Legacy handler signature: handler(entity_model, entity_value, attributes, context, attribute_words)
         entity_value = None
         if parse_result.entity_values:  # Property access - works
             # Get the first entity value
             entity_value = next(iter(parse_result.entity_values.values()))
         
-        # For delete operations, we need to pass the list of attribute words to delete
-        attribute_words_to_process = [w.id for w in parse_result.attribute_words]  # Property access - works
+        # For delete operations, we need to pass the list of field words to delete
+        field_words_to_process = [w.id for w in parse_result.attribute_words]  # Property access - works
         
         try:
             return await parse_result.action_handler(  # Property access - works
@@ -174,7 +167,7 @@ class VLMXParser:
                 entity_value=entity_value,
                 attributes=parse_result.attributes,  # Use new property name
                 context=context,
-                attribute_words=attribute_words_to_process
+                attribute_words=field_words_to_process
             )
         except Exception as e:
             raise RuntimeError(f"Handler execution failed: {str(e)}")

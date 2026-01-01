@@ -84,9 +84,9 @@ class CommandBlock(VerticalGroup):
         if self.context.level == 0:
             return "/VLMX"
         elif self.context.level == 1:
-            return f"/VLMX/{self.context.company_name}"
+            return f"/VLMX/{self.context.org_name}"
         else:  # level 2
-            return f"/VLMX/{self.context.company_name}/{self.context.plugin_id}"
+            return f"/VLMX/{self.context.org_name}/{self.context.app_id}"
 
     def show_output(self, message: str, is_error: bool = False):
         """Helper method to display output message"""
