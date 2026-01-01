@@ -38,10 +38,10 @@ class CompanyEntity(DatabaseModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    legal: Legal
-    type: Type = Type.COMPANY
-    currency: Currency
-    unit: Unit = Unit.THOUSANDS
+    legal: Legal = Field(default=Legal.SA)
+    type: Type = Field(default=Type.COMPANY)
+    currency: Currency = Field(default=Currency.EUR)
+    unit: Unit = Field(default=Unit.THOUSANDS)
     closing: int = 12
     incorporation: Optional[date] = None
     
@@ -72,9 +72,9 @@ class MetadataEntity(DatabaseModel, table=True):
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    co_id: int = Field(..., description="Reference to company.id")
+    co_id: int = Field(default=1, description="Reference to company.id")
     key: str = Field(..., description="Metadata key")
-    value: Optional[str] = Field(..., description="Metadata value stored as JSON string")
+    value: Optional[str] = Field(default=None, description="Metadata value stored as JSON string")
     
     # timestamp
     created_at: datetime = Field(default_factory=datetime.now)
@@ -135,10 +135,10 @@ class OfferingEntity(DatabaseModel, table=True):
         key="Consulting", value="Strategic advisory for digital transformation"
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    brand_id: int = Field(..., description="Reference to brand.id")
+    brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Offering title/category")
     value: str = Field(
-        ..., 
+        default="", 
         description="Offering description (automatically typed and validated)"
     )
     
@@ -168,10 +168,10 @@ class TargetEntity(DatabaseModel, table=True):
         key="Customer Profile", value="CFOs and finance teams"
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    brand_id: int = Field(..., description="Reference to brand.id")
+    brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Target segment title/category")
     value: str = Field(
-        ..., 
+        default="", 
         description="Target segment description (automatically typed and validated)"
     )
     
@@ -201,10 +201,10 @@ class ValuesEntity(DatabaseModel, table=True):
         key="Inclusivity", value="We build products that serve everyone, regardless of background"
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    brand_id: int = Field(..., description="Reference to brand.id")
+    brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Value name/title")
     value: str = Field(
-        ..., 
+        default="", 
         description="Value description/explanation (automatically typed and validated)"
     )    
     # Timestamps

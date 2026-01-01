@@ -23,7 +23,7 @@ async def create_handler(
     entity_type = entity_model.__name__.replace("Entity", "").lower()
 
     try:
-        # Prepare entity data with defaults
+        # Prepare entity data with user-provided attributes
         if attributes is None:
             attributes = {}
         
@@ -35,53 +35,16 @@ async def create_handler(
         }
         entity_data.update(attributes)
 
-        # 3. Add entity-specific defaults based on entity type
-        if entity_type == "company":
-            try:
-                from ..models.schema.enums import Currency, Legal, Type, Unit
-
-                entity_data.update(
-                    {
-                        "legal": Legal(attributes.get("legal", "SA").upper()),
-                        "type": Type.COMPANY,
-                        "currency": Currency(attributes.get("currency", "EUR").upper()),
-                        "unit": Unit.THOUSANDS,
-                        "source_db": None,
-                        "last_synced_at": None,
-                    }
-                )
-
-                # Convert enums to values for JSON storage
-                entity_dict = entity_data.copy()
-                for key, value in entity_dict.items():
-                    if hasattr(value, "value"):
-                        entity_dict[key] = value.value
-            except ImportError:
-                # Fallback to string values if enums not available
-                entity_data.update(
-                    {
-                        "entity": attributes.get("entity", "SA").upper(),
-                        "type": "COMPANY",
-                        "currency": attributes.get("currency", "EUR").upper(),
-                        "unit": "THOUSANDS",
-                        "source_db": None,
-                        "last_synced_at": None,
-                    }
-                )
-                entity_dict = entity_data
-        else:
-            entity_dict = entity_data
-
-        # 4. Validate using the entity model (Pydantic validation)
+        # Validate using the entity model (Pydantic validation applies defaults automatically)
         try:
             if entity_model is None:
                 raise ValueError("entity_model is required for validation")
-            entity_instance = entity_model(**entity_dict)
+            entity_instance = entity_model(**entity_data)
             validated_data = entity_instance.model_dump()
         except Exception as e:
             return create_error_result([f"Validation failed: {str(e)}"])
 
-        # 5. Use generic storage - works for ANY entity
+        # Use generic storage - works for ANY entity
         if context is None:
             from ..models.context import Context
             context = Context(level=0)  # Default system context
@@ -94,7 +57,7 @@ async def create_handler(
             error_msg = storage_result.get("error", f"Failed to create {entity_type}") if storage_result else f"Failed to create {entity_type}"
             return create_error_result([error_msg])
 
-        # 6. Handle context switch for company creation
+        # Handle context switch for company creation (navigation behavior)
         if entity_type == "company":
             from ..models.context import Context as NewContext
 
@@ -111,7 +74,7 @@ async def create_handler(
             result.set_context_switch(new_context)
             return result
 
-        # 7. Return generic success result
+        # Return generic success result
         return create_success_result(
             operation="created",
             entity_name=f"{entity_type} {validated_data['name']}",
@@ -131,7 +94,6 @@ async def add_handler(
     """
     from ..handlers.utils import get_company_name_from_context
     from ..storage.database import (
-        create_default_entity_data,
         entity_exists,
         load_entity,
         save_entity,
@@ -154,9 +116,22 @@ async def add_handler(
         # Determine entity type from entity_model
         entity_type = entity_model.__name__.replace("Entity", "").lower()
 
-        # Create entity if it doesn't exist
+        # Create entity if it doesn't exist using Pydantic model defaults
         if not entity_exists(entity_type, company_name, context):
-            default_data = create_default_entity_data(entity_type)
+            # Create default entity data using the entity model's Pydantic defaults
+            default_entity_data = {
+                "name": f"default_{entity_type}",
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+            }
+            
+            # Validate and apply model defaults
+            try:
+                entity_instance = entity_model(**default_entity_data)
+                default_data = entity_instance.model_dump()
+            except Exception as e:
+                return create_error_result([f"Failed to create default entity: {str(e)}"])
+                
             save_entity(entity_type, default_data, company_name, context)
 
         # Load current entity data

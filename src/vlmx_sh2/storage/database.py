@@ -548,59 +548,6 @@ def entity_exists(entity_name: str, company_name: str, context: Context) -> bool
     entity_file = company_folder / json_filename
     return entity_file.exists()
 
-def create_default_entity_data(entity_name: str) -> Dict[str, Any]:
-    """
-    Create default entity data structure for a given entity type.
-    
-    Args:
-        entity_name: The entity word ID
-        
-    Returns:
-        Default entity data dictionary
-    """
-    from datetime import datetime
-    
-    # Base structure with timestamps
-    base_data = {
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat()
-    }
-    
-    # Entity-specific defaults
-    if entity_name in ["organization", "company", "org"]:
-        return {
-            **base_data,
-            "id": None,
-            "name": None,
-            "entity": None,
-            "type": None,
-            "currency": None,
-            "unit": None,
-            "closing": 12,
-            "incorporation": None,
-            "source_db": None,
-            "last_synced_at": None
-        }
-    elif entity_name in ["brand", "branding", "identity"]:
-        return {
-            **base_data,
-            "id": None,
-            "org_id": 1,
-            "vision": None,
-            "mission": None,
-            "personality": None,
-            "promise": None,
-            "brand": None
-        }
-    elif entity_name in ["metadata", "meta", "info"]:
-        return []  # Metadata is stored as an array of key-value objects
-    else:
-        # Generic entity structure
-        return {
-            **base_data,
-            "id": None,
-            "name": None
-        }
 
 
 # ==================== GENERIC ENTITY OPERATIONS ====================

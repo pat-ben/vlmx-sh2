@@ -197,29 +197,3 @@ def format_entity_data_for_display(entity_data: Dict[str, Any],
     
     return "\n".join(lines) if lines else "No fields to display"
 
-def create_updated_entity_data(current_data: Dict[str, Any], 
-                             updates: Dict[str, str]) -> Dict[str, Any]:
-    """
-    Create updated entity data with new attribute values.
-    
-    Args:
-        current_data: Current entity data
-        updates: Dictionary of attribute updates
-        
-    Returns:
-        Updated entity data dictionary
-    """
-    from datetime import datetime
-    
-    # Create a copy of current data
-    updated_data = current_data.copy()
-    
-    # Apply updates
-    for attr_name, attr_value in updates.items():
-        updated_data[attr_name] = attr_value
-    
-    # Update timestamp if it exists
-    if 'updated_at' in updated_data:
-        updated_data['updated_at'] = datetime.now().isoformat()
-    
-    return updated_data
