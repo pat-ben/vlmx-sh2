@@ -11,9 +11,16 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Optional
+from enum import IntEnum
 
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.config import ConfigDict
+
+
+class ContextLevel(IntEnum):
+    SYS = 0  # system / root level
+    ORG = 1  # organization level (most of the time company)
+    APP = 2  # application level (could be plugin)
 
 
 
@@ -28,7 +35,7 @@ class Context(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # Context level tracking
-    level: int = 0  # 0=System (sys), 1=Organization (org), 2=Application (app)
+    level: int = ContextLevel.SYS  # SYS=System, ORG=Organization, APP=Application
 
     # System level (level 0)
     sys_path: Optional[Path] = None
@@ -48,56 +55,62 @@ class Context(BaseModel):
     @field_validator("level")
     @classmethod
     def _validate_level_range(cls, v: int) -> int:
-        if v not in (0, 1, 2):
-            raise ValueError("level must be 0, 1, or 2")
+        if v not in (ContextLevel.SYS, ContextLevel.ORG, ContextLevel.APP):
+            raise ValueError("level must be SYS (0), ORG (1), or APP (2)")
         return v
 
     @model_validator(mode="after")
     def _validate_level_consistency(self) -> "Context":
-        # Level 0 (sys): no organization or application fields
-        if self.level == 0:
+        # SYS level: no organization or application fields
+        if self.level == ContextLevel.SYS:
             if any((self.org_id, self.org_name, self.app_id)):
                 raise ValueError(
-                    "At level 0 (sys), org_id, org_name, and app_id must all be None"
+                    "At SYS level, org_id, org_name, and app_id must all be None"
                 )
-        # Level 1 (org): must have organization, no application
-        elif self.level == 1:
+        # ORG level: must have organization, no application
+        elif self.level == ContextLevel.ORG:
             if self.org_id is None or self.org_name is None:
                 raise ValueError(
-                    "At level 1 (org), org_id and org_name must not be None"
+                    "At ORG level, org_id and org_name must not be None"
                 )
             if self.app_id is None is False and self.app_id is not None:
                 # Defensive, but effectively: app_id must be None
-                raise ValueError("At level 1 (org), app_id must be None")
-        # Level 2 (app): must have organization and application
-        elif self.level == 2:
+                raise ValueError("At ORG level, app_id must be None")
+        # APP level: must have organization and application
+        elif self.level == ContextLevel.APP:
             if self.org_id is None or self.org_name is None or self.app_id is None:
                 raise ValueError(
-                    "At level 2 (app), org_id, org_name, and app_id must not be None"
+                    "At APP level, org_id, org_name, and app_id must not be None"
                 )
         return self
 
     # Convenience properties for new terminology
     @property
     def is_sys(self) -> bool:
-        """True if at system level (0)"""
-        return self.level == 0
+        """True if at system level"""
+        return self.level == ContextLevel.SYS
     
     @property
     def is_org(self) -> bool:
-        """True if at organization level (1)"""
-        return self.level == 1
+        """True if at organization level"""
+        return self.level == ContextLevel.ORG
     
     @property
     def is_app(self) -> bool:
-        """True if at application level (2)"""
-        return self.level == 2
+        """True if at application level"""
+        return self.level == ContextLevel.APP
 
     @property
     def level_name(self) -> str:
         """Human-readable level name"""
-        level_names = {0: "sys", 1: "org", 2: "app"}
-        return level_names.get(self.level, f"unknown({self.level})")
+        if self.level == ContextLevel.SYS:
+            return "sys"
+        elif self.level == ContextLevel.ORG:
+            return "org"
+        elif self.level == ContextLevel.APP:
+            return "app"
+        else:
+            return f"unknown({self.level})"
 
 
     # Helper methods

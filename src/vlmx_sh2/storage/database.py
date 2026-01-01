@@ -12,7 +12,7 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..models.context import Context
+from ..models.context import Context, ContextLevel
 from ..models.schema.enums import Legal, Currency, Unit, Type
 from .mappings import get_entity_json_filename
 
@@ -32,7 +32,7 @@ def get_data_directory_path(context: Context) -> Path:
     Returns:
         Path to the data directory
     """
-    if context.level == 0:  # SYS level
+    if context.level == ContextLevel.SYS:
         # Use current directory or a default system path
         base_path = context.sys_path or Path.cwd()
         return base_path / "data"
@@ -570,7 +570,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             return create_company(data, context)
         else:
             # For other entities, we need a company context
-            if context.level == 0 or not context.org_name:
+            if context.level == ContextLevel.SYS or not context.org_name:
                 return {
                     "success": False,
                     "error": "Must be in organization context to create non-company entities"

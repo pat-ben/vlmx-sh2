@@ -7,7 +7,7 @@ with any entity-attribute combination dynamically.
 """
 
 from typing import Dict, Any, Optional
-from ..models.context import Context
+from ..models.context import Context, ContextLevel
 from ..storage.mappings import DEFAULT_ENTITY
 from ..models.parser import ParseResult
 from ..dsl.words import get_word
@@ -61,7 +61,7 @@ def get_company_name_from_context(context: Context) -> Optional[str]:
     Returns:
         Company name if in ORG context, None if in SYS context
     """
-    if context.level >= 1 and context.org_name:
+    if context.level >= ContextLevel.ORG and context.org_name:
         return context.org_name
     return None
 

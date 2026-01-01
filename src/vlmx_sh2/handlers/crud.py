@@ -7,6 +7,7 @@ unified behavior across all entity-field combinations.
 """
 
 from datetime import datetime
+from ..models.context import ContextLevel
 
 
 async def create_handler(
@@ -47,7 +48,7 @@ async def create_handler(
         # Use generic storage - works for ANY entity
         if context is None:
             from ..models.context import Context
-            context = Context(level=0)  # Default system context
+            context = Context(level=ContextLevel.SYS)  # Default system context
             
         storage_result = create_entity(
             entity_type=entity_type, data=validated_data, context=context
@@ -69,7 +70,7 @@ async def create_handler(
 
             # Create new context at organization level
             new_context = NewContext(
-                level=1, org_id=1, org_name=validated_data["name"], org_db_path=None
+                level=ContextLevel.ORG, org_id=1, org_name=validated_data["name"], org_db_path=None
             )
             result.set_context_switch(new_context)
             return result

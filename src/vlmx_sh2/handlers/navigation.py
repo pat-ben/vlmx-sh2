@@ -5,7 +5,9 @@ Handles context navigation (cd command) between different levels
 of the application (SYS, ORG, APP).
 """
 
-from typing import Dict, Any, Optional
+# Navigation command aliases
+ROOT_NAVIGATION_ALIASES = {"~", "root", None}
+
 
 async def navigate_handler(entity_model, entity_value, attributes, context, attribute_words=None):
     """
@@ -27,14 +29,14 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
         Result dictionary with navigation outcome
     """
     from ..ui.results import create_success_result, create_error_result
-    from ..models.context import Context as NewContext
+    from ..models.context import Context as NewContext, ContextLevel
     from ..storage.database import company_exists
     
     try:
         # Navigate to root/system level
-        if entity_value in ["~", "root", None]:
+        if entity_value in ROOT_NAVIGATION_ALIASES:
             new_context = NewContext(
-                level=0,
+                level=ContextLevel.SYS,
                 org_id=None,
                 org_name=None,
                 org_db_path=None
@@ -43,20 +45,25 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
             result = create_success_result(
                 operation="navigated",
                 entity_name="root",
-                attributes={"level": "SYS", "context": "System Level"}
+                attributes={"level": new_context.level_name.upper(), "context": "System Level"}
             )
             result.set_context_switch(new_context)
             return result
             
-        # Navigate to specific company/organization
+        # Navigate to specific organization
         elif entity_value:
-            # Check if the company exists
+            # Determine organization type from entity_model if available
+            org_type = "organization"
+            if entity_model:
+                org_type = entity_model.__name__.replace("Entity", "").lower()
+            
+            # Check if the organization exists (currently only company checking is implemented)
             if not company_exists(entity_value, context):
-                return create_error_result([f"Company '{entity_value}' does not exist"])
+                return create_error_result([f"Organization '{entity_value}' does not exist"])
             
             # Create organization level context
             new_context = NewContext(
-                level=1,
+                level=ContextLevel.ORG,
                 org_id=1,
                 org_name=entity_value,
                 org_db_path=None
@@ -64,16 +71,21 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
             
             result = create_success_result(
                 operation="navigated",
-                entity_name=f"company {entity_value}",
-                attributes={"level": "ORG", "company": entity_value}
+                entity_name=f"{org_type} {entity_value}",
+                attributes={"level": new_context.level_name.upper(), "organization": entity_value, "type": org_type}
             )
             result.set_context_switch(new_context)
             return result
             
         # Show current location if no target specified
         else:
-            level_name = "SYS" if context.level == 0 else "ORG"
-            location = "Root" if context.level == 0 else f"Company: {context.org_name}"
+            level_name = context.level_name.upper()
+            if context.level == ContextLevel.SYS:
+                location = "Root"
+            elif context.level == ContextLevel.ORG:
+                location = f"Organization: {context.org_name}"
+            else:
+                location = f"Application: {context.app_id}"
             
             return create_success_result(
                 operation="current_location",
