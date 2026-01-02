@@ -64,8 +64,8 @@ WORDS: List[Word] = [
     
     ActionWord(
         id="cd",
-        context=ContextLevel.SYS,
-        description="Navigate between contexts (SYS, ORG levels)",
+        context=ContextLevel.SYS,  # Available from SYS level and up (all levels)
+        description="Navigate between contexts (SYS, ORG, APP levels)",
         aliases=[],
         handler=navigate_handler,
         action_category=ActionCategory.NAVIGATION,

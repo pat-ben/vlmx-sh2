@@ -421,6 +421,55 @@ def company_exists(company_name: str, context: Context) -> bool:
     return company_folder_exists(company_name, context)
 
 
+def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
+    """
+    Find a company using intelligent matching with tolerance for:
+    1. Case insensitivity 
+    2. Partial matching (first word)
+    3. Exact matching
+    
+    Args:
+        search_name: Name to search for (can be partial or full)
+        context: The execution context
+        
+    Returns:
+        The actual company name if found, None otherwise
+    """
+    data_dir = get_data_directory_path(context)
+    if not data_dir.exists():
+        return None
+    
+    search_name_lower = search_name.lower().strip()
+    
+    # Get all company folders
+    company_folders = []
+    try:
+        for item in data_dir.iterdir():
+            if item.is_dir():
+                company_folders.append(item.name)
+    except (OSError, PermissionError):
+        return None
+    
+    if not company_folders:
+        return None
+    
+    # 1. Try exact match (case insensitive)
+    for company_name in company_folders:
+        if company_name.lower() == search_name_lower:
+            return company_name
+    
+    # 2. Try partial match on first word (case insensitive)
+    search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
+    if search_first_word:
+        for company_name in company_folders:
+            company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
+            if company_first_word == search_first_word:
+                return company_name
+    
+    # 3. No match found
+    return None
+
+
 # ==================== STORAGE INFO ====================
 
 def get_storage_info(context: Context) -> Dict[str, Any]:
