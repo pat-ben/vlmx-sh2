@@ -117,7 +117,7 @@ class ParseResult(BaseModel):
     @property
     def entity_values(self):
         """Get entity values from command (legacy format for compatibility)."""
-        if self.command and self.command.entity_name:
+        if self.command and self.command.entity and self.command.entity_name:
             return {f'{self.command.entity.id}_name': self.command.entity_name}
         return {}
     

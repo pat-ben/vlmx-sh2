@@ -24,7 +24,7 @@ def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
         Entity word ID (e.g., "brand", "company", "metadata")
     """
     # Use command object if available (single source of truth)
-    if parse_result.command:
+    if parse_result.command and parse_result.command.entity:
         return parse_result.command.entity.id
     
     # Fallback: look in recognized words

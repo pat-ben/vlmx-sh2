@@ -42,8 +42,9 @@ class ParsedCommand(BaseModel):
     action: ActionWord = Field(
         description="The action to perform (create, update, show, delete)"
     )
-    entity: EntityWord = Field(
-        description="The entity type to operate on (company, fund, metadata)"
+    entity: Optional[EntityWord] = Field(
+        default=None,
+        description="The entity type to operate on (company, fund, metadata). None for navigation commands."
     )
     
     # Command data
@@ -71,7 +72,7 @@ class ParsedCommand(BaseModel):
     @property
     def entity_model(self):
         """Get the entity model class from the entity word."""
-        return self.entity.entity_model
+        return self.entity.entity_model if self.entity else None
     
     @property
     def action_handler(self):

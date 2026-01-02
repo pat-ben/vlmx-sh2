@@ -52,10 +52,23 @@ class CommandBuilder:
             >>> command.entity_name
             'ACME'
         """
+        # Extract action first to check if entity is required
+        action = CommandBuilder._extract_action(tokens)
+        
+        # Only extract entity and entity_name if the action requires it
+        entity = None
+        entity_name = None
+        if action.requires_entity:
+            entity = CommandBuilder._extract_entity(tokens)
+            entity_name = CommandBuilder._extract_entity_name(tokens)
+        else:
+            # For commands that don't require entity (like cd), extract entity_name from UNKNOWN tokens
+            entity_name = CommandBuilder._extract_navigation_target(tokens)
+        
         return ParsedCommand(
-            action=CommandBuilder._extract_action(tokens),
-            entity=CommandBuilder._extract_entity(tokens),
-            entity_name=CommandBuilder._extract_entity_name(tokens),
+            action=action,
+            entity=entity,
+            entity_name=entity_name,
             attributes=CommandBuilder._extract_fields(tokens),
             raw_input=raw_input,
             tokens=tokens
@@ -139,6 +152,41 @@ class CommandBuilder:
         for token in tokens:
             if token.is_entity_value:
                 return token.text
+        
+        return None
+    
+    @staticmethod
+    def _extract_navigation_target(tokens: List[RecognizedToken]) -> Optional[str]:
+        """
+        Extract navigation target from UNKNOWN tokens for commands like cd.
+        
+        For commands that don't require entity words (like cd), the target
+        (company name, .., ~, root) will be in UNKNOWN tokens.
+        
+        Args:
+            tokens: List of recognized tokens
+            
+        Returns:
+            Navigation target if found, None otherwise
+            
+        Examples:
+            >>> # From: cd ..
+            >>> _extract_navigation_target(tokens)
+            '..'
+            >>> # From: cd "ACME Corp"
+            >>> _extract_navigation_target(tokens)
+            'ACME Corp'
+        """
+        # Look for UNKNOWN tokens (navigation targets)
+        unknown_tokens = []
+        for token in tokens:
+            if hasattr(token, 'token_type') and hasattr(token.token_type, 'name'):
+                if token.token_type.name == "UNKNOWN":
+                    unknown_tokens.append(token.text)
+        
+        if unknown_tokens:
+            # Join multiple unknown tokens with spaces (for unquoted multi-word targets)
+            return " ".join(unknown_tokens)
         
         return None
     
