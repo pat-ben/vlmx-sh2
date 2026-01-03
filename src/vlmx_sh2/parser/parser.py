@@ -1,5 +1,5 @@
 """
-Main parser for VLMX DSL commands.
+Main parser for VLMX commands.
 
 Orchestrates the parsing process by coordinating tokenization, word recognition,
 value extraction, and command validation. Provides the primary interface for
@@ -16,7 +16,7 @@ from .utils import expand_macros
 
 
 class VLMXParser:
-    """Main parser for VLMX DSL commands."""
+    """Main parser for VLMX commands."""
     
     def __init__(self):
         """Initialize the parser."""
@@ -168,9 +168,9 @@ class VLMXParser:
             return await parse_result.action_handler(  # Property access - works
                 entity_model=parse_result.entity_model,  # Property access - works
                 entity_value=entity_value,
-                attributes=parse_result.attributes,  # Use new property name
+                fields=parse_result.attributes,  # Use correct parameter name
                 context=context,
-                attribute_words=field_words_to_process,
+                field_words=field_words_to_process,
                 parsed_command=parse_result.command  # Pass parsed command for handlers that need it
             )
         except Exception as e:

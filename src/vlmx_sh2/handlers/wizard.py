@@ -5,7 +5,7 @@ Provides form wizard functionality for interactive data collection.
 Returns FormWizardRequest models for UI interpretation.
 """
 
-from typing import Optional, List, Any
+from typing import Optional, List
 from ..models.results import FormWizardRequest, ErrorResult
 from ..models.context import Context
 from ..handlers.utils import get_company_name_from_context

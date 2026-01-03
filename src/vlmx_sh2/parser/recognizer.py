@@ -130,11 +130,11 @@ class WordRecognizer:
         recognized_tokens = []
         
         for i, token in enumerate(tokens):
-            # Step 1: Try to recognize as a word
-            word, confidence, suggestions = self.recognize_word(token.text)
+            # Step 1: Check if this token should be a VALUE (higher priority than word matching)
+            value_context = self._determine_value_context(token, recognized_tokens, i)
             
-            if word:
-                # It's a WORD!
+            if value_context:
+                # It's a VALUE!
                 recognized_token = RecognizedToken(
                     # Copy Token fields
                     text=token.text,
@@ -143,18 +143,18 @@ class WordRecognizer:
                     operator_after=token.operator_after,
                     
                     # Set recognition fields
-                    token_type=TokenType.WORD,
-                    word=word,
-                    value_context=None,
-                    confidence=confidence,
+                    token_type=TokenType.VALUE,
+                    word=None,
+                    value_context=value_context,
+                    confidence=50.0,  # Medium confidence for values
                     suggestions=[]
                 )
             else:
-                # Step 2: Not a word - is it a VALUE?
-                value_context = self._determine_value_context(token, recognized_tokens, i)
+                # Step 2: Try to recognize as a word
+                word, confidence, suggestions = self.recognize_word(token.text)
                 
-                if value_context:
-                    # It's a VALUE!
+                if word:
+                    # It's a WORD!
                     recognized_token = RecognizedToken(
                         # Copy Token fields
                         text=token.text,
@@ -163,10 +163,10 @@ class WordRecognizer:
                         operator_after=token.operator_after,
                         
                         # Set recognition fields
-                        token_type=TokenType.VALUE,
-                        word=None,
-                        value_context=value_context,
-                        confidence=50.0,  # Medium confidence for values
+                        token_type=TokenType.WORD,
+                        word=word,
+                        value_context=None,
+                        confidence=confidence,
                         suggestions=[]
                     )
                 else:

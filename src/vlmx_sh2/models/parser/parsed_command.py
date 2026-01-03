@@ -9,7 +9,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from .recognized_token import RecognizedToken
-from ..words import ActionWord, EntityWord, AttributeWord
+from ..words import ActionWord, EntityWord, FieldWord
 
 
 class ParsedCommand(BaseModel):

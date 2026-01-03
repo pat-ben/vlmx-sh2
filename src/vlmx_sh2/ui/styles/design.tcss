@@ -31,3 +31,44 @@ CommandBlock > Input {
     margin-bottom: 1;
     width: 100%;
 }
+
+/* Form Wizard Styling */
+FormWizardScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+FormWizard {
+    width: 60%;
+    height: auto;
+    background: $surface;
+    border: solid $primary;
+    border-title-color: $primary;
+    border-title-style: bold;
+    padding: 2;
+}
+
+#form-container {
+    height: auto;
+    width: 100%;
+}
+
+#form-container Input {
+    margin-bottom: 1;
+    width: 100%;
+}
+
+#form-container Label {
+    margin-bottom: 0;
+    color: $text;
+}
+
+#button-container {
+    layout: horizontal;
+    height: 3;
+    margin-top: 1;
+}
+
+#button-container Button {
+    margin-right: 1;
+}

@@ -10,7 +10,6 @@ from typing import Dict, Any, Optional
 from ..models.context import Context, ContextLevel
 from ..storage.mappings import DEFAULT_ENTITY
 from ..models.parser import ParseResult
-from ..dsl.words import get_word
 from ..models.words import EntityWord, FieldWord
 
 def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
@@ -84,60 +83,6 @@ def extract_target_entity_name_from_parse_result(parse_result: ParseResult) -> O
     
     return None
 
-def validate_field_for_entity(field_id: str, entity_id: str) -> bool:
-    """
-    Validate if a field exists on an entity using the Words Registry.
-    
-    Args:
-        field_id: ID of the field word
-        entity_id: ID of the entity word
-        
-    Returns:
-        True if the field exists on the entity, False otherwise
-    """
-    
-    # Get the field word
-    field_word = get_word(field_id)
-    if not field_word or not isinstance(field_word, FieldWord):
-        return False
-    
-    # Get the entity word
-    entity_word = get_word(entity_id)
-    if not entity_word or not isinstance(entity_word, EntityWord):
-        return False
-    
-    # Check if the entity model is in the field's entity_models list
-    return entity_word.entity_model in field_word.entity_models
-
-def validate_entity_field_combination(entity_word_id: str, field_name: str) -> bool:
-    """
-    Validate if a field can be used with an entity.
-    
-    Uses the Words Registry to check if the field is valid for the entity.
-    
-    Args:
-        entity_word_id: The entity word ID
-        field_name: The field name
-        
-    Returns:
-        True if the combination is valid, False otherwise
-    """
-    return validate_field_for_entity(field_name, entity_word_id)
-
-def get_entity_model_from_entity_id(entity_id: str):
-    """
-    Get the entity model class from entity ID.
-    
-    Args:
-        entity_id: The entity word ID
-        
-    Returns:
-        Entity model class or None if not found
-    """
-    entity_word = get_word(entity_id)
-    if entity_word and isinstance(entity_word, EntityWord):
-        return entity_word.entity_model
-    return None
 
 def extract_specific_fields_from_tokens(parse_result: ParseResult) -> list[str]:
     """

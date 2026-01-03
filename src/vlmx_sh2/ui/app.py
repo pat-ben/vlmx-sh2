@@ -11,6 +11,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Label, Input
 from textual.containers import VerticalGroup, Container
 from textual.css.query import NoMatches
+from textual.screen import ModalScreen
 
 try:
     from ..parser import VLMXParser
@@ -232,14 +233,20 @@ class CommandBlock(VerticalGroup):
         self._create_new_prompt()
 
     async def _handle_form_wizard(self, wizard_request: FormWizardRequest, event):
-        """Handle form wizard request (future implementation)."""
-        # For now, show a placeholder message
-        self.show_output(f"Form wizard requested for {wizard_request.entity_id}")
-        self.show_output(f"Fields: {', '.join(wizard_request.fields)}")
-        self.show_output("Form wizard not yet implemented", is_error=True)
+        """Handle form wizard request by showing an interactive form."""
+        from .widgets.form_wizard import FormWizard
         
-        # Create new prompt since wizard is not implemented
-        self._create_new_prompt()
+        try:
+            # Create the form wizard widget
+            form_wizard = FormWizard(wizard_request)
+            
+            # Create the modal screen and push it, waiting for result
+            screen = FormWizardScreen(form_wizard, self, wizard_request)
+            await self.app.push_screen(screen)
+            
+        except Exception as e:
+            self.show_output(f"Error showing form wizard: {str(e)}", is_error=True)
+            self._create_new_prompt()
 
     async def _handle_query_wizard(self, wizard_request: QueryWizardRequest, event):
         """Handle query wizard request (future implementation)."""
@@ -249,5 +256,73 @@ class CommandBlock(VerticalGroup):
         
         # Create new prompt since wizard is not implemented
         self._create_new_prompt()
+
+    async def _process_wizard_submission(self, wizard_request: FormWizardRequest, fields: dict):
+        """Process form wizard submission by updating entity fields."""
+        try:
+            # Use the add_handler to update the entity with the form data
+            from ..handlers.crud import add_handler
+            from ..dsl.words import get_word
+            
+            # Get the entity model from the wizard request
+            entity_word = get_word(wizard_request.entity_id)
+            if not entity_word:
+                self.show_output(f"Unknown entity type: {wizard_request.entity_id}", is_error=True)
+                return
+            
+            # Call the add_handler to save the form data
+            result = await add_handler(
+                entity_model=entity_word.entity_model,
+                entity_value=wizard_request.entity_name,
+                fields=fields,
+                context=self.context,
+                field_words=list(fields.keys()),
+                parsed_command=None
+            )
+            
+            # Display the result
+            if hasattr(result, 'success') and result.success:
+                self.show_output(f"✅ {result.message}")
+                field_list = ", ".join([f"{k}={v}" for k, v in fields.items()])
+                self.show_output(f"Updated fields: {field_list}")
+            else:
+                error_msg = result.errors[0] if hasattr(result, 'errors') and result.errors else "Unknown error"
+                self.show_output(f"❌ {error_msg}", is_error=True)
+                
+        except Exception as e:
+            self.show_output(f"Error processing form: {str(e)}", is_error=True)
+
+
+class FormWizardScreen(ModalScreen):
+    """Modal screen for displaying form wizards."""
+    
+    def __init__(self, form_wizard, command_block, wizard_request):
+        super().__init__()
+        self.form_wizard = form_wizard
+        self.command_block = command_block
+        self.wizard_request = wizard_request
+
+    def compose(self) -> ComposeResult:
+        """Compose the modal screen with the form wizard."""
+        yield self.form_wizard
+
+    async def on_form_wizard_submit(self, message) -> None:
+        """Handle form submission."""
+        # Process the submitted form data
+        await self.command_block._process_wizard_submission(self.wizard_request, message.data)
+        self.command_block._create_new_prompt()
+        self.dismiss()
+
+    def on_form_wizard_cancel(self, message) -> None:
+        """Handle form cancellation."""
+        self.command_block.show_output("Form wizard cancelled", is_error=True)
+        self.command_block._create_new_prompt()
+        self.dismiss()
+    
+    def key_escape(self) -> None:
+        """Handle escape key to cancel form."""
+        self.command_block.show_output("Form wizard cancelled", is_error=True)
+        self.command_block._create_new_prompt()
+        self.dismiss()
 
 
