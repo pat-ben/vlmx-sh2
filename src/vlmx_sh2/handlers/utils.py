@@ -1,9 +1,9 @@
 """
 Utility functions for generic command handlers.
 
-Provides common functionality for extracting entities, attributes, and context
-information from parse results. Used by generic attribute handlers to work
-with any entity-attribute combination dynamically.
+Provides common functionality for extracting entities, fields, and context
+information from parse results. Used by generic field handlers to work
+with any entity-field combination dynamically.
 """
 
 from typing import Dict, Any, Optional
@@ -11,7 +11,7 @@ from ..models.context import Context, ContextLevel
 from ..storage.mappings import DEFAULT_ENTITY
 from ..models.parser import ParseResult
 from ..dsl.words import get_word
-from ..models.words import EntityWord, AttributeWord
+from ..models.words import EntityWord, fieldWord
 
 def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
     """
@@ -35,19 +35,19 @@ def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
     # Default
     return DEFAULT_ENTITY
 
-def extract_attributes_from_parse_result(parse_result: ParseResult) -> Dict[str, str]:
+def extract_fields_from_parse_result(parse_result: ParseResult) -> Dict[str, str]:
     """
-    Extract all attribute=value pairs from parse result.
+    Extract all field=value pairs from parse result.
     
     Args:
         parse_result: The parsed command result
         
     Returns:
-        Dictionary of attribute names to values
+        Dictionary of field names to values
     """
     # Use command object (single source of truth)
     if parse_result.command:
-        return parse_result.command.attributes.copy()
+        return parse_result.command.fields.copy()
     
     return {}
 
@@ -98,7 +98,7 @@ def validate_field_for_entity(field_id: str, entity_id: str) -> bool:
     
     # Get the field word
     field_word = get_word(field_id)
-    if not field_word or not isinstance(field_word, AttributeWord):
+    if not field_word or not isinstance(field_word, fieldWord):
         return False
     
     # Get the entity word

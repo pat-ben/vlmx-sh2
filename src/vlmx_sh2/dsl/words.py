@@ -9,7 +9,7 @@ foundation for natural language command parsing and validation.
 from typing import List, Dict
 from ..models.words import (
     WordType, ActionCategory, CRUDOperation, ContextLevel,
-    ActionWord, EntityWord, AttributeWord, Word
+    ActionWord, EntityWord, fieldWord, Word
 )
 from ..models.schema.company import (
     CompanyEntity, 
@@ -77,7 +77,7 @@ WORDS: List[Word] = [
     ActionWord(
         id="add",
         context=ContextLevel.ORG,
-        description="Add or set attribute values to entities",
+        description="Add or set field values to entities",
         aliases=["a","set"],
         handler=add_handler,
         action_category=ActionCategory.CRUD,
@@ -87,7 +87,7 @@ WORDS: List[Word] = [
     ActionWord(
         id="update",
         context=ContextLevel.ORG,
-        description="Update existing attribute values for entities",
+        description="Update existing field values for entities",
         aliases=["u","put", "patch"],
         handler=update_handler,
         action_category=ActionCategory.CRUD,
@@ -97,7 +97,7 @@ WORDS: List[Word] = [
     ActionWord(
         id="show",
         context=ContextLevel.ORG,
-        description="Display entity data or specific attributes",
+        description="Display entity data or specific fields",
         aliases=["s","read","get"],
         handler=show_handler,
         action_category=ActionCategory.CRUD,
@@ -159,81 +159,81 @@ WORDS: List[Word] = [
     
     # Common fields across multiple entities
     
-    AttributeWord(
+    fieldWord(
         id="name",
         description="Name or title of the entity",
         entity_models=[CompanyEntity, BrandEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="key",
         description="Key identifier or category",
         entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="value",
         description="Value or description content",
         entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
     # Company-specific fields
-    AttributeWord(
+    fieldWord(
         id="legal",
         description="Legal entity type (SA, LLC, INC, etc.)",   
         entity_models=[CompanyEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="type",
         description="Organization type (company, fund, foundation)",
         entity_models=[CompanyEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="currency",
         description="Currency used for financial data (EUR, USD, GBP, etc.)",
         entity_models=[CompanyEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="unit",
         description="Unit for financial data (THOUSANDS, MILLIONS, etc.)",
         entity_models=[CompanyEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="closing",
         description="Fiscal year end month (1-12)",
         entity_models=[CompanyEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="incorporation",
         description="Date of incorporation",
         entity_models=[CompanyEntity]
     ),
     
     # Brand-specific fields
-    AttributeWord(
+    fieldWord(
         id="vision",
         description="Company vision statement",
         entity_models=[BrandEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="mission",
         description="Company mission statement",
         entity_models=[BrandEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="personality",
         description="Brand personality description",
         entity_models=[BrandEntity]
     ),
     
-    AttributeWord(
+    fieldWord(
         id="promise",
         description="Brand promise to customers",
         entity_models=[BrandEntity]

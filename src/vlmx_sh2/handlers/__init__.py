@@ -1,7 +1,7 @@
 """
 Command execution handlers for VLMX DSL.
 
-Provides truly dynamic handlers that work with any entity-attribute
+Provides truly dynamic handlers that work with any entity-field
 combination without hardcoded entity-specific logic.
 """
 

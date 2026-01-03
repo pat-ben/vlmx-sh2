@@ -85,7 +85,7 @@ class EntityWord(BaseWord):
 
 # ==================== FIELD WORD MODEL ====================
 
-class AttributeWord(BaseWord):
+class fieldWord(BaseWord):
     """
     Field word - represents entity fields like name, currency, revenue.
     
@@ -100,4 +100,4 @@ class AttributeWord(BaseWord):
 
 # ==================== UNION TYPE ====================
 
-Word = ActionWord | EntityWord | AttributeWord
+Word = ActionWord | EntityWord | fieldWord

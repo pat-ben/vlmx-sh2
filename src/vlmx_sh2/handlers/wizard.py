@@ -10,13 +10,13 @@ from ..models.results import FormWizardRequest, ErrorResult
 
 
 async def fill_handler(
-    entity_model=None, entity_value=None, attributes=None, context=None, 
-    attribute_words=None, parsed_command=None
+    entity_model=None, entity_value=None, fields=None, context=None, 
+    field_words=None, parsed_command=None
 ):
     """
     Handler for 'fill' command - requests a form wizard for entity data collection.
     
-    Extracts fields from parsed_command.attributes (if provided) OR from 
+    Extracts fields from parsed_command.fields (if provided) OR from 
     entity_model.model_fields (excluding system fields).
     
     Returns FormWizardRequest for UI to handle.
@@ -33,12 +33,12 @@ async def fill_handler(
         entity_name = entity_value or entity_type
         
         # Extract fields to fill
-        if parsed_command and hasattr(parsed_command, 'attributes') and parsed_command.attributes:
-            # Use specific fields from command attributes
-            fields = list(parsed_command.attributes.keys())
-        elif attribute_words:
-            # Use specific fields from attribute words  
-            fields = attribute_words
+        if parsed_command and hasattr(parsed_command, 'fields') and parsed_command.fields:
+            # Use specific fields from command fields
+            fields = list(parsed_command.fields.keys())
+        elif field_words:
+            # Use specific fields from field words  
+            fields = field_words
         else:
             # Use all entity model fields except system fields
             system_fields = {
@@ -56,8 +56,8 @@ async def fill_handler(
                 suggestions=[f"Check {entity_type} entity model has fillable fields"]
             )
         
-        # Get pre-filled values from attributes if provided
-        pre_filled_values = attributes or {}
+        # Get pre-filled values from fields if provided
+        pre_filled_values = fields or {}
         
         # Create wizard request
         title = f"Fill {entity_type.title()} Information"

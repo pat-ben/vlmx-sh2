@@ -8,7 +8,7 @@ VLMX-SH2 is a domain-specific language (DSL) shell that provides a conversationa
 
 **Key Features:**
 - Natural language command parsing with fuzzy matching
-- Dynamic command system that works with any entity-attribute combination
+- Dynamic command system that works with any entity-field combination
 - Flexible syntax supporting key=value and simplified formats
 - Entity-relationship modeling with automatic validation
 - Contextual session management (system, organization, application levels)
@@ -119,9 +119,9 @@ EntityWord(
 )
 ```
 
-**AttributeWord**: Entity properties
+**fieldWord**: Entity properties
 ```python
-AttributeWord(
+fieldWord(
     id="currency", 
     description="Operating currency",
     entity_models=[OrganizationEntity]  # Can belong to multiple entities
@@ -156,11 +156,11 @@ async def create_company_handler(parse_result, context):
 ```
 
 #### Dynamic Commands
-Flexible commands that work with any valid entity-attribute combination:
+Flexible commands that work with any valid entity-field combination:
 ```python
 @register_command(
     command_id="add_dynamic",
-    description="Add/set attribute values to any entity",
+    description="Add/set field values to any entity",
     required_words={"add"},                   # Only action word required
     optional_words=set(),                     # Empty for dynamic commands
     context=ContextLevel.ORG,
@@ -195,7 +195,7 @@ The parser converts user input into structured commands through multiple stages:
 
 #### Value Extraction
 - **Entity values**: Company names, IDs (ACME, ACME-CORP)
-- **Attribute values**: Properties and settings (SA, EUR, THOUSANDS)
+- **field values**: Properties and settings (SA, EUR, THOUSANDS)
 - **Key=value pairs**: Modern syntax (entity=SA currency=EUR)
 
 #### Command Matching
@@ -263,23 +263,23 @@ update company ACME entity=LLC
 ```
 
 #### Dynamic Commands
-For flexible commands that work with any entity-attribute combination:
+For flexible commands that work with any entity-field combination:
 
 1. **Create the dynamic command**:
 ```python
 @register_command(
     command_id="process_dynamic",
-    description="Process any entity with attributes",
+    description="Process any entity with fields",
     required_words={"process"},
     optional_words=set(),
     is_dynamic=True,
     context=ContextLevel.ORG
 )
 async def process_dynamic_handler(parse_result, context):
-    # Works with any valid entity-attribute combination from word registry
+    # Works with any valid entity-field combination from word registry
 ```
 
-2. **Test with any entity-attribute combination**:
+2. **Test with any entity-field combination**:
 ```bash
 process brand vision=New_Vision
 process metadata category=Technology
@@ -311,23 +311,23 @@ EntityWord(
 The new dynamic command system provides powerful flexibility:
 
 ```bash
-# Dynamic entity operations - works with any entity-attribute combination
+# Dynamic entity operations - works with any entity-field combination
 add brand vision=This_is_our_vision
 add metadata category=Technology sector=SaaS
 add organization incorporation=Delaware
 add offering name=Premium_Service price=99
 
-# Update any existing attributes
+# Update any existing fields
 update brand mission=Change_the_world
 update organization currency=EUR
 update metadata key=new_value
 
-# Show entity data or specific attributes
+# Show entity data or specific fields
 show brand                    # Shows all brand data
 show organization name currency  # Shows only name and currency
 show metadata                # Shows all metadata
 
-# Delete/clear specific attributes
+# Delete/clear specific fields
 delete brand vision          # Sets vision to null
 delete metadata key         # Removes the key-value pair completely
 
@@ -365,7 +365,7 @@ Extend the word registry by adding new entries to `words.py`:
 WORDS.extend([
     ActionWord(id="analyze", description="Analyze entity data", ...),
     EntityWord(id="report", entity_model=ReportEntity),
-    AttributeWord(id="format", entity_models=[ReportEntity])
+    fieldWord(id="format", entity_models=[ReportEntity])
 ])
 ```
 

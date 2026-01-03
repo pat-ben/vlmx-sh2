@@ -10,7 +10,7 @@ ROOT_NAVIGATION_ALIASES = {"~", "root", None}
 UP_NAVIGATION_ALIASES = {".."}  # Go up one level in context hierarchy
 
 
-async def navigate_handler(entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None):
+async def navigate_handler(entity_model, entity_value, fields, context, field_words=None, parsed_command=None):
     """
     Dynamic navigation handler for context switching.
     
@@ -23,9 +23,9 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
     Args:
         entity_model: Not used for navigation
         entity_value: Navigation target (company name, ~, root, etc.)
-        attributes: Additional navigation parameters
+        fields: Additional navigation parameters
         context: Current execution context
-        attribute_words: Not used for navigation
+        field_words: Not used for navigation
         
     Returns:
         Result dictionary with navigation outcome

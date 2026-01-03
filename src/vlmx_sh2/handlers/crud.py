@@ -12,7 +12,7 @@ from ..models.results import CommandResult, ErrorResult
 
 
 async def create_handler(
-    entity_model=None, entity_value=None, attributes=None, context=None, attribute_words=None, parsed_command=None
+    entity_model=None, entity_value=None, fields=None, context=None, field_words=None, parsed_command=None
 ):
     """
     Truly dynamic create handler - works for ANY entity type.
@@ -24,9 +24,9 @@ async def create_handler(
     entity_type = entity_model.__name__.replace("Entity", "").lower()
 
     try:
-        # Prepare entity data with user-provided attributes
-        if attributes is None:
-            attributes = {}
+        # Prepare entity data with user-provided fields
+        if fields is None:
+            fields = {}
         
         entity_data = {
             "name": entity_value
@@ -34,7 +34,7 @@ async def create_handler(
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
         }
-        entity_data.update(attributes)
+        entity_data.update(fields)
 
         # Validate using the entity model (Pydantic validation applies defaults automatically)
         try:
@@ -75,7 +75,7 @@ async def create_handler(
                 data={
                     "entity_type": entity_type,
                     "entity_name": validated_data['name'],
-                    "attributes": validated_data,
+                    "fields": validated_data,
                     "context_switch": {
                         "level": "ORG",
                         "org_id": 1,
@@ -93,7 +93,7 @@ async def create_handler(
             data={
                 "entity_type": entity_type,
                 "entity_name": validated_data['name'],
-                "attributes": validated_data
+                "fields": validated_data
             }
         )
 
@@ -105,7 +105,7 @@ async def create_handler(
 
 
 async def add_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
+    entity_model, entity_value, fields, context, field_words=None, parsed_command=None
 ):
     """
     Truly dynamic add handler - works for ANY entity type.
@@ -128,7 +128,7 @@ async def add_handler(
                 suggestions=["Navigate to an organization first"]
             )
 
-        if not attributes:
+        if not fields:
             return ErrorResult(
                 errors=["No fields specified. Use format: add entity field=value"],
                 suggestions=["Try: add brand name=value"]
@@ -163,7 +163,7 @@ async def add_handler(
 
         # Create updated data with new fields
         updated_data = current_data.copy()
-        updated_data.update(attributes)
+        updated_data.update(fields)
         updated_data["updated_at"] = datetime.now().isoformat()
 
         # Save the updated entity
@@ -179,7 +179,7 @@ async def add_handler(
             message=f"Added fields to {entity_type}",
             data={
                 "entity_type": entity_type,
-                "added_attributes": attributes
+                "added_fields": fields
             }
         )
 
@@ -191,7 +191,7 @@ async def add_handler(
 
 
 async def update_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
+    entity_model, entity_value, fields, context, field_words=None, parsed_command=None
 ):
     """
     Truly dynamic update handler - works for ANY entity type.
@@ -210,7 +210,7 @@ async def update_handler(
                 suggestions=["Navigate to an organization first"]
             )
 
-        if not attributes:
+        if not fields:
             return ErrorResult(
                 errors=["No fields specified. Use format: update entity field=value"],
                 suggestions=["Try: update brand name=newvalue"]
@@ -236,7 +236,7 @@ async def update_handler(
 
         # Create updated data
         updated_data = current_data.copy()
-        updated_data.update(attributes)
+        updated_data.update(fields)
         updated_data["updated_at"] = datetime.now().isoformat()
 
         # Save the updated entity
@@ -252,7 +252,7 @@ async def update_handler(
             message=f"Updated {entity_type}",
             data={
                 "entity_type": entity_type,
-                "updated_attributes": attributes
+                "updated_fields": fields
             }
         )
 
@@ -264,7 +264,7 @@ async def update_handler(
 
 
 async def show_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
+    entity_model, entity_value, fields, context, field_words=None, parsed_command=None
 ):
     """
     Truly dynamic show handler - works for ANY entity type.
@@ -305,7 +305,7 @@ async def show_handler(
             )
 
         # Format data for display
-        specific_fields = attribute_words if attribute_words else None
+        specific_fields = field_words if field_words else None
         formatted_data = format_entity_data_for_display(
             entity_data, specific_fields
         )
@@ -328,7 +328,7 @@ async def show_handler(
 
 
 async def delete_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
+    entity_model, entity_value, fields, context, field_words=None, parsed_command=None
 ):
     """
     Truly dynamic delete handler - works for ANY entity type.
@@ -425,7 +425,7 @@ async def delete_handler(
                     )
 
             # Check if we have specific fields to delete
-            if not attribute_words:
+            if not field_words:
                 return ErrorResult(
                     errors=["No fields specified to delete. Use format: delete entity field"],
                     suggestions=["Try: delete brand vision"]
@@ -451,9 +451,9 @@ async def delete_handler(
 
             # Remove the specified fields
             updated_data = current_data.copy()
-            removed_attributes = []
+            removed_fields = []
 
-            for attr_name in attribute_words:
+            for attr_name in field_words:
                 if attr_name in updated_data:
                     if entity_type == "metadata":
                         # For metadata, remove the key entirely
@@ -461,11 +461,11 @@ async def delete_handler(
                     else:
                         # For other entities, set to null
                         updated_data[attr_name] = None
-                    removed_attributes.append(attr_name)
+                    removed_fields.append(attr_name)
 
-            if not removed_attributes:
+            if not removed_fields:
                 return ErrorResult(
-                    errors=[f"None of the specified fields exist in {entity_type}: {', '.join(attribute_words)}"],
+                    errors=[f"None of the specified fields exist in {entity_type}: {', '.join(field_words)}"],
                     suggestions=["Check field names or show the entity to see available fields"]
                 )
 
@@ -486,7 +486,7 @@ async def delete_handler(
                 message=f"Deleted fields from {entity_type}",
                 data={
                     "entity_type": entity_type,
-                    "removed_attributes": removed_attributes
+                    "removed_fields": removed_fields
                 }
             )
 
