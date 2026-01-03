@@ -1,3 +1,4 @@
+# File: src/vlmx_sh2/storage/database.py
 """
 Data persistence layer for VLMX DSL.
 
@@ -56,447 +57,6 @@ def get_company_folder_path(company_name: str, context: Context) -> Path:
     """
     data_dir = get_data_directory_path(context)
     return data_dir / company_name.lower()
-
-def parse_incorporation_date(date_string: str) -> Optional[date]:
-    """
-    Parse incorporation date from ISO format (YYYY-MM-DD).
-    
-    Args:
-        date_string: Date string in ISO format
-        
-    Returns:
-        Parsed date object or None if invalid
-    """
-    try:
-        return datetime.strptime(date_string, "%Y-%m-%d").date()
-    except (ValueError, TypeError):
-        return None
-
-
-# ==================== JSON STORAGE OPERATIONS ====================
-
-def load_company_organization(company_name: str, context: Context) -> Optional[Dict[str, Any]]:
-    """
-    Load organization data for a specific company.
-    
-    Args:
-        company_name: Name of the company
-        context: The execution context
-        
-    Returns:
-        Organization dictionary or None if not found
-    """
-    company_folder = get_company_folder_path(company_name, context)
-    org_file = company_folder / "organization.json"
-    
-    if not org_file.exists():
-        return None
-    
-    try:
-        with open(org_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError) as e:
-        print(f"Warning: Could not load organization from {org_file}: {e}")
-        return None
-
-def save_company_files(company_name: str, organization_data: Dict[str, Any], 
-                      metadata_data: Optional[List[Dict[str, Any]]] = None, 
-                      brand_data: Optional[Dict[str, Any]] = None, 
-                      context: Optional[Context] = None) -> None:
-    """
-    Save company files to the folder structure.
-    
-    Args:
-        company_name: Name of the company
-        organization_data: Organization data to save
-        metadata_data: Metadata array (defaults to empty array)
-        brand_data: Brand data (defaults to empty object with null values)
-        context: The execution context
-        
-    Raises:
-        RuntimeError: If files cannot be written
-    """
-    # Ensure we have a valid context
-    if context is None:
-        context = Context(level=ContextLevel.SYS)
-    
-    company_folder = get_company_folder_path(company_name, context)
-    
-    # Create company directory
-    company_folder.mkdir(parents=True, exist_ok=True)
-    
-    # Default values
-    if metadata_data is None:
-        metadata_data = []
-    
-    if brand_data is None:
-        brand_data = {
-            "id": None,
-            "org_id": 1,
-            "vision": None,
-            "mission": None,
-            "personality": None,
-            "promise": None,
-            "brand": None,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
-    
-    try:
-        # Save organization.json
-        org_file = company_folder / "organization.json"
-        with open(org_file, 'w', encoding='utf-8') as f:
-            json.dump(organization_data, f, indent=2, default=str, ensure_ascii=False)
-        
-        # Save metadata.json
-        metadata_file = company_folder / "metadata.json"
-        with open(metadata_file, 'w', encoding='utf-8') as f:
-            json.dump(metadata_data, f, indent=2, ensure_ascii=False)
-        
-        # Save brand.json
-        brand_file = company_folder / "brand.json"
-        with open(brand_file, 'w', encoding='utf-8') as f:
-            json.dump(brand_data, f, indent=2, default=str, ensure_ascii=False)
-            
-    except IOError as e:
-        raise RuntimeError(f"Could not save company files to {company_folder}: {e}")
-
-
-# ==================== COMPANY CRUD OPERATIONS ====================
-
-def company_folder_exists(company_name: str, context: Context) -> bool:
-    """
-    Check if a company folder exists.
-    
-    Args:
-        company_name: Name of the company
-        context: The execution context
-        
-    Returns:
-        True if company folder exists, False otherwise
-    """
-    company_folder = get_company_folder_path(company_name, context)
-    return company_folder.exists() and company_folder.is_dir()
-
-
-def create_company(company_data: Dict[str, Any], context: Context) -> Dict[str, Any]:
-    """
-    Create a new company with folder structure.
-    
-    Creates a folder for the company with three JSON files:
-    - organization.json: Company data matching OrganizationEntity schema
-    - metadata.json: Empty array for future metadata
-    - brand.json: Empty BrandEntity with null values
-    
-    Args:
-        company_data: Company data dictionary
-        context: The execution context
-        
-    Returns:
-        Result dictionary with success status and details
-    """
-    try:
-        company_name = company_data.get('name')
-        if not company_name:
-            return {
-                "success": False,
-                "error": "Company name is required"
-            }
-        
-        # Check if company already exists
-        if company_folder_exists(company_name, context):
-            return {
-                "success": False,
-                "error": f"Company '{company_name}' already exists"
-            }
-        
-        # Parse incorporation date if provided
-        incorporation = None
-        if 'incorporation' in company_data and company_data['incorporation']:
-            incorporation = parse_incorporation_date(company_data['incorporation'])
-            if incorporation:
-                company_data['incorporation'] = incorporation.isoformat()
-        
-        # Create organization data matching OrganizationEntity schema
-        organization_data = {
-            "id": None,  # Will be set by database
-            "name": company_data.get('name'),
-            "entity": company_data.get('entity', 'SA'),  # Default to SA
-            "type": company_data.get('type', 'company'),  # Default to company
-            "currency": company_data.get('currency', 'EUR'),  # Default to EUR
-            "unit": company_data.get('unit', 'THOUSANDS'),  # Default to THOUSANDS
-            "closing": int(company_data.get('closing', 12)),  # Default to 12
-            "incorporation": company_data.get('incorporation'),
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-            "source_db": None,
-            "last_synced_at": None
-        }
-        
-        # Save company files
-        save_company_files(company_name, organization_data, context=context)
-        
-        company_folder = get_company_folder_path(company_name, context)
-        return {
-            "success": True,
-            "company": organization_data,
-            "message": f"Successfully created company '{company_name}'",
-            "folder_path": str(company_folder)
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to create company: {str(e)}"
-        }
-
-
-def delete_company(company_name: str, context: Context) -> Dict[str, Any]:
-    """
-    Delete a company by removing its entire folder.
-    
-    Args:
-        company_name: Name of the company to delete
-        context: The execution context
-        
-    Returns:
-        Result dictionary with success status and details
-    """
-    try:
-        # Check if company exists
-        if not company_folder_exists(company_name, context):
-            return {
-                "success": False,
-                "error": f"Company '{company_name}' not found"
-            }
-        
-        # Load company data before deletion
-        company_data = load_company_organization(company_name, context)
-        company_folder = get_company_folder_path(company_name, context)
-        
-        # Remove the entire folder
-        shutil.rmtree(company_folder)
-        
-        # Count remaining companies
-        data_dir = get_data_directory_path(context)
-        remaining_count = 0
-        if data_dir.exists():
-            remaining_count = sum(1 for item in data_dir.iterdir() if item.is_dir())
-        
-        return {
-            "success": True,
-            "deleted_company": company_data,
-            "message": f"Successfully deleted company '{company_name}'",
-            "remaining_companies": remaining_count,
-            "folder_path": str(company_folder)
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to delete company: {str(e)}"
-        }
-
-
-def update_company(company_name: str, updates: Dict[str, Any], context: Context) -> Dict[str, Any]:
-    """
-    Update a company's organization data.
-    
-    Args:
-        company_name: Name of the company to update
-        updates: Dictionary of fields to update
-        context: The execution context
-        
-    Returns:
-        Result dictionary with success status and details
-    """
-    try:
-        # Check if company exists
-        if not company_folder_exists(company_name, context):
-            return {
-                "success": False,
-                "error": f"Company '{company_name}' not found"
-            }
-        
-        # Load current organization data
-        organization_data = load_company_organization(company_name, context)
-        if not organization_data:
-            return {
-                "success": False,
-                "error": f"Could not load organization data for '{company_name}'"
-            }
-        
-        # Parse incorporation date if being updated
-        if 'incorporation' in updates and updates['incorporation']:
-            incorporation = parse_incorporation_date(updates['incorporation'])
-            if incorporation:
-                updates['incorporation'] = incorporation.isoformat()
-        
-        # Update the data
-        organization_data.update(updates)
-        organization_data['updated_at'] = datetime.now().isoformat()
-        
-        # Save updated organization data
-        save_company_files(company_name, organization_data, context=context)
-        
-        company_folder = get_company_folder_path(company_name, context)
-        return {
-            "success": True,
-            "company": organization_data,
-            "message": f"Successfully updated company '{company_name}'",
-            "folder_path": str(company_folder)
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to update company: {str(e)}"
-        }
-
-
-# ==================== QUERY OPERATIONS ====================
-
-def list_companies(context: Context) -> Dict[str, Any]:
-    """
-    List all companies by scanning folders in the data directory.
-    
-    Args:
-        context: The execution context
-        
-    Returns:
-        Result dictionary with companies list and metadata
-    """
-    try:
-        data_dir = get_data_directory_path(context)
-        companies = []
-        
-        if data_dir.exists():
-            # Scan all directories in data folder
-            for folder in data_dir.iterdir():
-                if folder.is_dir():
-                    # Try to load organization data for each folder
-                    org_data = load_company_organization(folder.name, context)
-                    if org_data:
-                        companies.append(org_data)
-        
-        return {
-            "success": True,
-            "companies": companies,
-            "count": len(companies),
-            "data_directory": str(data_dir)
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to list companies: {str(e)}"
-        }
-
-
-def get_company_by_name(company_name: str, context: Context) -> Optional[Dict[str, Any]]:
-    """
-    Get a specific company by reading from its organization.json file.
-    
-    Args:
-        company_name: Name of the company to retrieve
-        context: The execution context
-        
-    Returns:
-        Company dictionary if found, None otherwise
-    """
-    try:
-        return load_company_organization(company_name, context)
-    except Exception as e:
-        print(f"Warning: Failed to get company '{company_name}': {e}")
-        return None
-
-
-def company_exists(company_name: str, context: Context) -> bool:
-    """
-    Check if a company exists by checking for its folder.
-    
-    Args:
-        company_name: Name of the company to check
-        context: The execution context
-        
-    Returns:
-        True if company exists, False otherwise
-    """
-    return company_folder_exists(company_name, context)
-
-
-def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
-    """
-    Find a company using intelligent matching with tolerance for:
-    1. Case insensitivity 
-    2. Partial matching (first word)
-    3. Exact matching
-    
-    Args:
-        search_name: Name to search for (can be partial or full)
-        context: The execution context
-        
-    Returns:
-        The actual company name if found, None otherwise
-    """
-    data_dir = get_data_directory_path(context)
-    if not data_dir.exists():
-        return None
-    
-    search_name_lower = search_name.lower().strip()
-    
-    # Get all company folders
-    company_folders = []
-    try:
-        for item in data_dir.iterdir():
-            if item.is_dir():
-                company_folders.append(item.name)
-    except (OSError, PermissionError):
-        return None
-    
-    if not company_folders:
-        return None
-    
-    # 1. Try exact match (case insensitive)
-    for company_name in company_folders:
-        if company_name.lower() == search_name_lower:
-            return company_name
-    
-    # 2. Try partial match on first word (case insensitive)
-    search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
-    if search_first_word:
-        for company_name in company_folders:
-            company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
-            if company_first_word == search_first_word:
-                return company_name
-    
-    # 3. No match found
-    return None
-
-
-# ==================== STORAGE INFO ====================
-
-def get_storage_info(context: Context) -> Dict[str, Any]:
-    """
-    Get information about the folder-based storage system and current data.
-    
-    Args:
-        context: The execution context
-        
-    Returns:
-        Dictionary with storage metadata
-    """
-    data_dir = get_data_directory_path(context)
-    companies_result = list_companies(context)
-    company_count = companies_result.get('count', 0) if companies_result.get('success') else 0
-    
-    return {
-        "storage_type": "JSON Folder-Based",
-        "data_directory": str(data_dir),
-        "directory_exists": data_dir.exists(),
-        "company_count": company_count,
-        "context_level": context.level,
-        "context_name": context.level_name
-    }
 
 
 # ==================== GENERIC ENTITY STORAGE ====================
@@ -601,7 +161,6 @@ def entity_exists(entity_name: str, company_name: str, context: Context) -> bool
     return entity_file.exists()
 
 
-
 # ==================== GENERIC ENTITY OPERATIONS ====================
 
 def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> Dict[str, Any]:
@@ -618,8 +177,90 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
     """
     try:
         if entity_type == 'company':
-            # Use existing company creation logic
-            return create_company(data, context)
+            # Inline company creation logic
+            company_name = data.get('name')
+            if not company_name:
+                return {
+                    "success": False,
+                    "error": "Company name is required"
+                }
+            
+            # Check if company already exists
+            company_folder = get_company_folder_path(company_name, context)
+            if company_folder.exists() and company_folder.is_dir():
+                return {
+                    "success": False,
+                    "error": f"Company '{company_name}' already exists"
+                }
+            
+            # Parse incorporation date if provided
+            if 'incorporation' in data and data['incorporation']:
+                try:
+                    incorporation = datetime.strptime(data['incorporation'], "%Y-%m-%d").date()
+                    data['incorporation'] = incorporation.isoformat()
+                except (ValueError, TypeError):
+                    # Keep original value if parsing fails
+                    pass
+            
+            # Create organization data matching CompanyEntity schema
+            organization_data = {
+                "id": None,  # Will be set by database
+                "name": data.get('name'),
+                "entity": data.get('entity', 'SA'),  # Default to SA
+                "type": data.get('type', 'company'),  # Default to company
+                "currency": data.get('currency', 'EUR'),  # Default to EUR
+                "unit": data.get('unit', 'THOUSANDS'),  # Default to THOUSANDS
+                "closing": int(data.get('closing', 12)),  # Default to 12
+                "incorporation": data.get('incorporation'),
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+                "source_db": None,
+                "last_synced_at": None
+            }
+            
+            # Create company directory
+            company_folder.mkdir(parents=True, exist_ok=True)
+            
+            # Default metadata and brand data
+            metadata_data = []
+            brand_data = {
+                "id": None,
+                "org_id": 1,
+                "vision": None,
+                "mission": None,
+                "personality": None,
+                "promise": None,
+                "brand": None,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            try:
+                # Save organization.json
+                org_file = company_folder / "organization.json"
+                with open(org_file, 'w', encoding='utf-8') as f:
+                    json.dump(organization_data, f, indent=2, default=str, ensure_ascii=False)
+                
+                # Save metadata.json
+                metadata_file = company_folder / "metadata.json"
+                with open(metadata_file, 'w', encoding='utf-8') as f:
+                    json.dump(metadata_data, f, indent=2, ensure_ascii=False)
+                
+                # Save brand.json
+                brand_file = company_folder / "brand.json"
+                with open(brand_file, 'w', encoding='utf-8') as f:
+                    json.dump(brand_data, f, indent=2, default=str, ensure_ascii=False)
+                    
+            except IOError as e:
+                raise RuntimeError(f"Could not save company files to {company_folder}: {e}")
+            
+            return {
+                "success": True,
+                "company": organization_data,
+                "message": f"Successfully created company '{company_name}'",
+                "folder_path": str(company_folder)
+            }
+            
         else:
             # For other entities, we need a company context
             if context.level == ContextLevel.SYS or not context.org_name:
@@ -652,7 +293,19 @@ def load_entity(entity_type: str, company_name: str, context: Context) -> Option
     """
     try:
         if entity_type == 'company':
-            return load_company_organization(company_name, context)
+            # Inline company organization loading logic
+            company_folder = get_company_folder_path(company_name, context)
+            org_file = company_folder / "organization.json"
+            
+            if not org_file.exists():
+                return None
+            
+            try:
+                with open(org_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: Could not load organization from {org_file}: {e}")
+                return None
         else:
             return load_entity_json(entity_type, company_name, context)
     except Exception as e:
@@ -675,53 +328,66 @@ def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, conte
     """
     try:
         if entity_type == 'company':
-            # Use existing company update logic
-            return update_company(company_name, data, context)
+            # Inline company update logic
+            company_folder = get_company_folder_path(company_name, context)
+            if not (company_folder.exists() and company_folder.is_dir()):
+                return {
+                    "success": False,
+                    "error": f"Company '{company_name}' not found"
+                }
+            
+            # Load current organization data
+            org_file = company_folder / "organization.json"
+            if not org_file.exists():
+                return {
+                    "success": False,
+                    "error": f"Could not load organization data for '{company_name}'"
+                }
+                
+            try:
+                with open(org_file, 'r', encoding='utf-8') as f:
+                    organization_data = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                return {
+                    "success": False,
+                    "error": f"Could not load organization data for '{company_name}'"
+                }
+            
+            # Parse incorporation date if being updated
+            if 'incorporation' in data and data['incorporation']:
+                try:
+                    incorporation = datetime.strptime(data['incorporation'], "%Y-%m-%d").date()
+                    data['incorporation'] = incorporation.isoformat()
+                except (ValueError, TypeError):
+                    # Keep original value if parsing fails
+                    pass
+            
+            # Update the data
+            organization_data.update(data)
+            organization_data['updated_at'] = datetime.now().isoformat()
+            
+            # Save updated organization data
+            try:
+                with open(org_file, 'w', encoding='utf-8') as f:
+                    json.dump(organization_data, f, indent=2, default=str, ensure_ascii=False)
+            except IOError as e:
+                return {
+                    "success": False,
+                    "error": f"Failed to save company data: {str(e)}"
+                }
+            
+            return {
+                "success": True,
+                "company": organization_data,
+                "message": f"Successfully updated company '{company_name}'",
+                "folder_path": str(company_folder)
+            }
         else:
             return save_entity_json(entity_type, data, company_name, context)
     except Exception as e:
         return {
             "success": False,
             "error": f"Failed to save {entity_type}: {str(e)}"
-        }
-
-
-def update_entity(entity_type: str, entity_name: str, updates: Dict, context: Context) -> Dict[str, Any]:
-    """
-    Generic entity update - works for ANY entity type.
-    
-    Args:
-        entity_type: Entity type name (e.g., 'company', 'brand', 'metadata')
-        entity_name: Name of the entity to update
-        updates: Dictionary of updates to apply
-        context: Execution context
-        
-    Returns:
-        Result dictionary with success status and details
-    """
-    try:
-        if entity_type == 'company':
-            return update_company(entity_name, updates, context)
-        else:
-            # For other entities, load current data, apply updates, and save
-            current_data = load_entity_json(entity_type, entity_name, context)
-            if current_data is None:
-                return {
-                    "success": False,
-                    "error": f"Entity '{entity_type}' not found"
-                }
-            
-            # Apply updates
-            updated_data = current_data.copy()
-            updated_data.update(updates)
-            updated_data['updated_at'] = datetime.now().isoformat()
-            
-            return save_entity_json(entity_type, updated_data, entity_name, context)
-            
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to update {entity_type}: {str(e)}"
         }
 
 
@@ -739,10 +405,42 @@ def delete_entity(entity_type: str, entity_name: str, context: Context) -> Dict[
     """
     try:
         if entity_type == 'company':
-            return delete_company(entity_name, context)
+            # Inline company deletion logic
+            company_folder = get_company_folder_path(entity_name, context)
+            if not (company_folder.exists() and company_folder.is_dir()):
+                return {
+                    "success": False,
+                    "error": f"Company '{entity_name}' not found"
+                }
+            
+            # Load company data before deletion
+            org_file = company_folder / "organization.json"
+            company_data = None
+            if org_file.exists():
+                try:
+                    with open(org_file, 'r', encoding='utf-8') as f:
+                        company_data = json.load(f)
+                except (json.JSONDecodeError, IOError):
+                    pass
+            
+            # Remove the entire folder
+            shutil.rmtree(company_folder)
+            
+            # Count remaining companies
+            data_dir = get_data_directory_path(context)
+            remaining_count = 0
+            if data_dir.exists():
+                remaining_count = sum(1 for item in data_dir.iterdir() if item.is_dir())
+            
+            return {
+                "success": True,
+                "deleted_company": company_data,
+                "message": f"Successfully deleted company '{entity_name}'",
+                "remaining_companies": remaining_count,
+                "folder_path": str(company_folder)
+            }
         else:
             # For other entities, remove the JSON file
-            from .mappings import get_entity_json_filename
             import os
             
             json_filename = get_entity_json_filename(entity_type)
@@ -772,3 +470,96 @@ def delete_entity(entity_type: str, entity_name: str, context: Context) -> Dict[
             "success": False,
             "error": f"Failed to delete {entity_type}: {str(e)}"
         }
+
+
+# ==================== QUERY OPERATIONS ====================
+
+def list_companies(context: Context) -> Dict[str, Any]:
+    """
+    List all companies by scanning folders in the data directory.
+    
+    Args:
+        context: The execution context
+        
+    Returns:
+        Result dictionary with companies list and metadata
+    """
+    try:
+        data_dir = get_data_directory_path(context)
+        companies = []
+        
+        if data_dir.exists():
+            # Scan all directories in data folder
+            for folder in data_dir.iterdir():
+                if folder.is_dir():
+                    # Try to load organization data for each folder
+                    org_file = folder / "organization.json"
+                    if org_file.exists():
+                        try:
+                            with open(org_file, 'r', encoding='utf-8') as f:
+                                org_data = json.load(f)
+                                companies.append(org_data)
+                        except (json.JSONDecodeError, IOError):
+                            # Skip folders that don't contain valid organization data
+                            continue
+        
+        return {
+            "success": True,
+            "companies": companies,
+            "count": len(companies),
+            "data_directory": str(data_dir)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to list companies: {str(e)}"
+        }
+
+
+def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
+    """
+    Find a company using intelligent matching with tolerance for:
+    1. Case insensitivity 
+    2. Partial matching (first word)
+    3. Exact matching
+    
+    Args:
+        search_name: Name to search for (can be partial or full)
+        context: The execution context
+        
+    Returns:
+        The actual company name if found, None otherwise
+    """
+    data_dir = get_data_directory_path(context)
+    if not data_dir.exists():
+        return None
+    
+    search_name_lower = search_name.lower().strip()
+    
+    # Get all company folders
+    company_folders = []
+    try:
+        for item in data_dir.iterdir():
+            if item.is_dir():
+                company_folders.append(item.name)
+    except (OSError, PermissionError):
+        return None
+    
+    if not company_folders:
+        return None
+    
+    # 1. Try exact match (case insensitive)
+    for company_name in company_folders:
+        if company_name.lower() == search_name_lower:
+            return company_name
+    
+    # 2. Try partial match on first word (case insensitive)
+    search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
+    if search_first_word:
+        for company_name in company_folders:
+            company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
+            if company_first_word == search_first_word:
+                return company_name
+    
+    # 3. No match found
+    return None
