@@ -8,16 +8,16 @@ unified behavior across all entity-field combinations.
 
 from datetime import datetime
 from ..models.context import ContextLevel
+from ..models.results import CommandResult, ErrorResult
 
 
 async def create_handler(
-    entity_model=None, entity_value=None, attributes=None, context=None, attribute_words=None
+    entity_model=None, entity_value=None, attributes=None, context=None, attribute_words=None, parsed_command=None
 ):
     """
     Truly dynamic create handler - works for ANY entity type.
     """
     from ..storage.database import create_entity
-    from ..ui.results import create_error_result, create_success_result
 
     if entity_model is None:
         raise ValueError("entity_model is required")
@@ -43,7 +43,10 @@ async def create_handler(
             entity_instance = entity_model(**entity_data)
             validated_data = entity_instance.model_dump()
         except Exception as e:
-            return create_error_result([f"Validation failed: {str(e)}"])
+            return ErrorResult(
+                errors=[f"Validation failed: {str(e)}"],
+                suggestions=["Check field names and value formats"]
+            )
 
         # Use generic storage - works for ANY entity
         if context is None:
@@ -56,38 +59,53 @@ async def create_handler(
 
         if storage_result is None or not storage_result.get("success", False):
             error_msg = storage_result.get("error", f"Failed to create {entity_type}") if storage_result else f"Failed to create {entity_type}"
-            return create_error_result([error_msg])
+            return ErrorResult(
+                errors=[error_msg],
+                suggestions=["Check database connection and permissions"]
+            )
 
         # Handle context switch for company creation (navigation behavior)
         if entity_type == "company":
             from ..models.context import Context as NewContext
 
-            result = create_success_result(
-                operation="created",
-                entity_name=f"{entity_type} {validated_data['name']}",
-                attributes=validated_data,
+            # For company creation, include context switch information in data
+            result = CommandResult(
+                success=True,
+                message=f"Created {entity_type} {validated_data['name']}",
+                data={
+                    "entity_type": entity_type,
+                    "entity_name": validated_data['name'],
+                    "attributes": validated_data,
+                    "context_switch": {
+                        "level": "ORG",
+                        "org_id": 1,
+                        "org_name": validated_data["name"],
+                        "org_db_path": None
+                    }
+                }
             )
-
-            # Create new context at organization level
-            new_context = NewContext(
-                level=ContextLevel.ORG, org_id=1, org_name=validated_data["name"], org_db_path=None
-            )
-            result.set_context_switch(new_context)
             return result
 
         # Return generic success result
-        return create_success_result(
-            operation="created",
-            entity_name=f"{entity_type} {validated_data['name']}",
-            attributes=validated_data,
+        return CommandResult(
+            success=True,
+            message=f"Created {entity_type} {validated_data['name']}",
+            data={
+                "entity_type": entity_type,
+                "entity_name": validated_data['name'],
+                "attributes": validated_data
+            }
         )
 
     except Exception as e:
-        return create_error_result([f"Failed to create entity: {str(e)}"])
+        return ErrorResult(
+            errors=[f"Failed to create entity: {str(e)}"],
+            suggestions=["Check input values and system status"]
+        )
 
 
 async def add_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None
+    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
 ):
     """
     Truly dynamic add handler - works for ANY entity type.
@@ -99,19 +117,21 @@ async def add_handler(
         load_entity,
         save_entity,
     )
-    from ..ui.results import create_error_result, create_success_result
+    # ErrorResult and CommandResult already imported at module level
 
     try:
         # Get current company name from context
         company_name = get_company_name_from_context(context)
         if not company_name:
-            return create_error_result(
-                ["Must be in organization context to add fields"]
+            return ErrorResult(
+                errors=["Must be in organization context to add fields"],
+                suggestions=["Navigate to an organization first"]
             )
 
         if not attributes:
-            return create_error_result(
-                ["No fields specified. Use format: add entity field=value"]
+            return ErrorResult(
+                errors=["No fields specified. Use format: add entity field=value"],
+                suggestions=["Try: add brand name=value"]
             )
 
         # Determine entity type from entity_model
@@ -131,7 +151,10 @@ async def add_handler(
                 entity_instance = entity_model(**default_entity_data)
                 default_data = entity_instance.model_dump()
             except Exception as e:
-                return create_error_result([f"Failed to create default entity: {str(e)}"])
+                return ErrorResult(
+                    errors=[f"Failed to create default entity: {str(e)}"],
+                    suggestions=["Check entity model configuration"]
+                )
                 
             save_entity(entity_type, default_data, company_name, context)
 
@@ -146,20 +169,29 @@ async def add_handler(
         # Save the updated entity
         save_result = save_entity(entity_type, updated_data, company_name, context)
         if not save_result.get("success", False):
-            return create_error_result(
-                [save_result.get("error", f"Failed to save {entity_type} data")]
+            return ErrorResult(
+                errors=[save_result.get("error", f"Failed to save {entity_type} data")],
+                suggestions=["Check database permissions and disk space"]
             )
 
-        return create_success_result(
-            operation="added", entity_name=entity_type, attributes=attributes
+        return CommandResult(
+            success=True,
+            message=f"Added fields to {entity_type}",
+            data={
+                "entity_type": entity_type,
+                "added_attributes": attributes
+            }
         )
 
     except Exception as e:
-        return create_error_result([f"Failed to add fields: {str(e)}"])
+        return ErrorResult(
+            errors=[f"Failed to add fields: {str(e)}"],
+            suggestions=["Check input format and system status"]
+        )
 
 
 async def update_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None
+    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
 ):
     """
     Truly dynamic update handler - works for ANY entity type.
@@ -167,19 +199,21 @@ async def update_handler(
     """
     from ..handlers.utils import get_company_name_from_context
     from ..storage.database import entity_exists, load_entity, save_entity
-    from ..ui.results import create_error_result, create_success_result
+    # ErrorResult and CommandResult already imported at module level
 
     try:
         # Get current company name from context
         company_name = get_company_name_from_context(context)
         if not company_name:
-            return create_error_result(
-                ["Must be in organization context to update fields"]
+            return ErrorResult(
+                errors=["Must be in organization context to update fields"],
+                suggestions=["Navigate to an organization first"]
             )
 
         if not attributes:
-            return create_error_result(
-                ["No fields specified. Use format: update entity field=value"]
+            return ErrorResult(
+                errors=["No fields specified. Use format: update entity field=value"],
+                suggestions=["Try: update brand name=newvalue"]
             )
 
         # Determine entity type from entity_model
@@ -187,14 +221,18 @@ async def update_handler(
 
         # Check if entity exists
         if not entity_exists(entity_type, company_name, context):
-            return create_error_result(
-                [f"Entity '{entity_type}' does not exist for company '{company_name}'"]
+            return ErrorResult(
+                errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
+                suggestions=[f"Create the {entity_type} first or check the entity name"]
             )
 
         # Load current entity data
         current_data = load_entity(entity_type, company_name, context)
         if current_data is None:
-            return create_error_result([f"No data found for {entity_type}"])
+            return ErrorResult(
+                errors=[f"No data found for {entity_type}"],
+                suggestions=["Check entity exists and database connection"]
+            )
 
         # Create updated data
         updated_data = current_data.copy()
@@ -204,20 +242,29 @@ async def update_handler(
         # Save the updated entity
         save_result = save_entity(entity_type, updated_data, company_name, context)
         if not save_result.get("success", False):
-            return create_error_result(
-                [save_result.get("error", f"Failed to save {entity_type} data")]
+            return ErrorResult(
+                errors=[save_result.get("error", f"Failed to save {entity_type} data")],
+                suggestions=["Check database permissions and disk space"]
             )
 
-        return create_success_result(
-            operation="updated", entity_name=entity_type, attributes=attributes
+        return CommandResult(
+            success=True,
+            message=f"Updated {entity_type}",
+            data={
+                "entity_type": entity_type,
+                "updated_attributes": attributes
+            }
         )
 
     except Exception as e:
-        return create_error_result([f"Failed to update fields: {str(e)}"])
+        return ErrorResult(
+            errors=[f"Failed to update fields: {str(e)}"],
+            suggestions=["Check input format and system status"]
+        )
 
 
 async def show_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None
+    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
 ):
     """
     Truly dynamic show handler - works for ANY entity type.
@@ -228,14 +275,15 @@ async def show_handler(
         get_company_name_from_context,
     )
     from ..storage.database import entity_exists, load_entity
-    from ..ui.results import create_error_result, create_success_result
+    # ErrorResult and CommandResult already imported at module level
 
     try:
         # Get current company name from context
         company_name = get_company_name_from_context(context)
         if not company_name:
-            return create_error_result(
-                ["Must be in organization context to view entities"]
+            return ErrorResult(
+                errors=["Must be in organization context to view entities"],
+                suggestions=["Navigate to an organization first"]
             )
 
         # Determine entity type from entity_model
@@ -243,14 +291,18 @@ async def show_handler(
 
         # Check if entity exists
         if not entity_exists(entity_type, company_name, context):
-            return create_error_result(
-                [f"Entity '{entity_type}' does not exist for company '{company_name}'"]
+            return ErrorResult(
+                errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
+                suggestions=[f"Create the {entity_type} first or check the entity name"]
             )
 
         # Load entity data
         entity_data = load_entity(entity_type, company_name, context)
         if entity_data is None:
-            return create_error_result([f"No data found for {entity_type}"])
+            return ErrorResult(
+                errors=[f"No data found for {entity_type}"],
+                suggestions=["Check entity exists and database connection"]
+            )
 
         # Format data for display
         specific_fields = attribute_words if attribute_words else None
@@ -258,18 +310,25 @@ async def show_handler(
             entity_data, specific_fields
         )
 
-        return create_success_result(
-            operation="displayed",
-            entity_name=entity_type,
-            attributes={"data": formatted_data},
+        return CommandResult(
+            success=True,
+            message=f"Displaying {entity_type} data",
+            data={
+                "entity_type": entity_type,
+                "formatted_data": formatted_data,
+                "raw_data": entity_data
+            }
         )
 
     except Exception as e:
-        return create_error_result([f"Failed to show entity data: {str(e)}"])
+        return ErrorResult(
+            errors=[f"Failed to show entity data: {str(e)}"],
+            suggestions=["Check entity exists and database connection"]
+        )
 
 
 async def delete_handler(
-    entity_model, entity_value, attributes, context, attribute_words=None
+    entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None
 ):
     """
     Truly dynamic delete handler - works for ANY entity type.
@@ -280,13 +339,16 @@ async def delete_handler(
     """
     from ..handlers.utils import get_company_name_from_context
     from ..storage.database import entity_exists, load_entity, save_entity, delete_entity, find_company_by_name
-    from ..ui.results import create_error_result, create_success_result
+    # ErrorResult and CommandResult already imported at module level
 
     try:
         # SYS LEVEL: Delete entire entity
         if context.level == ContextLevel.SYS:
             if not entity_value:
-                return create_error_result(["Entity name required for deletion at system level"])
+                return ErrorResult(
+                    errors=["Entity name required for deletion at system level"],
+                    suggestions=["Specify entity name: delete company 'CompanyName'"]
+                )
             
             # Determine entity type from entity_model
             entity_type = entity_model.__name__.replace("Entity", "").lower()
@@ -295,7 +357,10 @@ async def delete_handler(
             if entity_type == "company":
                 actual_company_name = find_company_by_name(entity_value, context)
                 if not actual_company_name:
-                    return create_error_result([f"Company '{entity_value}' not found"])
+                    return ErrorResult(
+                        errors=[f"Company '{entity_value}' not found"],
+                        suggestions=["Check company name spelling or list existing companies"]
+                    )
                 entity_name_to_delete = actual_company_name
             else:
                 entity_name_to_delete = entity_value
@@ -304,25 +369,29 @@ async def delete_handler(
             delete_result = delete_entity(entity_type, entity_name_to_delete, context)
             
             if delete_result.get("success", False):
-                return create_success_result(
-                    operation="deleted",
-                    entity_name=f"{entity_type} {entity_name_to_delete}",
-                    attributes={
-                        "type": entity_type,
+                return CommandResult(
+                    success=True,
+                    message=f"Deleted {entity_type} {entity_name_to_delete}",
+                    data={
+                        "entity_type": entity_type,
                         "deleted_entity": entity_name_to_delete,
-                        "message": delete_result.get("message", "Successfully deleted")
+                        "delete_message": delete_result.get("message", "Successfully deleted")
                     }
                 )
             else:
-                return create_error_result([delete_result.get("error", f"Failed to delete {entity_type}")])
+                return ErrorResult(
+                    errors=[delete_result.get("error", f"Failed to delete {entity_type}")],
+                    suggestions=["Check if entity exists and database permissions"]
+                )
         
         # ORG/APP LEVEL: Delete specific fields from entity OR delete current company
         else:
             # Get current company name from context
             company_name = get_company_name_from_context(context)
             if not company_name:
-                return create_error_result(
-                    ["Must be in organization context to delete fields"]
+                return ErrorResult(
+                    errors=["Must be in organization context to delete fields"],
+                    suggestions=["Navigate to an organization first"]
                 )
 
             # Check if user wants to delete the entire current company
@@ -332,35 +401,34 @@ async def delete_handler(
                 delete_result = delete_entity("company", company_name, context)
                 
                 if delete_result.get("success", False):
-                    result = create_success_result(
-                        operation="deleted",
-                        entity_name=f"company {company_name}",
-                        attributes={
-                            "type": "company",
+                    result = CommandResult(
+                        success=True,
+                        message=f"Deleted company {company_name}",
+                        data={
+                            "entity_type": "company",
                             "deleted_entity": company_name,
-                            "message": delete_result.get("message", "Successfully deleted"),
-                            "context_changed": "Returned to system level"
+                            "delete_message": delete_result.get("message", "Successfully deleted"),
+                            "context_changed": "Returned to system level",
+                            "context_switch": {
+                                "level": "SYS",
+                                "org_id": None,
+                                "org_name": None,
+                                "org_db_path": None
+                            }
                         }
                     )
-                    # Set context switch back to SYS level since company no longer exists
-                    from ..models.context import Context as NewContext
-                    new_context = NewContext(
-                        level=ContextLevel.SYS,
-                        org_id=None,
-                        org_name=None,
-                        org_db_path=None
-                    )
-                    result.set_context_switch(new_context)
                     return result
                 else:
-                    return create_error_result([delete_result.get("error", "Failed to delete company")])
+                    return ErrorResult(
+                        errors=[delete_result.get("error", "Failed to delete company")],
+                        suggestions=["Check if company exists and database permissions"]
+                    )
 
             # Check if we have specific fields to delete
             if not attribute_words:
-                return create_error_result(
-                    [
-                        "No fields specified to delete. Use format: delete entity field"
-                    ]
+                return ErrorResult(
+                    errors=["No fields specified to delete. Use format: delete entity field"],
+                    suggestions=["Try: delete brand vision"]
                 )
 
             # Determine entity type from entity_model
@@ -368,14 +436,18 @@ async def delete_handler(
 
             # Check if entity exists
             if not entity_exists(entity_type, company_name, context):
-                return create_error_result(
-                    [f"Entity '{entity_type}' does not exist for company '{company_name}'"]
+                return ErrorResult(
+                    errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
+                    suggestions=[f"Create the {entity_type} first or check the entity name"]
                 )
 
             # Load current entity data
             current_data = load_entity(entity_type, company_name, context)
             if current_data is None:
-                return create_error_result([f"No data found for {entity_type}"])
+                return ErrorResult(
+                    errors=[f"No data found for {entity_type}"],
+                    suggestions=["Check entity exists and database connection"]
+                )
 
             # Remove the specified fields
             updated_data = current_data.copy()
@@ -392,10 +464,9 @@ async def delete_handler(
                     removed_attributes.append(attr_name)
 
             if not removed_attributes:
-                return create_error_result(
-                    [
-                        f"None of the specified fields exist in {entity_type}: {', '.join(attribute_words)}"
-                    ]
+                return ErrorResult(
+                    errors=[f"None of the specified fields exist in {entity_type}: {', '.join(attribute_words)}"],
+                    suggestions=["Check field names or show the entity to see available fields"]
                 )
 
             # Update timestamp
@@ -405,16 +476,23 @@ async def delete_handler(
             # Save the updated entity
             save_result = save_entity(entity_type, updated_data, company_name, context)
             if not save_result.get("success", False):
-                return create_error_result(
-                    [save_result.get("error", f"Failed to save {entity_type} data")]
+                return ErrorResult(
+                    errors=[save_result.get("error", f"Failed to save {entity_type} data")],
+                    suggestions=["Check database permissions and disk space"]
                 )
 
-            return create_success_result(
-                operation="deleted",
-                entity_name=entity_type,
-                attributes={"removed_attributes": ", ".join(removed_attributes)},
+            return CommandResult(
+                success=True,
+                message=f"Deleted fields from {entity_type}",
+                data={
+                    "entity_type": entity_type,
+                    "removed_attributes": removed_attributes
+                }
             )
 
     except Exception as e:
-        return create_error_result([f"Failed to delete fields: {str(e)}"])
+        return ErrorResult(
+            errors=[f"Failed to delete fields: {str(e)}"],
+            suggestions=["Check input format and system status"]
+        )
 

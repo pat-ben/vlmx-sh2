@@ -14,7 +14,12 @@ if TYPE_CHECKING:
 
 
 class CommandResult:
-    """Represents the result of a command execution."""
+    """
+    DEPRECATED: Legacy command result class. 
+    Use models.results.CommandResult (Pydantic model) for new code.
+    
+    Represents the result of a command execution.
+    """
     
     def __init__(self, success: bool, operation: str = "", entity_name: str = ""):
         self.success = success
@@ -42,66 +47,108 @@ class CommandResult:
         self.new_context = new_context
 
 
-def format_command_result(result: CommandResult, parse_result: Optional["ParseResult"] = None) -> str:
+def format_command_result(result, parse_result: Optional["ParseResult"] = None) -> str:
     """
     Format a command result for user display.
     
     Args:
-        result: The command result to format
+        result: The command result to format (Pydantic CommandResult model)
         parse_result: Optional parse result for additional context
         
     Returns:
         Formatted result string
     """
-    lines = []
+    # Import the new CommandResult type for type checking
+    from ..models.results import CommandResult as NewCommandResult
     
-    # First line: success/error status and missing optional words count
-    status = "SUCCESS" if result.success else "ERROR"
-    missing_count = len(result.missing_optional_words)
-    
-    if missing_count > 0:
-        lines.append(f"{status} (missing {missing_count} optional values)")
-    else:
+    # Handle new Pydantic CommandResult model
+    if isinstance(result, NewCommandResult):
+        lines = []
+        
+        # Status line
+        status = "SUCCESS" if result.success else "ERROR"
         lines.append(status)
-    
-    # Success case
-    if result.success:
-        # Confirmation message
-        if result.entity_name and result.operation:
-            lines.append(f"{result.entity_name} {result.operation}")
         
-        # Display attributes (vertical list)
-        if result.attributes:
+        # Main message
+        if result.message:
+            lines.append(result.message)
+        
+        # Display data if available
+        if result.data:
             lines.append("")  # Empty line for spacing
-            for key, value in result.attributes.items():
-                lines.append(f"  {key}: {value}")
-    
-    # Error case
-    else:
-        # Explain unrecognized words
-        if result.errors:
-            lines.append("")
-            for error in result.errors:
-                lines.append(f"  {error}")
+            for key, value in result.data.items():
+                # Skip context_switch data as it's handled elsewhere
+                if key != "context_switch":
+                    if isinstance(value, dict):
+                        lines.append(f"  {key}:")
+                        for sub_key, sub_value in value.items():
+                            lines.append(f"    {sub_key}: {sub_value}")
+                    elif isinstance(value, list):
+                        lines.append(f"  {key}: {', '.join(str(v) for v in value)}")
+                    else:
+                        lines.append(f"  {key}: {value}")
         
-        # Show parse errors if available
-        if parse_result and parse_result.errors:
+        return "\n".join(lines)
+    
+    # Fallback for old CommandResult format (legacy support)
+    else:
+        lines = []
+        
+        # First line: success/error status and missing optional words count
+        status = "SUCCESS" if result.success else "ERROR"
+        missing_count = len(getattr(result, 'missing_optional_words', []))
+        
+        if missing_count > 0:
+            lines.append(f"{status} (missing {missing_count} optional values)")
+        else:
+            lines.append(status)
+        
+        # Success case
+        if result.success:
+            # Confirmation message
+            entity_name = getattr(result, 'entity_name', '')
+            operation = getattr(result, 'operation', '')
+            if entity_name and operation:
+                lines.append(f"{entity_name} {operation}")
+            
+            # Display attributes (vertical list)
+            attributes = getattr(result, 'attributes', {})
+            if attributes:
+                lines.append("")  # Empty line for spacing
+                for key, value in attributes.items():
+                    lines.append(f"  {key}: {value}")
+        
+        # Error case
+        else:
+            # Explain unrecognized words
+            errors = getattr(result, 'errors', [])
+            if errors:
+                lines.append("")
+                for error in errors:
+                    lines.append(f"  {error}")
+            
+            # Show parse errors if available
+            if parse_result and parse_result.errors:
+                lines.append("")
+                for error in parse_result.errors:
+                    lines.append(f"  {error}")
+        
+        # Show missing optional words
+        missing_optional_words = getattr(result, 'missing_optional_words', [])
+        if missing_optional_words:
             lines.append("")
-            for error in parse_result.errors:
-                lines.append(f"  {error}")
-    
-    # Show missing optional words
-    if result.missing_optional_words:
-        lines.append("")
-        lines.append("Missing optional values:")
-        for word in result.missing_optional_words:
-            lines.append(f"  {word}")
-    
-    return "\n".join(lines)
+            lines.append("Missing optional values:")
+            for word in missing_optional_words:
+                lines.append(f"  {word}")
+        
+        return "\n".join(lines)
 
 
 def create_success_result(operation: str, entity_name: str, attributes: Optional[Dict[str, Any]] = None) -> CommandResult:
-    """Create a successful command result."""
+    """
+    DEPRECATED: Use models.results.CommandResult directly instead.
+    Create a successful command result.
+    """
     result = CommandResult(success=True, operation=operation, entity_name=entity_name)
     
     if attributes:
@@ -112,7 +159,10 @@ def create_success_result(operation: str, entity_name: str, attributes: Optional
 
 
 def create_error_result(errors: List[str], parse_result: Optional["ParseResult"] = None) -> CommandResult:
-    """Create an error command result."""
+    """
+    DEPRECATED: Use models.results.ErrorResult directly instead.
+    Create an error command result.
+    """
     result = CommandResult(success=False)
     
     for error in errors:
@@ -131,7 +181,10 @@ def create_error_result(errors: List[str], parse_result: Optional["ParseResult"]
 
 
 def create_result_from_parse_errors(parse_result: "ParseResult") -> CommandResult:
-    """Create an error result from parse result errors."""
+    """
+    DEPRECATED: Use models.results.ErrorResult directly instead.
+    Create an error result from parse result errors.
+    """
     result = CommandResult(success=False)
     
     # Add unrecognized words

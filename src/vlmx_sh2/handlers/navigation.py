@@ -10,7 +10,7 @@ ROOT_NAVIGATION_ALIASES = {"~", "root", None}
 UP_NAVIGATION_ALIASES = {".."}  # Go up one level in context hierarchy
 
 
-async def navigate_handler(entity_model, entity_value, attributes, context, attribute_words=None):
+async def navigate_handler(entity_model, entity_value, attributes, context, attribute_words=None, parsed_command=None):
     """
     Dynamic navigation handler for context switching.
     
@@ -30,7 +30,7 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
     Returns:
         Result dictionary with navigation outcome
     """
-    from ..ui.results import create_success_result, create_error_result
+    from ..models.results import CommandResult, ErrorResult
     from ..models.context import Context as NewContext, ContextLevel
     from ..storage.database import find_company_by_name
     
@@ -39,7 +39,10 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
         if entity_value in UP_NAVIGATION_ALIASES:
             # If already at SYS level, can't go up further
             if context.level == ContextLevel.SYS:
-                return create_error_result(["Already at system level - cannot navigate up"])
+                return ErrorResult(
+                    errors=["Already at system level - cannot navigate up"],
+                    suggestions=["Try navigating to an organization with: cd company_name"]
+                )
             
             # From ORG level, go back to SYS level
             if context.level == ContextLevel.ORG:
@@ -50,12 +53,21 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
                     org_db_path=None
                 )
                 
-                result = create_success_result(
-                    operation="navigated",
-                    entity_name="up",
-                    attributes={"level": new_context.level_name.upper(), "context": "System Level", "from": f"Organization: {context.org_name}"}
+                result = CommandResult(
+                    success=True,
+                    message="Navigated to system level",
+                    data={
+                        "level": new_context.level_name.upper(),
+                        "context": "System Level",
+                        "from": f"Organization: {context.org_name}",
+                        "context_switch": {
+                            "level": "SYS",
+                            "org_id": None,
+                            "org_name": None,
+                            "org_db_path": None
+                        }
+                    }
                 )
-                result.set_context_switch(new_context)
                 return result
             
             # From APP level, go back to ORG level
@@ -67,12 +79,21 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
                     org_db_path=context.org_db_path
                 )
                 
-                result = create_success_result(
-                    operation="navigated",
-                    entity_name="up",
-                    attributes={"level": new_context.level_name.upper(), "organization": context.org_name, "from": f"Application: {context.app_id}"}
+                result = CommandResult(
+                    success=True,
+                    message="Navigated to organization level",
+                    data={
+                        "level": new_context.level_name.upper(),
+                        "organization": context.org_name,
+                        "from": f"Application: {context.app_id}",
+                        "context_switch": {
+                            "level": "ORG",
+                            "org_id": context.org_id,
+                            "org_name": context.org_name,
+                            "org_db_path": context.org_db_path
+                        }
+                    }
                 )
-                result.set_context_switch(new_context)
                 return result
         
         # Navigate to root/system level
@@ -84,12 +105,20 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
                 org_db_path=None
             )
             
-            result = create_success_result(
-                operation="navigated",
-                entity_name="root",
-                attributes={"level": new_context.level_name.upper(), "context": "System Level"}
+            result = CommandResult(
+                success=True,
+                message="Navigated to system level",
+                data={
+                    "level": new_context.level_name.upper(),
+                    "context": "System Level",
+                    "context_switch": {
+                        "level": "SYS",
+                        "org_id": None,
+                        "org_name": None,
+                        "org_db_path": None
+                    }
+                }
             )
-            result.set_context_switch(new_context)
             return result
             
         # Navigate to specific organization
@@ -102,7 +131,10 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
             # Use intelligent matching to find the company
             actual_company_name = find_company_by_name(entity_value, context)
             if not actual_company_name:
-                return create_error_result([f"Organization '{entity_value}' does not exist"])
+                return ErrorResult(
+                    errors=[f"Organization '{entity_value}' does not exist"],
+                    suggestions=["Check organization name spelling or create it first"]
+                )
             
             # Create organization level context using the actual company name
             new_context = NewContext(
@@ -112,12 +144,21 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
                 org_db_path=None
             )
             
-            result = create_success_result(
-                operation="navigated",
-                entity_name=f"{org_type} {actual_company_name}",
-                attributes={"level": new_context.level_name.upper(), "organization": actual_company_name, "type": org_type}
+            result = CommandResult(
+                success=True,
+                message=f"Navigated to {org_type} {actual_company_name}",
+                data={
+                    "level": new_context.level_name.upper(),
+                    "organization": actual_company_name,
+                    "type": org_type,
+                    "context_switch": {
+                        "level": "ORG",
+                        "org_id": 1,
+                        "org_name": actual_company_name,
+                        "org_db_path": None
+                    }
+                }
             )
-            result.set_context_switch(new_context)
             return result
             
         # Show current location if no target specified
@@ -130,11 +171,18 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
             else:
                 location = f"Application: {context.app_id}"
             
-            return create_success_result(
-                operation="current_location",
-                entity_name="location",
-                attributes={"level": level_name, "location": location}
+            return CommandResult(
+                success=True,
+                message=f"Current location: {location}",
+                data={
+                    "level": level_name,
+                    "location": location,
+                    "operation": "current_location"
+                }
             )
             
     except Exception as e:
-        return create_error_result([f"Navigation failed: {str(e)}"])
+        return ErrorResult(
+            errors=[f"Navigation failed: {str(e)}"],
+            suggestions=["Check command format and system status"]
+        )

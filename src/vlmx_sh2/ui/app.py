@@ -15,7 +15,8 @@ from textual.css.query import NoMatches
 try:
     from ..parser import VLMXParser
     from ..models.context import Context
-    from .results import CommandResult, format_command_result
+    from ..models.results import CommandResult, ErrorResult, FormWizardRequest, QueryWizardRequest
+    from .results import format_command_result
 except ImportError:
     # Direct execution - add src to path
     import sys
@@ -23,7 +24,8 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from vlmx_sh2.parser import VLMXParser
     from vlmx_sh2.models.context import Context
-    from vlmx_sh2.ui.results import CommandResult, format_command_result
+    from vlmx_sh2.models.results import CommandResult, ErrorResult, FormWizardRequest, QueryWizardRequest
+    from vlmx_sh2.ui.results import format_command_result
 
 
 
@@ -121,69 +123,131 @@ class CommandBlock(VerticalGroup):
             self.show_output(f"Command: {user_input}")
             
             if parse_result.errors:
-                # Show parsing errors
-                for error in parse_result.errors:
-                    self.show_output(f"Parse Error: {error}", is_error=True)
-                
-                # Show suggestions
-                if parse_result.suggestions:
-                    for suggestion in parse_result.suggestions:
-                        self.show_output(f"  → {suggestion}", is_error=True)
+                # Create ErrorResult model and display it
+                error_result = ErrorResult(
+                    errors=parse_result.errors,
+                    suggestions=parse_result.suggestions or []
+                )
+                await self._handle_error_result(error_result, event)
                 return
             
             if not parse_result.action_handler:
-                self.show_output("No action handler found", is_error=True)
-                if parse_result.suggestions:
-                    for suggestion in parse_result.suggestions:
-                        self.show_output(f"  → {suggestion}", is_error=True)
+                # Create ErrorResult model for missing handler
+                error_result = ErrorResult(
+                    errors=["No action handler found"],
+                    suggestions=parse_result.suggestions or []
+                )
+                await self._handle_error_result(error_result, event)
                 return
             
             # Execute using the new simplified system
             try:
                 result = await self.parser.execute_parsed_command(parse_result, self.context)
             except Exception as e:
-                self.show_output(f"Execution failed: {str(e)}", is_error=True)
+                error_result = ErrorResult(
+                    errors=[f"Execution failed: {str(e)}"],
+                    suggestions=["Check command syntax and system status"]
+                )
+                await self._handle_error_result(error_result, event)
                 return
             
-            # Display the result
-            if isinstance(result, CommandResult):
-                # Use the existing CommandResult formatting
-                formatted_result = format_command_result(result, parse_result)
-                
-                # Split the formatted result into lines and display each
-                for line in formatted_result.split('\n'):
-                    if line.strip():  # Skip empty lines
-                        is_error = not result.success
-                        self.show_output(line, is_error=is_error)
-                
-                # Check if the result requests a context switch
-                if result.success and result.new_context:
-                    self.context = result.new_context
-                    
-            elif isinstance(result, dict):
-                # Handle simple dictionary results from our placeholder handlers
-                if result.get("success", False):
-                    message = result.get("message", "Command executed successfully")
-                    self.show_output(f"✓ {message}")
-                else:
-                    error = result.get("error", "Command failed")
-                    self.show_output(f"✗ {error}", is_error=True)
+            # Handle different result types based on type field
+            if result.type == 'form_wizard':
+                await self._handle_form_wizard(result, event)  # Don't create new prompt yet
+            elif result.type == 'query_wizard':
+                await self._handle_query_wizard(result, event)  # Don't create new prompt yet
+            elif result.type == 'command_result':
+                await self._handle_command_result(result, event)  # Show result and create new prompt
+            elif result.type == 'error':
+                await self._handle_error_result(result, event)  # Show error and create new prompt
             else:
-                # Handle other result types
-                self.show_output(f"Result: {str(result)}")
+                # Fallback for unexpected result types
+                self.show_output(f"Unknown result type: {result.type}", is_error=True)
+                self._create_new_prompt()
                 
         except Exception as e:
-            self.show_output(f"Execution Error: {str(e)}", is_error=True)
+            # Handle unexpected exceptions  
+            error_result = ErrorResult(
+                errors=[f"Unexpected error: {str(e)}"],
+                suggestions=["Please try again or check system status"]
+            )
+            await self._handle_error_result(error_result, event)
+
+    def _create_new_prompt(self):
+        """Create a new command prompt after disabling the current input."""
+        # Disable the current input
+        try:
+            current_input = self.query_one(Input)
+            current_input.disabled = True
+        except NoMatches:
+            pass
+
+        # Create a new command block for the next command (with potentially updated context)
+        new_block = CommandBlock(parser=self.parser, context=self.context)
+        self.app.mount(new_block)
+
+        # Use call_after_refresh to ensure the block is fully composed before querying
+        self.app.call_after_refresh(self._focus_new_input, new_block)
+
+    async def _handle_command_result(self, result: CommandResult, event):
+        """Handle and display a CommandResult."""
+        # Format and display the command result using existing formatting logic
+        formatted_result = format_command_result(result)
         
-        finally:
-            # Disable the current input
-            event.input.disabled = True
+        # Split the formatted result into lines and display each
+        for line in formatted_result.split('\n'):
+            if line.strip():  # Skip empty lines
+                is_error = not result.success
+                self.show_output(line, is_error=is_error)
+        
+        # Check if the result requests a context switch
+        if result.success and result.data and result.data.get("context_switch"):
+            # Update context based on context_switch data
+            context_switch = result.data["context_switch"]
+            from ..models.context import Context, ContextLevel
+            if context_switch["level"] == "SYS":
+                self.context = Context(level=ContextLevel.SYS)
+            elif context_switch["level"] == "ORG":
+                self.context = Context(
+                    level=ContextLevel.ORG,
+                    org_id=context_switch["org_id"],
+                    org_name=context_switch["org_name"],
+                    org_db_path=context_switch["org_db_path"]
+                )
+        
+        # Create new prompt
+        self._create_new_prompt()
 
-            # Create a new command block for the next command (with potentially updated context)
-            new_block = CommandBlock(parser=self.parser, context=self.context)
-            self.app.mount(new_block)
+    async def _handle_error_result(self, result: ErrorResult, event):
+        """Handle and display an ErrorResult."""
+        # Display errors
+        for error in result.errors:
+            self.show_output(f"Error: {error}", is_error=True)
+        
+        # Display suggestions
+        for suggestion in result.suggestions:
+            self.show_output(f"  → {suggestion}", is_error=True)
+        
+        # Create new prompt
+        self._create_new_prompt()
 
-            # Use call_after_refresh to ensure the block is fully composed before querying
-            self.app.call_after_refresh(self._focus_new_input, new_block)
+    async def _handle_form_wizard(self, wizard_request: FormWizardRequest, event):
+        """Handle form wizard request (future implementation)."""
+        # For now, show a placeholder message
+        self.show_output(f"Form wizard requested for {wizard_request.entity_id}")
+        self.show_output(f"Fields: {', '.join(wizard_request.fields)}")
+        self.show_output("Form wizard not yet implemented", is_error=True)
+        
+        # Create new prompt since wizard is not implemented
+        self._create_new_prompt()
+
+    async def _handle_query_wizard(self, wizard_request: QueryWizardRequest, event):
+        """Handle query wizard request (future implementation)."""
+        # Stub for future implementation
+        self.show_output(f"Query wizard requested for {wizard_request.entity_id}")
+        self.show_output("Query wizard not yet implemented", is_error=True)
+        
+        # Create new prompt since wizard is not implemented
+        self._create_new_prompt()
 
 

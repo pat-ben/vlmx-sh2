@@ -29,6 +29,7 @@ from ..handlers.crud import (
     delete_handler
 )
 from ..handlers.navigation import navigate_handler
+from ..handlers.wizard import fill_handler
 
 
 # ==================== WORD REGISTRATIONS ====================

@@ -13,6 +13,7 @@ from .crud import (
     delete_handler
 )
 from .navigation import navigate_handler
+from .wizard import fill_handler
 
 __all__ = [
     'create_handler',
@@ -20,5 +21,6 @@ __all__ = [
     'update_handler',
     'show_handler',
     'delete_handler',
-    'navigate_handler'
+    'navigate_handler',
+    'fill_handler'
 ]

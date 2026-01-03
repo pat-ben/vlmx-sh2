@@ -170,7 +170,8 @@ class VLMXParser:
                 entity_value=entity_value,
                 attributes=parse_result.attributes,  # Use new property name
                 context=context,
-                attribute_words=field_words_to_process
+                attribute_words=field_words_to_process,
+                parsed_command=parse_result.command  # Pass parsed command for handlers that need it
             )
         except Exception as e:
             raise RuntimeError(f"Handler execution failed: {str(e)}")
