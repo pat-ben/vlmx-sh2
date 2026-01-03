@@ -61,6 +61,7 @@ class ActionWord(BaseWord):
     aliases: List[str] = Field(default_factory=list, description="Alternative names for this word (e.g., ['add', 'new'] for 'create')")
     word_type: Literal[WordType.ACTION] = WordType.ACTION
     requires_form: bool = Field(default=False, description="Whether this action requires a form to operate on as an intermediary step")
+    requires_query: bool = Field(default=False, description="Whether this action requires a query wizard to operate on as an intermediary step")
     handler: Any = Field(description="Function to handle this action")
     action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
     crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
