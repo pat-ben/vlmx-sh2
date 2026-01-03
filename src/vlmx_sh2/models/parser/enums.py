@@ -1,5 +1,5 @@
 """
-Enums for VLMX DSL parser.
+Enums for parser.
 
 Contains all enum types used throughout the parsing pipeline.
 """

@@ -1,5 +1,5 @@
 """
-Wizard handlers for VLMX DSL.
+Wizard handlers.
 
 Provides form wizard functionality for interactive data collection.
 Returns FormWizardRequest models for UI interpretation.

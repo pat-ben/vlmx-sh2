@@ -1,6 +1,6 @@
 
 """
-Textual UI application for VLMX DSL.
+Textual UI application.
 
 Provides the main terminal UI interface using Textual framework. Handles
 command input, parsing, execution, and result display in a conversational
@@ -13,23 +13,10 @@ from textual.containers import VerticalGroup, Container
 from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 
-try:
-    from ..parser import VLMXParser
-    from ..models.context import Context
-    from ..models.results import CommandResult, ErrorResult, FormWizardRequest, QueryWizardRequest
-    from .results import format_command_result
-except ImportError:
-    # Direct execution - add src to path
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from vlmx_sh2.parser import VLMXParser
-    from vlmx_sh2.models.context import Context
-    from vlmx_sh2.models.results import CommandResult, ErrorResult, FormWizardRequest, QueryWizardRequest
-    from vlmx_sh2.ui.results import format_command_result
-
-
-
+from ..parser import VLMXParser
+from ..models.context import Context
+from ..models.results import CommandResult, ErrorResult, FormWizardRequest, QueryWizardRequest
+from .results import format_command_result
 
 
 class VLMX(App):
@@ -263,11 +250,17 @@ class CommandBlock(VerticalGroup):
             # Use the add_handler to update the entity with the form data
             from ..handlers.crud import add_handler
             from ..dsl.words import get_word
+            from ..models.words import EntityWord
             
             # Get the entity model from the wizard request
             entity_word = get_word(wizard_request.entity_id)
             if not entity_word:
                 self.show_output(f"Unknown entity type: {wizard_request.entity_id}", is_error=True)
+                return
+            
+            # Ensure we have an EntityWord with entity_model
+            if not isinstance(entity_word, EntityWord):
+                self.show_output(f"Invalid entity type: {wizard_request.entity_id}", is_error=True)
                 return
             
             # Call the add_handler to save the form data

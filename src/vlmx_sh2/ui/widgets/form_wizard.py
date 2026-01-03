@@ -1,5 +1,5 @@
 """
-Form wizard widget for VLMX DSL.
+Form wizard widget.
 
 Provides interactive form-based data collection for entity attributes.
 """
@@ -11,10 +11,7 @@ from textual.widgets import Input, Button, Label, Static
 from textual.containers import Vertical, Horizontal
 from textual.reactive import reactive
 from textual.message import Message
-try:
-    from ...models.results import FormWizardRequest
-except ImportError:
-    from vlmx_sh2.models.results import FormWizardRequest
+from ...models.results import FormWizardRequest
 
 
 class FormWizard(Widget):

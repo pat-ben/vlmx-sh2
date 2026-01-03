@@ -1,5 +1,5 @@
 """
-Command builder for VLMX DSL parser.
+Command builder for parser.
 
 Builds structured ParsedCommand objects from recognized token streams.
 This is a simple aggregator - all complex classification logic is handled

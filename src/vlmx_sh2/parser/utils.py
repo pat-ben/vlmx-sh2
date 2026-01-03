@@ -1,5 +1,5 @@
 """
-Utility functions for VLMX DSL parser.
+Utility functions for parser.
 
 Contains helper functions used throughout the parsing process.
 For now, this primarily imports and re-exports the expand_shortcuts

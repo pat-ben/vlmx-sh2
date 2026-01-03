@@ -1,5 +1,5 @@
 """
-Data repositories for VLMX DSL.
+Data repositories.
 
 Provides repository pattern implementations for different entity types,
 abstracting storage operations and providing a consistent interface

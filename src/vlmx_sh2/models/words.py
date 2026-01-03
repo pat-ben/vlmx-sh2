@@ -1,5 +1,5 @@
 """
-Word models for VLMX DSL.
+Word models.
 
 Defines pydantic models for word types (actions, entities, fields) used in
 the DSL vocabulary foundation. These models represent the structure and behavior

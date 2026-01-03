@@ -1,5 +1,5 @@
 """
-Context and session management for VLMX DSL.
+Context and session management.
 
 Provides navigation context and session state for command execution.
 Manages hierarchical contexts (system, organization, application) and

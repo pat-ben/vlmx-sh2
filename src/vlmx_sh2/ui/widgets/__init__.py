@@ -1,5 +1,5 @@
 """
-UI widgets for VLMX DSL.
+UI widgets.
 
 Contains reusable UI components and custom widgets
 for the Textual interface.

@@ -1,5 +1,5 @@
 """
-Command execution handlers for VLMX DSL.
+Command execution handlers.
 
 Provides truly dynamic handlers that work with any entity-field
 combination without hardcoded entity-specific logic.

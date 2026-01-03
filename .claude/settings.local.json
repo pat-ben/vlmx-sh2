@@ -55,7 +55,8 @@
       "Bash(PYTHONPATH=src python -c \"from src.vlmx_sh2.handlers.utils import get_company_name_from_context, format_entity_data_for_display; print(''Import successful'')\")",
       "Bash(PYTHONPATH=src python test_cd_up.py)",
       "Bash(PYTHONPATH=src python -c \"from vlmx_sh2.models.results import CommandResult, ErrorResult, FormWizardRequest; print(''Import successful'')\")",
-      "Bash(PYTHONPATH=src python -c \"from vlmx_sh2.ui.results import format_command_result; from vlmx_sh2.models.results import CommandResult; print(''Import test successful'')\")"
+      "Bash(PYTHONPATH=src python -c \"from vlmx_sh2.ui.results import format_command_result; from vlmx_sh2.models.results import CommandResult; print(''Import test successful'')\")",
+      "Bash(PYTHONPATH=src find D:Codevlmx-sh2src -name \"*.py\" -exec grep -l \"for VLMX DSL\" {} ;)"
     ],
     "deny": [],
     "ask": []

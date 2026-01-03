@@ -1,6 +1,6 @@
 # File: src/vlmx_sh2/storage/database.py
 """
-Data persistence layer for VLMX DSL.
+Data persistence layer.
 
 Handles JSON file-based storage for entities with context-aware paths.
 Provides CRUD operations for companies and other business entities,

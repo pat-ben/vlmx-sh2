@@ -1,5 +1,5 @@
 """
-Word recognizer for VLMX DSL parser.
+Word recognizer for parser.
 
 Handles word recognition and value classification. Converts Token objects
 from the tokenizer into RecognizedToken objects with full classification.

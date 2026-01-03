@@ -1,5 +1,5 @@
 """
-Command macros and shortcuts for VLMX DSL.
+Command macros and shortcuts.
 
 Provides command abbreviations and expansion functionality to allow
 users to use short forms like 'cc' for 'create company' or 'sb' 

@@ -5,14 +5,7 @@ Provides the main() function that initializes and runs the Textual
 application, with proper error handling and graceful shutdown.
 """
 
-try:
-    from .ui.app import VLMX
-except ImportError:
-    # Direct execution - add src to path
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from vlmx_sh2.ui.app import VLMX
+from .ui.app import VLMX
 
 
 def main():

@@ -1,5 +1,5 @@
 """
-Navigation handler for VLMX DSL.
+Navigation handler.
 
 Handles context navigation (cd command) between different levels
 of the application (SYS, ORG, APP).

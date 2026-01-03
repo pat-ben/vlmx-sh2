@@ -1,5 +1,5 @@
 """
-Truly dynamic CRUD handlers for VLMX DSL.
+Truly dynamic CRUD handlers.
 
 Each handler works with ANY entity type without hardcoded entity-specific logic.
 Uses entity_model metadata and generic storage functions to provide

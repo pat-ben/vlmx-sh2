@@ -1,5 +1,5 @@
 """
-Parser package for VLMX DSL.
+Parser package.
 
 Provides modular parsing functionality with clean separation of concerns:
 - Tokenization: Breaking input into tokens

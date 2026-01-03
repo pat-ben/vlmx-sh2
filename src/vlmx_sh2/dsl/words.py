@@ -1,5 +1,5 @@
 """
-Word registry and models for VLMX DSL.
+Word registry and models.
 
 Defines all word types (actions, entities, fields, modifiers) and their
 relationships to database models. The word registry serves as the vocabulary

@@ -1,5 +1,5 @@
 """
-UI screens for VLMX DSL.
+UI screens.
 
 Contains screen definitions and layouts for different
 application views and interfaces.

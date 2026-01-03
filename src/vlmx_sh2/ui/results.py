@@ -6,11 +6,10 @@ success/error status, entity details, missing values, and operation
 confirmations. Provides structured result objects and text formatting.
 """
 
-from typing import Dict, List, Any, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..models.parser import ParseResult
-    from ..models.context import Context
 
 
 def format_command_result(result, parse_result: Optional["ParseResult"] = None) -> str:
@@ -24,7 +23,6 @@ def format_command_result(result, parse_result: Optional["ParseResult"] = None) 
     Returns:
         Formatted result string
     """
-    from ..models.results import CommandResult
     
     lines = []
     

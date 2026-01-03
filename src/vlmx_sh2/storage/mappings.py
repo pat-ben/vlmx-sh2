@@ -1,5 +1,5 @@
 """
-Entity-to-file mappings for VLMX DSL.
+Entity-to-file mappings.
 
 Maps entity word IDs to their corresponding JSON file names in the folder structure.
 Used by generic command handlers to determine which file to load/save based on

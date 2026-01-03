@@ -1,5 +1,5 @@
 """
-Data persistence layer for VLMX DSL.
+Data persistence layer.
 
 Contains database operations, repositories, and storage
 management functionality.

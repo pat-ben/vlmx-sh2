@@ -1,5 +1,5 @@
 """
-Tokenizer for VLMX DSL parser.
+Tokenizer for parser.
 
 A three-stage tokenization system that extracts and organizes tokens with metadata.
 The tokenizer's sole responsibility is text processing - no semantic classification.
@@ -10,7 +10,7 @@ from ..models.parser import Token, Operator, QueryKeyword, Bracket
 
 
 class Tokenizer:
-    """Clean three-stage tokenizer for VLMX DSL input."""
+    """Clean three-stage tokenizer for input."""
     
     @classmethod
     def tokenize(cls, text: str) -> List[Token]:

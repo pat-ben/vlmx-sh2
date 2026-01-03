@@ -1,5 +1,5 @@
 """
-Parser models for VLMX DSL.
+Parser models.
 
 Provides stage-based models for the parsing pipeline:
 - Token: Output from tokenizer (text processing only)
