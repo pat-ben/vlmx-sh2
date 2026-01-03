@@ -103,6 +103,17 @@ WORDS: List[Word] = [
         crud_operation=CRUDOperation.READ        ,
     ),
     
+    ActionWord(
+        id="fill",
+        context=ContextLevel.ORG,
+        description="displays an intermediate form for filling out",
+        aliases=["viz","wiz","f"],
+        handler=fill_handler,
+        action_category=ActionCategory.WIZARD,
+        crud_operation=CRUDOperation.NONE,
+        requires_entity=True
+    ),
+    
 
     
     # ==================== ENTITIES ====================

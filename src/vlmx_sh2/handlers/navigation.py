@@ -32,14 +32,14 @@ async def navigate_handler(entity_model, entity_value, attributes, context, attr
     """
     from ..ui.results import create_success_result, create_error_result
     from ..models.context import Context as NewContext, ContextLevel
-    from ..storage.database import company_exists, find_company_by_name
+    from ..storage.database import find_company_by_name
     
     try:
         # Navigate up one level in context hierarchy
         if entity_value in UP_NAVIGATION_ALIASES:
             # If already at SYS level, can't go up further
             if context.level == ContextLevel.SYS:
-                return create_error_result([f"Already at system level - cannot navigate up"])
+                return create_error_result(["Already at system level - cannot navigate up"])
             
             # From ORG level, go back to SYS level
             if context.level == ContextLevel.ORG:
