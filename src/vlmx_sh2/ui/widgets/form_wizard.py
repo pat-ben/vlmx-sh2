@@ -7,6 +7,7 @@ This is a stub implementation for future development.
 
 from typing import Dict, Any
 from textual.widget import Widget
+from textual.app import ComposeResult
 from ...models.results import FormWizardRequest
 
 
@@ -45,16 +46,19 @@ class FormWizard(Widget):
             "on building interactive form components."
         )
     
-    def compose(self):
+    def compose(self) -> ComposeResult:
         """
         Compose the widget's child components.
         
         This would normally create form fields, buttons, etc.
-        For now, it's empty as this is a stub.
+        For now, it returns an empty iterable as this is a stub.
+        
+        Returns:
+            ComposeResult: Empty iterable for stub implementation
         """
         # Future implementation will add:
         # - Dynamic form fields based on wizard_request.fields
         # - Pre-filled values from wizard_request.pre_filled_values
         # - Submit/Cancel buttons
         # - Validation logic
-        pass
+        return []
