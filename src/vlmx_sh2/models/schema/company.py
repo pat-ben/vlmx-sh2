@@ -6,30 +6,15 @@ entity models including CompanyEntity, MetadataEntity, BrandEntity,
 OfferingEntity, TargetEntity, and ValuesEntity.
 """
 
+# src/vlmx_sh2/models/schema/company.py
+
 from datetime import date, datetime
-from typing import Optional, ClassVar, List
+from typing import Optional, ClassVar, List, Type
 from sqlmodel import Field, SQLModel
 from .enums import Legal, Currency, Unit, TypeOrg
 from .base import DatabaseSchema, DatabaseModel
 
 
-# ============================================
-# DATABASE SCHEMA
-# ============================================
-
-class CompanyDatabase(DatabaseSchema):
-    name: str = "company"
-    description: str = "Single company database"
-    
-    # Override the tables ClassVar with the actual entities
-    tables: ClassVar[List[TypeOrg[SQLModel]]] = [
-        CompanyEntity,
-        MetadataEntity,
-        BrandEntity,
-        OfferingEntity,
-        TargetEntity,
-        ValuesEntity
-    ]
 
 
 # ============================================
@@ -223,3 +208,22 @@ class ValuesEntity(DatabaseModel, table=True):
     @classmethod
     def table_name(cls) -> str:
         return "brand_values"
+        
+        
+# ============================================
+# DATABASE SCHEMA
+# ============================================
+
+class CompanyDatabase(DatabaseSchema):
+    name: str = "company"
+    description: str = "Single company database"
+    
+    # Override the tables ClassVar with the actual entities
+    tables: ClassVar[List[Type[SQLModel]]] = [
+        CompanyEntity,
+        MetadataEntity,
+        BrandEntity,
+        OfferingEntity,
+        TargetEntity,
+        ValuesEntity
+    ]
