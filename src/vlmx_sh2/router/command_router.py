@@ -87,6 +87,14 @@ class CommandRouter:
         # At this point, we have a valid ParsedCommand
         command = parse_result.command
         
+        # Type safety: If parse is valid, command must exist
+        if command is None:
+            # This should never happen if parser is working correctly
+            return RouteDecision(
+                route_type=RouteType.DIRECT,
+                error_context={'errors': ['Internal error: valid parse with no command']}
+            )
+        
         # ROUTE 2: Check if action requires a form wizard
         if self._requires_form_wizard(command):
             return self._route_to_form_wizard(command, parse_result)
@@ -163,13 +171,16 @@ class CommandRouter:
         """
         form_fields = self._extract_form_fields(command)
         
+        # Safe access to entity properties
+        entity_name = command.entity.id.title() if command.entity else "Entity"
+        
         wizard_config = {
             'entity': command.entity,
             'entity_name': command.entity_name,
             'fields': form_fields,
             'pre_filled_values': command.attributes,
             'validation_strict': self.config.form_validation_strict,
-            'title': f"Fill {command.entity.id.title()} Information"
+            'title': f"Fill {entity_name} Information"
         }
         
         return RouteDecision(
@@ -278,12 +289,12 @@ class CommandRouter:
     
     def _extract_form_fields(self, command: ParsedCommand) -> List[str]:
         """
-        Extract form fields from command or entity definition.
+        Extract form fields from command or entity model.
         
         Strategy:
         1. If command has explicit attributes (e.g., "fill brand vision mission"),
            use those as field list
-        2. Otherwise, get all fields from entity's form definition
+        2. Otherwise, extract all fields from the entity's Pydantic model schema
         
         Args:
             command: Parsed command
@@ -295,15 +306,29 @@ class CommandRouter:
             >>> # Command: "fill brand vision mission"
             >>> _extract_form_fields(command)
             ['vision', 'mission']
+            
+            >>> # Command: "fill brand" (no specific fields)
+            >>> _extract_form_fields(command)
+            ['vision', 'mission', 'personality', 'promise', 'brand']
         """
-        # If command has attributes with empty values, those are the requested fields
+        # If command has attributes, those are the requested fields
         if command.attributes:
             return list(command.attributes.keys())
         
-        # Otherwise, get default form fields from entity definition
-        if hasattr(command.entity, 'form_fields'):
-            return [field['name'] for field in command.entity.form_fields]
+        # Otherwise, extract all fields from entity model schema
+        if command.entity and command.entity.entity_model:
+            entity_model = command.entity.entity_model
+            
+            # Get all fields from the Pydantic model
+            # Using model_fields which is available on Pydantic v2 models
+            if hasattr(entity_model, 'model_fields'):
+                # Filter out system fields (id, timestamps, foreign keys)
+                system_fields = {'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 'source_db', 'last_synced_at'}
+                all_fields = entity_model.model_fields.keys()
+                user_fields = [f for f in all_fields if f not in system_fields]
+                return user_fields
         
+        # Fallback: return empty list if no fields can be extracted
         return []
     
     # ==================== CONFIGURATION METHODS ====================
