@@ -11,7 +11,7 @@ from ..models.context import Context, ContextLevel
 from ..storage.mappings import DEFAULT_ENTITY
 from ..models.parser import ParseResult
 from ..dsl.words import get_word
-from ..models.words import EntityWord, fieldWord
+from ..models.words import EntityWord, FieldWord
 
 def extract_entity_from_parse_result(parse_result: ParseResult) -> str:
     """
@@ -47,7 +47,7 @@ def extract_fields_from_parse_result(parse_result: ParseResult) -> Dict[str, str
     """
     # Use command object (single source of truth)
     if parse_result.command:
-        return parse_result.command.fields.copy()
+        return parse_result.command.attributes.copy()
     
     return {}
 
@@ -98,7 +98,7 @@ def validate_field_for_entity(field_id: str, entity_id: str) -> bool:
     
     # Get the field word
     field_word = get_word(field_id)
-    if not field_word or not isinstance(field_word, fieldWord):
+    if not field_word or not isinstance(field_word, FieldWord):
         return False
     
     # Get the entity word

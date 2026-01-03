@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..models.context import Context, ContextLevel
-from ..models.schema.enums import Legal, Currency, Unit, TypeOrg
 from .mappings import get_entity_json_filename
 
 
@@ -101,9 +100,9 @@ def load_company_organization(company_name: str, context: Context) -> Optional[D
         return None
 
 def save_company_files(company_name: str, organization_data: Dict[str, Any], 
-                      metadata_data: List[Dict[str, Any]] = None, 
-                      brand_data: Dict[str, Any] = None, 
-                      context: Context = None) -> None:
+                      metadata_data: Optional[List[Dict[str, Any]]] = None, 
+                      brand_data: Optional[Dict[str, Any]] = None, 
+                      context: Optional[Context] = None) -> None:
     """
     Save company files to the folder structure.
     
@@ -117,6 +116,10 @@ def save_company_files(company_name: str, organization_data: Dict[str, Any],
     Raises:
         RuntimeError: If files cannot be written
     """
+    # Ensure we have a valid context
+    if context is None:
+        context = Context(level=ContextLevel.SYS)
+    
     company_folder = get_company_folder_path(company_name, context)
     
     # Create company directory

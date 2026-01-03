@@ -9,7 +9,7 @@ foundation for natural language command parsing and validation.
 from typing import List, Dict
 from ..models.words import (
     WordType, ActionCategory, CRUDOperation, ContextLevel,
-    ActionWord, EntityWord, fieldWord, Word
+    ActionWord, EntityWord, FieldWord, Word
 )
 from ..models.schema.company import (
     CompanyEntity, 
@@ -159,81 +159,81 @@ WORDS: List[Word] = [
     
     # Common fields across multiple entities
     
-    fieldWord(
+    FieldWord(
         id="name",
         description="Name or title of the entity",
         entity_models=[CompanyEntity, BrandEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="key",
         description="Key identifier or category",
         entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="value",
         description="Value or description content",
         entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
     ),
     
     # Company-specific fields
-    fieldWord(
+    FieldWord(
         id="legal",
         description="Legal entity type (SA, LLC, INC, etc.)",   
         entity_models=[CompanyEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="type",
         description="Organization type (company, fund, foundation)",
         entity_models=[CompanyEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="currency",
         description="Currency used for financial data (EUR, USD, GBP, etc.)",
         entity_models=[CompanyEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="unit",
         description="Unit for financial data (THOUSANDS, MILLIONS, etc.)",
         entity_models=[CompanyEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="closing",
         description="Fiscal year end month (1-12)",
         entity_models=[CompanyEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="incorporation",
         description="Date of incorporation",
         entity_models=[CompanyEntity]
     ),
     
     # Brand-specific fields
-    fieldWord(
+    FieldWord(
         id="vision",
         description="Company vision statement",
         entity_models=[BrandEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="mission",
         description="Company mission statement",
         entity_models=[BrandEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="personality",
         description="Brand personality description",
         entity_models=[BrandEntity]
     ),
     
-    fieldWord(
+    FieldWord(
         id="promise",
         description="Brand promise to customers",
         entity_models=[BrandEntity]
