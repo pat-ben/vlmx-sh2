@@ -5,7 +5,7 @@ Defines common base classes that all database schemas and entity models inherit 
 Provides shared functionality for table naming, configuration, and schema organization.
 """
 
-from typing import List, Type
+from typing import List, Type, ClassVar
 from sqlmodel import SQLModel
 
 
@@ -17,8 +17,10 @@ class DatabaseSchema(SQLModel):
     """Base class for database schemas"""
     name: str
     description: str
-    tables: List[Type[SQLModel]]  # Which entities/tables this database has
-
+    
+    # This is a class variable, NOT a database column
+    # ClassVar tells Pydantic/SQLModel to ignore this for validation/DB
+    tables: ClassVar[List[Type[SQLModel]]] = []
 
 
 # ============================================

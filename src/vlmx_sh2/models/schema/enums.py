@@ -36,7 +36,7 @@ class Unit(str, Enum):
     MILLIONS = "MILLIONS"
 
 
-class Type(str, Enum):
+class TypeOrg(str, Enum):
     """Types of organization allowed in VLMX"""
     COMPANY = "company"  # the most common type of organization
     FUND = "fund"  # a fund is a cluster of multiple companies

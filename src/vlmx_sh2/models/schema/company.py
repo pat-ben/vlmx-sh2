@@ -7,9 +7,9 @@ OfferingEntity, TargetEntity, and ValuesEntity.
 """
 
 from datetime import date, datetime
-from typing import Optional
-from sqlmodel import Field
-from .enums import Legal, Currency, Unit, Type
+from typing import Optional, ClassVar, List
+from sqlmodel import Field, SQLModel
+from .enums import Legal, Currency, Unit, TypeOrg
 from .base import DatabaseSchema, DatabaseModel
 
 
@@ -20,7 +20,16 @@ from .base import DatabaseSchema, DatabaseModel
 class CompanyDatabase(DatabaseSchema):
     name: str = "company"
     description: str = "Single company database"
-    # tables: List[Type[SQLModel]] = []
+    
+    # Override the tables ClassVar with the actual entities
+    tables: ClassVar[List[TypeOrg[SQLModel]]] = [
+        CompanyEntity,
+        MetadataEntity,
+        BrandEntity,
+        OfferingEntity,
+        TargetEntity,
+        ValuesEntity
+    ]
 
 
 # ============================================
@@ -39,7 +48,7 @@ class CompanyEntity(DatabaseModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     legal: Legal = Field(default=Legal.SA)
-    type: Type = Field(default=Type.COMPANY)
+    type: TypeOrg = Field(default=TypeOrg.COMPANY)
     currency: Currency = Field(default=Currency.EUR)
     unit: Unit = Field(default=Unit.THOUSANDS)
     closing: int = 12

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..models.context import Context, ContextLevel
-from ..models.schema.enums import Legal, Currency, Unit, Type
+from ..models.schema.enums import Legal, Currency, Unit, TypeOrg
 from .mappings import get_entity_json_filename
 
 
