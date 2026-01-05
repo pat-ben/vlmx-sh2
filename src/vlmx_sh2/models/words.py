@@ -20,6 +20,8 @@ class WordType(Enum):
     FIELD = "field"  # noun or adjective: Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
 
 
+
+
 class BaseWord(BaseModel):
     """
     Base word model - shared fields for all word types.
@@ -52,6 +54,10 @@ class CRUDOperation(str, Enum):
     DELETE = "delete"
     NONE = "none"
 
+class ExecutionType(str, Enum):
+    STANDARD = "standard"      # Direct execution → result
+    WIZARD = "wizard"          # Show widget → await input → execute
+    CONFIRMATION = "confirm"   # Ask for confirmation first (for destructive ops)
 
 class ActionWord(BaseWord):
     """
@@ -60,8 +66,7 @@ class ActionWord(BaseWord):
     
     aliases: List[str] = Field(default_factory=list, description="Alternative names for this word (e.g., ['add', 'new'] for 'create')")
     word_type: Literal[WordType.ACTION] = WordType.ACTION
-    requires_form: bool = Field(default=False, description="Whether this action requires a form to operate on as an intermediary step")
-    requires_query: bool = Field(default=False, description="Whether this action requires a query wizard to operate on as an intermediary step")
+    execution_type: ExecutionType = ExecutionType.STANDARD
     handler: Any = Field(description="Function to handle this action")
     action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
     crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
