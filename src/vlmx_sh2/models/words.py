@@ -6,7 +6,6 @@ the DSL vocabulary foundation. These models represent the structure and behavior
 of different word categories in natural language command parsing.
 """
 
-from this import d
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from typing import Type, Optional, Literal, List, Any

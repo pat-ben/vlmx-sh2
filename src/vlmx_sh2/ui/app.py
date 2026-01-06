@@ -7,6 +7,7 @@ command input, parsing, execution, and result display in a conversational
 command-line style interface.
 """
 
+from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Label, Input
 from textual.containers import VerticalGroup, Container
@@ -17,6 +18,7 @@ from ..parser import VLMXParser
 from ..models.context import Context
 from ..models.results import CommandResult, ErrorResult, FormWizardRequest, QueryWizardRequest
 from .results import format_command_result
+from .widgets.form_wizard import FormWizard
 
 
 class VLMX(App):
@@ -43,15 +45,7 @@ class VLMX(App):
         self.theme = (
             "textual-dark" if self.theme == "textual-light" else "textual-light"
         )
-    
-    def get_system_info(self) -> dict:
-        """Get system information."""
-        from ..dsl.words import get_all_words
-        return {
-            "word_registry_size": len(get_all_words()),
-            "context_level": self.context.level,
-            "parser_ready": self.parser is not None
-        }
+
 
 class CommandBlock(VerticalGroup):
     """A command and context block"""
@@ -221,8 +215,6 @@ class CommandBlock(VerticalGroup):
 
     async def _handle_form_wizard(self, wizard_request: FormWizardRequest, event):
         """Handle form wizard request by showing an interactive form."""
-        from .widgets.form_wizard import FormWizard
-        
         try:
             # Create the form wizard widget
             form_wizard = FormWizard(wizard_request)
@@ -306,16 +298,18 @@ class FormWizardScreen(ModalScreen):
         self.command_block._create_new_prompt()
         self.dismiss()
 
-    def on_form_wizard_cancel(self, message) -> None:
+    async def on_form_wizard_cancel(self, message) -> None:
         """Handle form cancellation."""
         self.command_block.show_output("Form wizard cancelled", is_error=True)
-        self.command_block._create_new_prompt()
         self.dismiss()
+        # Create new prompt after modal is dismissed
+        self.app.call_after_refresh(self.command_block._create_new_prompt)
     
     def key_escape(self) -> None:
         """Handle escape key to cancel form."""
         self.command_block.show_output("Form wizard cancelled", is_error=True)
-        self.command_block._create_new_prompt()
         self.dismiss()
+        # Create new prompt after modal is dismissed
+        self.app.call_after_refresh(self.command_block._create_new_prompt)
 
 
