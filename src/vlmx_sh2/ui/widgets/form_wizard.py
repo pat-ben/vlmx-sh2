@@ -4,7 +4,8 @@ Form wizard widget.
 Provides interactive form-based data collection for entity attributes.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
+import asyncio
 from textual.widget import Widget
 from textual.app import ComposeResult
 from textual.widgets import Input, Button, Label, Static
@@ -30,7 +31,7 @@ class FormWizard(Widget):
         pass
     
     result_ready = reactive(False)
-    form_data: Dict[str, str] = {}
+    form_data: Dict[str, Any] = {}
     
     def __init__(self, wizard_request: FormWizardRequest, **kwargs):
         """
@@ -51,7 +52,8 @@ class FormWizard(Widget):
         Returns:
             Dictionary containing the form results or cancellation status
         """
-        await self.watch_result_ready(self.result_ready)
+        while not self.result_ready:
+            await asyncio.sleep(0.1)
         return self.form_data
     
     def compose(self) -> ComposeResult:
