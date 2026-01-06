@@ -9,7 +9,7 @@ foundation for natural language command parsing and validation.
 from typing import List, Dict
 from ..models.words import (
     WordType, ActionCategory, CRUDOperation, ContextLevel,
-    ActionWord, EntityWord, FieldWord, Word
+    ActionWord, EntityWord, FieldWord, Word, ExecutionType
 )
 from ..models.schema.company import (
     CompanyEntity, 
@@ -109,8 +109,8 @@ WORDS: List[Word] = [
         context=ContextLevel.ORG,
         description="displays an intermediate form for filling out",
         aliases=["viz","wiz","f"],
-        handler=fill_handler,
-        action_category=ActionCategory.WIZARD,
+        execution_type=ExecutionType.WIZARD,
+        handler=fill_handler,        
         crud_operation=CRUDOperation.NONE,
         requires_entity=True
     ),

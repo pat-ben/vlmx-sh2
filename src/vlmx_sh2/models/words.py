@@ -6,6 +6,7 @@ the DSL vocabulary foundation. These models represent the structure and behavior
 of different word categories in natural language command parsing.
 """
 
+from this import d
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from typing import Type, Optional, Literal, List, Any
@@ -41,7 +42,6 @@ class ActionCategory(str, Enum):
     """ Broad category of what an action does. """
     CRUD = "crud"
     NAVIGATION = "navigation"
-    WIZARD = "wizard"
     SYSTEM = "system"
     ANALYSIS = "analysis"
     IMPORT_EXPORT = "import_export"
@@ -57,7 +57,6 @@ class CRUDOperation(str, Enum):
 class ExecutionType(str, Enum):
     STANDARD = "standard"      # Direct execution → result
     WIZARD = "wizard"          # Show widget → await input → execute
-    CONFIRMATION = "confirm"   # Ask for confirmation first (for destructive ops)
 
 class ActionWord(BaseWord):
     """
@@ -66,7 +65,7 @@ class ActionWord(BaseWord):
     
     aliases: List[str] = Field(default_factory=list, description="Alternative names for this word (e.g., ['add', 'new'] for 'create')")
     word_type: Literal[WordType.ACTION] = WordType.ACTION
-    execution_type: ExecutionType = ExecutionType.STANDARD
+    execution_type: ExecutionType = Field(default=ExecutionType.STANDARD, description="Type of execution for this action")
     handler: Any = Field(description="Function to handle this action")
     action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
     crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
