@@ -10,12 +10,7 @@ from typing import Dict, List, Any, Optional, Literal
 from pydantic import BaseModel
 
 
-class HandlerResult(BaseModel):
-    """Base class for all handler result types."""
-    type: str
-
-
-class CommandResult(HandlerResult):
+class CommandResult(BaseModel):
     """Result for normal command execution."""
     type: Literal['command_result'] = 'command_result'
     success: bool
@@ -23,7 +18,7 @@ class CommandResult(HandlerResult):
     data: Optional[Dict[str, Any]] = None
 
 
-class FormWizardRequest(HandlerResult):
+class FormWizardRequest(BaseModel):
     """Request to display a form wizard."""
     type: Literal['form_wizard'] = 'form_wizard'
     entity_id: str
@@ -31,18 +26,20 @@ class FormWizardRequest(HandlerResult):
     fields: List[str]
     pre_filled_values: Dict[str, str] = {}
     title: str
+    modal: bool = True
 
 
-class QueryWizardRequest(HandlerResult):
+class QueryWizardRequest(BaseModel):
     """Request to display a query wizard (future implementation)."""
     type: Literal['query_wizard'] = 'query_wizard'
     entity_id: str
     filters: List[str] = []
     aggregations: List[str] = []
     title: str
+    modal: bool = True
 
 
-class ErrorResult(HandlerResult):
+class ErrorResult(BaseModel):
     """Error response from handler."""
     type: Literal['error'] = 'error'
     errors: List[str]
