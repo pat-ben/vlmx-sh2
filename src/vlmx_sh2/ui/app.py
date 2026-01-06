@@ -98,14 +98,12 @@ class CommandBlock(VerticalGroup):
             return
 
         try:
-            # Parse the command using the parser
+            # Parse the command
             parse_result = self.parser.parse(user_input)
-            
-            # Show parsing information
             self.show_output(f"Command: {user_input}")
             
+            # Handle parse errors
             if parse_result.errors:
-                # Create ErrorResult model and display it
                 error_result = ErrorResult(
                     errors=parse_result.errors,
                     suggestions=parse_result.suggestions or []
@@ -113,8 +111,8 @@ class CommandBlock(VerticalGroup):
                 await self._handle_error_result(error_result, event)
                 return
             
+            # Validate handler exists
             if not parse_result.action_handler:
-                # Create ErrorResult model for missing handler
                 error_result = ErrorResult(
                     errors=["No action handler found"],
                     suggestions=parse_result.suggestions or []
@@ -122,36 +120,27 @@ class CommandBlock(VerticalGroup):
                 await self._handle_error_result(error_result, event)
                 return
             
-            # Execute using the new simplified system
-            try:
-                result = await self.parser.execute_parsed_command(parse_result, self.context)
-            except Exception as e:
-                error_result = ErrorResult(
-                    errors=[f"Execution failed: {str(e)}"],
-                    suggestions=["Check command syntax and system status"]
-                )
-                await self._handle_error_result(error_result, event)
-                return
+            # Execute command (no inner try/except)
+            result = await self.parser.execute_parsed_command(parse_result, self.context)
             
-            # Handle different result types based on type field
+            # Route result to appropriate handler
             if result.type == 'form_wizard':
-                await self._handle_form_wizard(result, event)  # Don't create new prompt yet
+                await self._handle_form_wizard(result, event)
             elif result.type == 'query_wizard':
-                await self._handle_query_wizard(result, event)  # Don't create new prompt yet
+                await self._handle_query_wizard(result, event)
             elif result.type == 'command_result':
-                await self._handle_command_result(result, event)  # Show result and create new prompt
+                await self._handle_command_result(result, event)
             elif result.type == 'error':
-                await self._handle_error_result(result, event)  # Show error and create new prompt
+                await self._handle_error_result(result, event)
             else:
-                # Fallback for unexpected result types
                 self.show_output(f"Unknown result type: {result.type}", is_error=True)
                 self._create_new_prompt()
                 
         except Exception as e:
-            # Handle unexpected exceptions  
+            # Catch ALL exceptions (parsing, execution, unexpected)
             error_result = ErrorResult(
-                errors=[f"Unexpected error: {str(e)}"],
-                suggestions=["Please try again or check system status"]
+                errors=[f"Error: {str(e)}"],
+                suggestions=["Please try again or check command syntax"]
             )
             await self._handle_error_result(error_result, event)
 
