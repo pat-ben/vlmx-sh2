@@ -4,13 +4,11 @@ Form wizard widget.
 Provides interactive form-based data collection for entity attributes.
 """
 
-from typing import Dict, Any
-import asyncio
+from typing import Dict
 from textual.widget import Widget
 from textual.app import ComposeResult
 from textual.widgets import Input, Button, Label, Static
 from textual.containers import Vertical, Horizontal
-from textual.reactive import reactive
 from textual.message import Message
 from ...models.results import FormWizardRequest
 
@@ -30,9 +28,6 @@ class FormWizard(Widget):
         """Message sent when form is cancelled."""
         pass
     
-    result_ready = reactive(False)
-    form_data: Dict[str, Any] = {}
-    
     def __init__(self, wizard_request: FormWizardRequest, **kwargs):
         """
         Initialize the form wizard.
@@ -44,17 +39,6 @@ class FormWizard(Widget):
         super().__init__(**kwargs)
         self.wizard_request = wizard_request
         self.inputs: Dict[str, Input] = {}
-        
-    async def wait_for_result(self) -> Dict[str, Any]:
-        """
-        Wait for user to complete the form wizard.
-        
-        Returns:
-            Dictionary containing the form results or cancellation status
-        """
-        while not self.result_ready:
-            await asyncio.sleep(0.1)
-        return self.form_data
     
     def compose(self) -> ComposeResult:
         """Compose the form wizard interface."""
@@ -100,12 +84,8 @@ class FormWizard(Widget):
             if value:  # Only include non-empty values
                 data[field_name] = value
         
-        self.form_data = {"action": "submit", "fields": data}
-        self.result_ready = True
         self.post_message(self.Submit(data))
     
     def _handle_cancel(self) -> None:
         """Handle form cancellation."""
-        self.form_data = {"action": "cancel"}
-        self.result_ready = True
         self.post_message(self.Cancel())
