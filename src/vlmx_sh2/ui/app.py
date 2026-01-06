@@ -284,8 +284,9 @@ class FormWizardScreen(ModalScreen):
         """Handle form submission."""
         # Process the submitted form data
         await self.command_block._process_wizard_submission(self.wizard_request, message.data)
-        self.command_block._create_new_prompt()
         self.dismiss()
+        # Create new prompt after modal is dismissed
+        self.app.call_after_refresh(self.command_block._create_new_prompt)
 
     async def on_form_wizard_cancel(self, message) -> None:
         """Handle form cancellation."""
