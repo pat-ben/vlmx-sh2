@@ -109,9 +109,10 @@ WORDS: List[Word] = [
         context=ContextLevel.ORG,
         description="displays an intermediate form for filling out",
         aliases=["viz","wiz","f"],
+        handler=fill_handler,
         execution_type=ExecutionType.WIZARD,
-        handler=fill_handler,        
-        crud_operation=CRUDOperation.NONE,
+        action_category=ActionCategory.CRUD,
+        crud_operation=CRUDOperation.UPDATE,
         requires_entity=True
     ),
     
