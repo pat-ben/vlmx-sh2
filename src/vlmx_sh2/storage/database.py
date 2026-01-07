@@ -41,7 +41,7 @@ def get_data_directory_path(context: Context) -> Path:
     else:
         # For ORG/APP level, use org-specific storage
         if context.org_db_path:
-            # org_db_path points to organization.json, so parent is the company folder
+            # org_db_path points to company.json, so parent is the company folder
             # We want the data directory that contains company folders
             return context.org_db_path.parent.parent
         else:
@@ -239,15 +239,15 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             created_files = []
             
             try:
-                # Special case: CompanyEntity data is stored as "organization.json"
-                org_file = company_folder / "organization.json"
+                # CompanyEntity data is stored as "company.json" following standard convention
+                org_file = company_folder / "company.json"
                 with open(org_file, 'w', encoding='utf-8') as f:
                     json.dump(organization_data, f, indent=2, default=str, ensure_ascii=False)
-                created_files.append("organization.json")
+                created_files.append("company.json")
                 
                 # Dynamically create JSON files for all other entities in CompanyDatabase.tables
                 for entity_class in CompanyDatabase.tables:
-                    # Skip CompanyEntity as it's already handled as "organization.json"
+                    # Skip CompanyEntity as it's already handled as "company.json"
                     if entity_class.__name__ == 'CompanyEntity':
                         continue
                     
@@ -334,7 +334,7 @@ def load_entity(entity_type: str, company_name: str, context: Context) -> Option
         if entity_type == 'company':
             # Inline company organization loading logic
             company_folder = get_company_folder_path(company_name, context)
-            org_file = company_folder / "organization.json"
+            org_file = company_folder / "company.json"
             
             if not org_file.exists():
                 return None
@@ -376,7 +376,7 @@ def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, conte
                 }
             
             # Load current organization data
-            org_file = company_folder / "organization.json"
+            org_file = company_folder / "company.json"
             if not org_file.exists():
                 return {
                     "success": False,
@@ -453,7 +453,7 @@ def delete_entity(entity_type: str, entity_name: str, context: Context) -> Dict[
                 }
             
             # Load company data before deletion
-            org_file = company_folder / "organization.json"
+            org_file = company_folder / "company.json"
             company_data = None
             if org_file.exists():
                 try:
@@ -531,7 +531,7 @@ def list_companies(context: Context) -> Dict[str, Any]:
             for folder in data_dir.iterdir():
                 if folder.is_dir():
                     # Try to load organization data for each folder
-                    org_file = folder / "organization.json"
+                    org_file = folder / "company.json"
                     if org_file.exists():
                         try:
                             with open(org_file, 'r', encoding='utf-8') as f:

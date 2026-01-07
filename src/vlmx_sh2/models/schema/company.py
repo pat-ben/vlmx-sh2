@@ -104,13 +104,13 @@ class MetadataEntity(DatabaseModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
-    stage: Stage
+    stage: Stage = Field(default=Stage.early)
     round: Optional[Round] = None
     phase: Optional[Phase] = None
-    sector: Sector
+    sector: Sector = Field(default=Sector.AI)
     sector2: Optional[Sector] = None
     sector3: Optional[Sector] = None
-    model: Model
+    model: Model = Field(default=Model.B2B)
     model2: Optional[Model] = None
 
     # timestamp

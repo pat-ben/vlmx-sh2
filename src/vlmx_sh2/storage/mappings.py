@@ -40,11 +40,8 @@ def _generate_entity_mappings() -> Dict[str, str]:
             class_name = entity_class.__name__
             entity_name = class_name.replace("Entity", "").lower()
             
-            # Special case: CompanyEntity -> organization.json (legacy)
-            if class_name == "CompanyEntity":
-                json_filename = "organization.json"
-            else:
-                json_filename = _entity_class_to_json_filename(class_name)
+            # Use standard naming convention for all entities including CompanyEntity
+            json_filename = _entity_class_to_json_filename(class_name)
             
             # Add primary mapping
             mappings[entity_name] = json_filename
@@ -101,9 +98,9 @@ def _generate_entity_mappings() -> Dict[str, str]:
         # Fallback in case of any import issues during module loading
         print(f"Warning: Could not generate dynamic mappings: {e}")
         return {
-            "company": "organization.json",
-            "organization": "organization.json", 
-            "org": "organization.json",
+            "company": "company.json",
+            "organization": "company.json", 
+            "org": "company.json",
             "brand": "brand.json",
             "branding": "brand.json",
             "identity": "brand.json"
@@ -133,7 +130,7 @@ def get_entity_json_filename(entity_word_id: str) -> Optional[str]:
 
 
 # Default entity if none specified in command
-DEFAULT_ENTITY = "organization"
+DEFAULT_ENTITY = "company"
 
 
 def get_supported_entities() -> Dict[str, str]:
