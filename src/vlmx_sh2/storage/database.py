@@ -17,6 +17,29 @@ from ..models.context import Context, ContextLevel
 from .mappings import get_entity_json_filename
 
 
+# ==================== HELPER FUNCTIONS ====================
+
+def entity_class_to_json_filename(entity_class) -> str:
+    """
+    Convert entity class name to JSON filename.
+    
+    Examples:
+        CompanyEntity -> company.json
+        OfferingEntity -> offering.json  
+        NewsEntity -> news.json
+        
+    Args:
+        entity_class: The entity class (e.g., CompanyEntity)
+        
+    Returns:
+        JSON filename (e.g., "company.json")
+    """
+    class_name = entity_class.__name__
+    # Remove "Entity" suffix and convert to lowercase
+    entity_name = class_name.replace("Entity", "").lower()
+    return f"{entity_name}.json"
+
+
 # ==================== PATH UTILITIES ====================
 
 def get_data_directory_path(context: Context) -> Path:
@@ -39,7 +62,9 @@ def get_data_directory_path(context: Context) -> Path:
     else:
         # For ORG/APP level, use org-specific storage
         if context.org_db_path:
-            return context.org_db_path.parent / "data"
+            # org_db_path points to organization.json, so parent is the company folder
+            # We want the data directory that contains company folders
+            return context.org_db_path.parent.parent
         else:
             # Fallback to current directory
             return Path.cwd() / "data"
@@ -202,54 +227,89 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                     # Keep original value if parsing fails
                     pass
             
-            # Create organization data matching CompanyEntity schema
-            organization_data = {
-                "id": None,  # Will be set by database
+            # Import CompanyEntity to get proper defaults
+            from ..models.schema.company import CompanyEntity
+            
+            # Create organization data using CompanyEntity model defaults
+            base_data = {
+                "id": None,
                 "name": data.get('name'),
-                "entity": data.get('entity', 'SA'),  # Default to SA
-                "type": data.get('type', 'company'),  # Default to company
-                "currency": data.get('currency', 'EUR'),  # Default to EUR
-                "unit": data.get('unit', 'THOUSANDS'),  # Default to THOUSANDS
-                "closing": int(data.get('closing', 12)),  # Default to 12
-                "incorporation": data.get('incorporation'),
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat(),
-                "source_db": None,
-                "last_synced_at": None
             }
+            
+            # Merge user data with base data
+            base_data.update(data)
+            
+            # Use CompanyEntity model to apply defaults and validate
+            try:
+                company_instance = CompanyEntity(**base_data)
+                organization_data = company_instance.model_dump()
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"Invalid company data: {str(e)}"
+                }
             
             # Create company directory
             company_folder.mkdir(parents=True, exist_ok=True)
             
-            # Default metadata and brand data
-            metadata_data = []
-            brand_data = {
-                "id": None,
-                "org_id": 1,
-                "vision": None,
-                "mission": None,
-                "personality": None,
-                "promise": None,
-                "brand": None,
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
-            }
+            # Import CompanyDatabase to get all entity classes  
+            from ..models.schema.company import CompanyDatabase
+            
+            created_files = []
             
             try:
-                # Save organization.json
+                # Special case: CompanyEntity data is stored as "organization.json"
                 org_file = company_folder / "organization.json"
                 with open(org_file, 'w', encoding='utf-8') as f:
                     json.dump(organization_data, f, indent=2, default=str, ensure_ascii=False)
+                created_files.append("organization.json")
                 
-                # Save metadata.json
-                metadata_file = company_folder / "metadata.json"
-                with open(metadata_file, 'w', encoding='utf-8') as f:
-                    json.dump(metadata_data, f, indent=2, ensure_ascii=False)
-                
-                # Save brand.json
-                brand_file = company_folder / "brand.json"
-                with open(brand_file, 'w', encoding='utf-8') as f:
-                    json.dump(brand_data, f, indent=2, default=str, ensure_ascii=False)
+                # Dynamically create JSON files for all other entities in CompanyDatabase.tables
+                for entity_class in CompanyDatabase.tables:
+                    # Skip CompanyEntity as it's already handled as "organization.json"
+                    if entity_class.__name__ == 'CompanyEntity':
+                        continue
+                    
+                    # Generate JSON filename from entity class name
+                    json_filename = entity_class_to_json_filename(entity_class)
+                    entity_file = company_folder / json_filename
+                    
+                    # Determine the default data structure based on cardinality
+                    if hasattr(entity_class, 'cardinality') and entity_class.cardinality == "single":
+                        # Single record entity - create default record with model defaults
+                        try:
+                            # Create a default instance to get all field defaults
+                            default_instance_data = {
+                                "id": None,
+                                "co_id": 1,
+                                "created_at": datetime.now().isoformat(),
+                                "updated_at": datetime.now().isoformat()
+                            }
+                            
+                            # Apply entity model defaults by creating an instance
+                            # This handles all the default values defined in the model
+                            entity_instance = entity_class(**default_instance_data)
+                            default_data = entity_instance.model_dump()
+                            
+                        except Exception as e:
+                            # Fallback to simple default structure if model creation fails
+                            default_data = {
+                                "id": None,
+                                "co_id": 1,
+                                "created_at": datetime.now().isoformat(),
+                                "updated_at": datetime.now().isoformat()
+                            }
+                    else:
+                        # Multiple records entity - create empty array
+                        default_data = []
+                    
+                    # Write the JSON file
+                    with open(entity_file, 'w', encoding='utf-8') as f:
+                        json.dump(default_data, f, indent=2, default=str, ensure_ascii=False)
+                    
+                    created_files.append(json_filename)
                     
             except IOError as e:
                 raise RuntimeError(f"Could not save company files to {company_folder}: {e}")
@@ -513,6 +573,127 @@ def list_companies(context: Context) -> Dict[str, Any]:
         return {
             "success": False,
             "error": f"Failed to list companies: {str(e)}"
+        }
+
+
+def load_all_entities(entity_type: str, company_name: str, context: Context) -> List[Dict[str, Any]]:
+    """
+    Load ALL records for a dynamic entity type (multiple records per company).
+    
+    Args:
+        entity_type: Entity type name (e.g., 'metadata', 'offering', 'target', 'values')
+        company_name: Name of the company 
+        context: Execution context
+        
+    Returns:
+        List of entity dictionaries (empty list if none found)
+    """
+    try:
+        # Get the JSON filename for this entity
+        json_filename = get_entity_json_filename(entity_type)
+        if not json_filename:
+            return []
+        
+        # Get the company folder path
+        company_folder = get_company_folder_path(company_name, context)
+        entity_file = company_folder / json_filename
+        
+        if not entity_file.exists():
+            return []
+        
+        try:
+            with open(entity_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # With our new dynamic system, files are either:
+            # 1. Arrays for dynamic entities (multiple records)
+            # 2. Objects for static entities (single record)
+            if isinstance(data, list):
+                return data  # Dynamic entity - return array as-is
+            elif isinstance(data, dict):
+                return [data]  # Static entity - wrap in array for consistency  
+            else:
+                return []  # Invalid format
+                
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Could not load {entity_type} from {entity_file}: {e}")
+            return []
+            
+    except Exception as e:
+        print(f"Warning: Failed to load all {entity_type} entities: {e}")
+        return []
+
+
+def update_dynamic_entity_record(entity_type: str, record_id: str, updated_fields: Dict[str, Any], company_name: str, context: Context) -> Dict[str, Any]:
+    """
+    Update a specific record within a dynamic entity array.
+    
+    Args:
+        entity_type: Entity type name (e.g., 'news', 'offering', 'target')
+        record_id: ID of the record to update
+        updated_fields: Fields to update in the record
+        company_name: Name of the company
+        context: Execution context
+        
+    Returns:
+        Result dictionary with success status and details
+    """
+    try:
+        # Load all records for this entity type
+        all_records = load_all_entities(entity_type, company_name, context)
+        
+        if not all_records:
+            return {
+                "success": False,
+                "error": f"No {entity_type} records found for company '{company_name}'"
+            }
+        
+        # Find the record with matching ID
+        target_record_index = None
+        for i, record in enumerate(all_records):
+            if str(record.get('id', '')) == str(record_id):
+                target_record_index = i
+                break
+        
+        if target_record_index is None:
+            return {
+                "success": False,
+                "error": f"Record with ID '{record_id}' not found in {entity_type}"
+            }
+        
+        # Update the target record
+        target_record = all_records[target_record_index].copy()
+        target_record.update(updated_fields)
+        target_record['updated_at'] = datetime.now().isoformat()
+        
+        # Replace the record in the array
+        all_records[target_record_index] = target_record
+        
+        # Get the JSON filename and save the updated array
+        json_filename = get_entity_json_filename(entity_type)
+        if not json_filename:
+            return {
+                "success": False,
+                "error": f"Unknown entity type: {entity_type}"
+            }
+        
+        company_folder = get_company_folder_path(company_name, context)
+        entity_file = company_folder / json_filename
+        
+        with open(entity_file, 'w', encoding='utf-8') as f:
+            json.dump(all_records, f, indent=2, default=str, ensure_ascii=False)
+        
+        return {
+            "success": True,
+            "message": f"Successfully updated {entity_type} record (ID: {record_id})",
+            "updated_record": target_record,
+            "file_path": str(entity_file)
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to update {entity_type} record: {str(e)}"
         }
 
 

@@ -29,6 +29,18 @@ class FormWizardRequest(BaseModel):
     modal: bool = True
 
 
+class RecordPickerWizardRequest(BaseModel):
+    """Request to display a record picker for multi-record entities."""
+    type: Literal['record_picker'] = 'record_picker'
+    entity_id: str
+    entity_name: Optional[str] = None
+    records: List[Dict[str, Any]]
+    display_fields: List[str]
+    show_add_new_option: bool = True
+    title: str
+    modal: bool = True
+
+
 class QueryWizardRequest(BaseModel):
     """Request to display a query wizard (future implementation)."""
     type: Literal['query_wizard'] = 'query_wizard'

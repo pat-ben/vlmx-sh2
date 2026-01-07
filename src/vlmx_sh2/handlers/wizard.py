@@ -6,10 +6,67 @@ Returns FormWizardRequest models for UI interpretation.
 """
 
 from typing import Optional, List
-from ..models.results import FormWizardRequest, ErrorResult
+from ..models.results import FormWizardRequest, RecordPickerWizardRequest, ErrorResult
 from ..models.context import Context
 from ..handlers.utils import get_company_name_from_context
-from ..storage.database import entity_exists, load_entity
+from ..storage.database import entity_exists, load_entity, load_all_entities
+
+
+def _get_display_fields_for_entity(entity_type: str, entity_model) -> List[str]:
+    """
+    Determine which fields to display in the record picker for a dynamic entity.
+    
+    Args:
+        entity_type: The entity type name
+        entity_model: The entity model class
+        
+    Returns:
+        List of field names to display in the picker
+    """
+    # Default system fields to exclude
+    system_fields = {
+        'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 
+        'source_db', 'last_synced_at'
+    }
+    
+    # Get all model fields excluding system fields
+    all_fields = [
+        field for field in entity_model.model_fields.keys() 
+        if field not in system_fields
+    ]
+    
+    # Entity-specific display field priorities
+    if entity_type in ['offering', 'target', 'values']:
+        # For key-value entities, prioritize id, key, value
+        priority_fields = ['id', 'key', 'value']
+        display_fields = []
+        
+        # Add priority fields if they exist
+        for field in priority_fields:
+            if field in all_fields:
+                display_fields.append(field)
+        
+        # Add any remaining fields (up to 3-4 total for good display)
+        for field in all_fields:
+            if field not in display_fields and len(display_fields) < 4:
+                display_fields.append(field)
+        
+        return display_fields if display_fields else all_fields[:3]
+    
+    elif entity_type == 'metadata':
+        # For metadata, show key metadata fields
+        priority_fields = ['id', 'stage', 'sector', 'model']
+        display_fields = []
+        
+        for field in priority_fields:
+            if field in all_fields:
+                display_fields.append(field)
+        
+        return display_fields if display_fields else all_fields[:3]
+    
+    else:
+        # Default: show first few non-system fields
+        return all_fields[:3] if all_fields else ['id']
 
 
 async def fill_handler(
@@ -56,27 +113,52 @@ async def fill_handler(
                 ]
             )
         
-        # Check if entity exists in database
-        if not entity_exists(entity_type, company_name, context):
-            return ErrorResult(
-                errors=[f"{entity_type.title()} does not exist for company '{company_name}'"],
-                suggestions=[
-                    f"Create the {entity_type} first using: create {entity_type}",
-                    f"Or check available entities using: show {entity_type}"
-                ]
+        # Check entity cardinality to determine flow
+        if entity_model.cardinality == "single":
+            # Static entity flow - single record per company
+            # Check if entity exists in database
+            if not entity_exists(entity_type, company_name, context):
+                return ErrorResult(
+                    errors=[f"{entity_type.title()} does not exist for company '{company_name}'"],
+                    suggestions=[
+                        f"Create the {entity_type} first using: create {entity_type}",
+                        f"Or check available entities using: show {entity_type}"
+                    ]
+                )
+            
+            # Load existing entity data for pre-filling
+            entity_data = load_entity(entity_type, company_name, context)
+            if not entity_data:
+                return ErrorResult(
+                    errors=[f"Failed to load {entity_type} data for company '{company_name}'"],
+                    suggestions=[
+                        f"Check if {entity_type} data file exists",
+                        f"Or recreate the {entity_type} using: create {entity_type}"
+                    ]
+                )
+        
+        else:
+            # Dynamic entity flow - multiple records per company
+            # Load ALL records for this entity type
+            all_records = load_all_entities(entity_type, company_name, context)
+            
+            # Determine display fields for the picker based on entity type
+            display_fields = _get_display_fields_for_entity(entity_type, entity_model)
+            
+            # Return record picker request
+            title = f"Select {entity_type.title()} Record"
+            entity_name = entity_value or company_name
+            
+            return RecordPickerWizardRequest(
+                entity_id=entity_type,
+                entity_name=entity_name,
+                records=all_records,
+                display_fields=display_fields,
+                show_add_new_option=True,
+                title=title
             )
         
-        # Load existing entity data for pre-filling
-        entity_data = load_entity(entity_type, company_name, context)
-        if not entity_data:
-            return ErrorResult(
-                errors=[f"Failed to load {entity_type} data for company '{company_name}'"],
-                suggestions=[
-                    f"Check if {entity_type} data file exists",
-                    f"Or recreate the {entity_type} using: create {entity_type}"
-                ]
-            )
-        
+        # For static entities, continue with form wizard logic
         # Determine which fields to display
         system_fields = {
             'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 

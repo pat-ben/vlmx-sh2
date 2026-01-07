@@ -9,7 +9,7 @@ OfferingEntity, TargetEntity, and ValuesEntity.
 # src/vlmx_sh2/models/schema/company.py
 
 from datetime import date, datetime
-from typing import Optional, ClassVar, List, Type
+from typing import Optional, ClassVar, List, Type, Literal
 from sqlmodel import Field, SQLModel
 from .enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize
 from .base import DatabaseSchema, DatabaseModel
@@ -29,6 +29,8 @@ class CompanyEntity(DatabaseModel, table=True):
     SQL Table: company
     Description: Core company information (one record per company database)
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "single"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -63,7 +65,10 @@ class AddressEntity(DatabaseModel, table=True):
     SQL Table: company address
     Description: company address elements
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
 
+    id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
     street: str
     number: int
@@ -94,7 +99,10 @@ class MetadataEntity(DatabaseModel, table=True):
     SQL Table: metadata
     Description: Relational
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
 
+    id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
     stage: Stage
     round: Optional[Round] = None
@@ -129,6 +137,8 @@ class BrandEntity(DatabaseModel, table=True):
     - TargetModel → brand_targets table
     - ValueModel → brand_values table
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "single"
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
     
@@ -163,6 +173,8 @@ class OfferingEntity(DatabaseModel, table=True):
         key="Premium Service", value="White-label solutions for enterprises"
         key="Consulting", value="Strategic advisory for digital transformation"
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
     id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Offering title/category")
@@ -196,6 +208,8 @@ class TargetEntity(DatabaseModel, table=True):
         key="Geographic Focus", value="European Union and Switzerland"
         key="Customer Profile", value="CFOs and finance teams"
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
     id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Target segment title/category")
@@ -229,6 +243,8 @@ class ValuesEntity(DatabaseModel, table=True):
         key="Impact", value="We measure success by the positive change we create"
         key="Inclusivity", value="We build products that serve everyone, regardless of background"
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
     id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Value name/title")
@@ -252,12 +268,14 @@ class NewsEntity(DatabaseModel, table=True):
     Description: news
 
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
-    date: date = Field(default_factory=date.today)
+    news_date: date = Field(default_factory=date.today)
     headline: str = Field(default="", description="Headline of the news article")
     category: NewsCategory
-    news: str = Field(default="", description="News article")
+    content: str = Field(default="", description="News article content")
     link: str = Field(default="", description="Link to the news article")
 
     # Timestamps
@@ -268,7 +286,6 @@ class NewsEntity(DatabaseModel, table=True):
     def table_name(cls) -> str:
         return "news"
 
-
 class CompetitorsEntity(DatabaseModel, table=True):
     """
     Python Model: CompetitorsEntity
@@ -276,6 +293,8 @@ class CompetitorsEntity(DatabaseModel, table=True):
     Description: competitors
 
     """
+    
+    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
     name: str = Field(default="", description="Name of the competitor")
@@ -306,9 +325,12 @@ class CompanyDatabase(DatabaseSchema):
     # Override the tables ClassVar with the actual entities
     tables: ClassVar[List[Type[SQLModel]]] = [
         CompanyEntity,
+        AddressEntity,
         MetadataEntity,
         BrandEntity,
         OfferingEntity,
         TargetEntity,
-        ValuesEntity
+        ValuesEntity,
+        NewsEntity,
+        CompetitorsEntity
     ]

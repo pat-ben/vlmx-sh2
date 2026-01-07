@@ -6,5 +6,6 @@ for the Textual interface.
 """
 
 from .form_wizard import FormWizard
+from .record_picker import RecordPicker
 
-__all__ = ['FormWizard']
+__all__ = ['FormWizard', 'RecordPicker']

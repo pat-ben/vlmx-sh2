@@ -1,42 +1,118 @@
 """
 Entity-to-file mappings.
 
-Maps entity word IDs to their corresponding JSON file names in the folder structure.
-Used by generic command handlers to determine which file to load/save based on
-the entity type extracted from user commands.
+Dynamic mapping system that generates file mappings from CompanyDatabase.tables.
+Naming convention: EntityClass -> entity.json (remove "Entity" suffix and lowercase)
 """
 
 from typing import Dict, Optional
 
-# Entity word IDs to JSON file mappings
-ENTITY_TO_JSON_FILE: Dict[str, str] = {
-    "company": "organization.json",
-    "organization": "organization.json",
-    "org": "organization.json",  # Abbreviation alias
-    
-    "brand": "brand.json",
-    "branding": "brand.json",  # Alias
-    "identity": "brand.json",  # Alias
-    
-    "metadata": "metadata.json",
-    "meta": "metadata.json",  # Alias
-    "info": "metadata.json",  # Alias
-    
-    "offering": "brand.json",  # Offerings are stored in brand.json as part of brand data
-    "product": "brand.json",   # Alias
-    "service": "brand.json",   # Alias
-    
-    "target": "brand.json",    # Targets are stored in brand.json as part of brand data
-    "audience": "brand.json",  # Alias
-    "segment": "brand.json",   # Alias
-    
-    "value": "brand.json",     # Values are stored in brand.json as part of brand data
-    "values": "brand.json",    # Alias
-    "principles": "brand.json", # Alias
-}
 
-# Default entity if none specified in command
-DEFAULT_ENTITY = "organization"
+def _entity_class_to_json_filename(entity_class_name: str) -> str:
+    """
+    Convert entity class name to JSON filename without circular imports.
+    
+    Args:
+        entity_class_name: Name of the entity class (e.g., "CompanyEntity")
+        
+    Returns:
+        JSON filename (e.g., "company.json")
+    """
+    # Remove "Entity" suffix and convert to lowercase
+    entity_name = entity_class_name.replace("Entity", "").lower()
+    return f"{entity_name}.json"
+
+
+def _generate_entity_mappings() -> Dict[str, str]:
+    """
+    Generate entity-to-file mappings dynamically from CompanyDatabase.tables.
+    
+    Returns:
+        Dictionary mapping entity names to JSON filenames
+    """
+    try:
+        # Import here to avoid circular imports at module level
+        from ..models.schema.company import CompanyDatabase
+        
+        mappings = {}
+        
+        for entity_class in CompanyDatabase.tables:
+            class_name = entity_class.__name__
+            entity_name = class_name.replace("Entity", "").lower()
+            
+            # Special case: CompanyEntity -> organization.json (legacy)
+            if class_name == "CompanyEntity":
+                json_filename = "organization.json"
+            else:
+                json_filename = _entity_class_to_json_filename(class_name)
+            
+            # Add primary mapping
+            mappings[entity_name] = json_filename
+            
+            # Add common aliases
+            if entity_name == "company":
+                mappings.update({
+                    "organization": json_filename,
+                    "org": json_filename
+                })
+            elif entity_name == "brand":
+                mappings.update({
+                    "branding": json_filename,
+                    "identity": json_filename
+                })
+            elif entity_name == "metadata":
+                mappings.update({
+                    "meta": json_filename,
+                    "info": json_filename
+                })
+            elif entity_name == "offering":
+                mappings.update({
+                    "product": json_filename,
+                    "service": json_filename
+                })
+            elif entity_name == "target":
+                mappings.update({
+                    "audience": json_filename,
+                    "segment": json_filename
+                })
+            elif entity_name == "values":
+                mappings.update({
+                    "value": json_filename,
+                    "principles": json_filename
+                })
+            elif entity_name == "address":
+                mappings.update({
+                    "addresses": json_filename,
+                    "location": json_filename
+                })
+            elif entity_name == "news":
+                mappings.update({
+                    "article": json_filename,
+                    "articles": json_filename
+                })
+            elif entity_name == "competitors":
+                mappings.update({
+                    "competitor": json_filename
+                })
+        
+        return mappings
+        
+    except Exception as e:
+        # Fallback in case of any import issues during module loading
+        print(f"Warning: Could not generate dynamic mappings: {e}")
+        return {
+            "company": "organization.json",
+            "organization": "organization.json", 
+            "org": "organization.json",
+            "brand": "brand.json",
+            "branding": "brand.json",
+            "identity": "brand.json"
+        }
+
+
+# Initialize with empty dict - will be populated on first access
+ENTITY_TO_JSON_FILE: Dict[str, str] = {}
+
 
 def get_entity_json_filename(entity_word_id: str) -> Optional[str]:
     """
@@ -48,7 +124,17 @@ def get_entity_json_filename(entity_word_id: str) -> Optional[str]:
     Returns:
         The corresponding JSON filename or None if not found
     """
+    global ENTITY_TO_JSON_FILE
+    # Lazy load mappings to avoid circular import issues
+    if not ENTITY_TO_JSON_FILE:
+        ENTITY_TO_JSON_FILE = _generate_entity_mappings()
+    
     return ENTITY_TO_JSON_FILE.get(entity_word_id.lower())
+
+
+# Default entity if none specified in command
+DEFAULT_ENTITY = "organization"
+
 
 def get_supported_entities() -> Dict[str, str]:
     """
@@ -57,7 +143,12 @@ def get_supported_entities() -> Dict[str, str]:
     Returns:
         Dictionary of entity word IDs to JSON filenames
     """
+    global ENTITY_TO_JSON_FILE
+    # Ensure mappings are loaded
+    if not ENTITY_TO_JSON_FILE:
+        ENTITY_TO_JSON_FILE = _generate_entity_mappings()
     return ENTITY_TO_JSON_FILE.copy()
+
 
 def is_supported_entity(entity_word_id: str) -> bool:
     """
@@ -69,4 +160,8 @@ def is_supported_entity(entity_word_id: str) -> bool:
     Returns:
         True if the entity is supported, False otherwise
     """
+    global ENTITY_TO_JSON_FILE
+    # Ensure mappings are loaded
+    if not ENTITY_TO_JSON_FILE:
+        ENTITY_TO_JSON_FILE = _generate_entity_mappings()
     return entity_word_id.lower() in ENTITY_TO_JSON_FILE

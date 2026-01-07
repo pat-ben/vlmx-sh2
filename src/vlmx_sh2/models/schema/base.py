@@ -5,7 +5,7 @@ Defines common base classes that all database schemas and entity models inherit 
 Provides shared functionality for table naming, configuration, and schema organization.
 """
 
-from typing import List, Type, ClassVar
+from typing import List, Type, ClassVar, Literal
 from sqlmodel import SQLModel
 
 
@@ -31,6 +31,8 @@ class DatabaseSchema(SQLModel):
 class DatabaseModel(SQLModel):
     """Base class for all database models"""
 
+    # Entity cardinality classification
+    cardinality: ClassVar[Literal["single", "multiple"]] = "single"
     
     model_config = { # type: ignore[assignment]
         "from_attributes": True,

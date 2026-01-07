@@ -17,7 +17,10 @@ from ..models.schema.company import (
     BrandEntity, 
     OfferingEntity, 
     TargetEntity, 
-    ValuesEntity
+    ValuesEntity,
+    AddressEntity,
+    NewsEntity,
+    CompetitorsEntity
 )
 
 # Import dynamic handlers from the handlers module
@@ -154,6 +157,24 @@ WORDS: List[Word] = [
         id="values",
         description="Company core values",
         entity_model=ValuesEntity
+    ),
+    
+    EntityWord(
+        id="address",
+        description="Company address information",
+        entity_model=AddressEntity
+    ),
+    
+    EntityWord(
+        id="news",
+        description="Company news and announcements",
+        entity_model=NewsEntity
+    ),
+    
+    EntityWord(
+        id="competitors",
+        description="Company competitors and competitive analysis",
+        entity_model=CompetitorsEntity
     ),
     
     # ==================== FIELDS ====================
