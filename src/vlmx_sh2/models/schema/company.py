@@ -11,7 +11,7 @@ OfferingEntity, TargetEntity, and ValuesEntity.
 from datetime import date, datetime
 from typing import Optional, ClassVar, List, Type
 from sqlmodel import Field, SQLModel
-from .enums import Legal, Currency, Unit, TypeOrg
+from .enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize
 from .base import DatabaseSchema, DatabaseModel
 
 
@@ -52,6 +52,36 @@ class CompanyEntity(DatabaseModel, table=True):
         return "company"
 
 
+# ============================================
+# ADDRESS ENTITY
+# ============================================
+
+
+class AddressEntity(DatabaseModel, table=True):
+    """
+    Python Model: AddressEntity
+    SQL Table: company address
+    Description: company address elements
+    """
+
+    co_id: int = Field(default=1, description="Reference to company.id")
+    street: str
+    number: int
+    zip: int
+    city: str
+    country: Country
+    website: str
+    headquarter: bool = True
+
+    # timestamp
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    @classmethod
+    def table_name(cls) -> str:
+        return "address"
+
+
 
 # ============================================
 # METADATA ENTITY (company metadata extension)
@@ -62,14 +92,19 @@ class MetadataEntity(DatabaseModel, table=True):
     """
     Python Model: MetadataEntity
     SQL Table: metadata
-    Description: Extended company metadata (key-value pairs)
+    Description: Relational
     """
 
-    id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
-    key: str = Field(..., description="Metadata key")
-    value: Optional[str] = Field(default=None, description="Metadata value stored as JSON string")
-    
+    stage: Stage
+    round: Optional[Round] = None
+    phase: Optional[Phase] = None
+    sector: Sector
+    sector2: Optional[Sector] = None
+    sector3: Optional[Sector] = None
+    model: Model
+    model2: Optional[Model] = None
+
     # timestamp
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -208,8 +243,58 @@ class ValuesEntity(DatabaseModel, table=True):
     @classmethod
     def table_name(cls) -> str:
         return "brand_values"
-        
-        
+
+
+class NewsEntity(DatabaseModel, table=True):
+    """
+    Python Model: NewsEntity
+    SQL Table: news
+    Description: news
+
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    co_id: int = Field(default=1, description="Reference to company.id")
+    date: date = Field(default_factory=date.today)
+    headline: str = Field(default="", description="Headline of the news article")
+    category: NewsCategory
+    news: str = Field(default="", description="News article")
+    link: str = Field(default="", description="Link to the news article")
+
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    @classmethod
+    def table_name(cls) -> str:
+        return "news"
+
+
+class CompetitorsEntity(DatabaseModel, table=True):
+    """
+    Python Model: CompetitorsEntity
+    SQL Table: competitors
+    Description: competitors
+
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    co_id: int = Field(default=1, description="Reference to company.id")
+    name: str = Field(default="", description="Name of the competitor")
+    similarity: float = Field(default=0.0, description="Similarity score between the two companies")
+    comment: Optional[str] = Field(default="", description="Comment about the competitor")
+    link: str = Field(default="", description="Link to the competitor's website")
+    size: Optional[CompetitorSize] = None
+    leader: bool = False
+
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    @classmethod
+    def table_name(cls) -> str:
+        return "competitors"
+
+
+
 # ============================================
 # DATABASE SCHEMA
 # ============================================
