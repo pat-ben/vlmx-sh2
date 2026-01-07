@@ -58,7 +58,8 @@
       "Bash(PYTHONPATH=src python -c \"from vlmx_sh2.ui.results import format_command_result; from vlmx_sh2.models.results import CommandResult; print(''Import test successful'')\")",
       "Bash(PYTHONPATH=src find D:Codevlmx-sh2src -name \"*.py\" -exec grep -l \"for VLMX DSL\" {} ;)",
       "Bash(PYTHONPATH=src python test_form_wizard_cancel.py)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(PYTHONPATH=src python:*)"
     ],
     "deny": [],
     "ask": [],

@@ -8,6 +8,7 @@ managing file creation, updates, and retrieval operations.
 """
 
 import json
+import os
 import shutil
 from datetime import datetime, date
 from pathlib import Path
@@ -15,30 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from ..models.context import Context, ContextLevel
 from ..models.schema.enums import Cardinality
-from .mappings import get_entity_json_filename
-
-
-# ==================== HELPER FUNCTIONS ====================
-
-def entity_class_to_json_filename(entity_class) -> str:
-    """
-    Convert entity class name to JSON filename.
-    
-    Examples:
-        CompanyEntity -> company.json
-        OfferingEntity -> offering.json  
-        NewsEntity -> news.json
-        
-    Args:
-        entity_class: The entity class (e.g., CompanyEntity)
-        
-    Returns:
-        JSON filename (e.g., "company.json")
-    """
-    class_name = entity_class.__name__
-    # Remove "Entity" suffix and convert to lowercase
-    entity_name = class_name.replace("Entity", "").lower()
-    return f"{entity_name}.json"
+from .mappings import get_entity_json_filename, _entity_class_to_json_filename
 
 
 # ==================== PATH UTILITIES ====================
@@ -274,7 +252,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                         continue
                     
                     # Generate JSON filename from entity class name
-                    json_filename = entity_class_to_json_filename(entity_class)
+                    json_filename = _entity_class_to_json_filename(entity_class.__name__)
                     entity_file = company_folder / json_filename
                     
                     # Determine the default data structure based on cardinality
@@ -502,7 +480,6 @@ def delete_entity(entity_type: str, entity_name: str, context: Context) -> Dict[
             }
         else:
             # For other entities, remove the JSON file
-            import os
             
             json_filename = get_entity_json_filename(entity_type)
             if not json_filename:

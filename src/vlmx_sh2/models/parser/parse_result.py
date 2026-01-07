@@ -109,17 +109,6 @@ class ParseResult(BaseModel):
         """Get attributes dictionary from command."""
         return self.command.attributes if self.command else {}
     
-    @property
-    def attribute_values(self):
-        """Get attributes dictionary from command (legacy name for compatibility)."""
-        return self.attributes
-    
-    @property
-    def entity_values(self):
-        """Get entity values from command (legacy format for compatibility)."""
-        if self.command and self.command.entity and self.command.entity_name:
-            return {f'{self.command.entity.id}_name': self.command.entity_name}
-        return {}
     
     @property
     def entity_name(self) -> Optional[str]:
@@ -142,7 +131,3 @@ class ParseResult(BaseModel):
         word_types = set(self.word_types_present)
         return WordType.ACTION in word_types and WordType.ENTITY in word_types
     
-    @property
-    def attribute_words(self) -> List[Word]:
-        """Get all FIELD type words from recognized words (legacy name)."""
-        return self.field_words

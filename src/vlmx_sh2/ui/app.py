@@ -7,7 +7,7 @@ command input, parsing, execution, and result display in a conversational
 command-line style interface.
 """
 
-from textual import on
+from textual import events
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Label, Input
 from textual.containers import VerticalGroup, Container
@@ -269,7 +269,7 @@ class CommandBlock(VerticalGroup):
                 self.show_output(f"Updating existing {wizard_request.entity_id} record (ID: {self._current_record_id})")
                 
                 # Determine if this is a dynamic entity (multiple records) or static entity (single record)
-                is_dynamic_entity = hasattr(entity_word.entity_model, 'cardinality') and entity_word.entity_model.cardinality == Cardinality.MULTIPLE
+                is_dynamic_entity = hasattr(entity_word.entity_model, 'cardinality') and getattr(entity_word.entity_model, 'cardinality', None) == Cardinality.MULTIPLE
                 
                 if is_dynamic_entity:
                     # Dynamic entity - update specific record in array
@@ -281,10 +281,15 @@ class CommandBlock(VerticalGroup):
                         self.show_output("Error: No company context for dynamic entity update", is_error=True)
                         return
                     
+                    # Ensure record_id is valid
+                    if self._current_record_id is None:
+                        self.show_output("Error: No record ID for dynamic entity update", is_error=True)
+                        return
+                    
                     # Use specialized dynamic entity update function
                     result_dict = update_dynamic_entity_record(
                         entity_type=wizard_request.entity_id,
-                        record_id=self._current_record_id,
+                        record_id=str(self._current_record_id),
                         updated_fields=fields,
                         company_name=company_name,
                         context=self.context
@@ -331,13 +336,24 @@ class CommandBlock(VerticalGroup):
                 )
             
             # Display the result
-            if hasattr(result, 'success') and result.success:
+            success = getattr(result, 'success', False)
+            if success:
                 action = "Updated" if is_editing_existing else "Created"
                 self.show_output(f"✅ {action} {wizard_request.entity_id} successfully")
                 field_list = ", ".join([f"{k}={v}" for k, v in fields.items()])
                 self.show_output(f"Fields: {field_list}")
             else:
-                error_msg = result.errors[0] if hasattr(result, 'errors') and result.errors else "Unknown error"
+                # Get error message from various result types
+                error_msg = "Unknown error"
+                if hasattr(result, 'errors'):
+                    errors = getattr(result, 'errors', [])
+                    if errors:
+                        error_msg = errors[0]
+                elif hasattr(result, 'message'):
+                    message = getattr(result, 'message', '')
+                    if message:
+                        error_msg = message
+                
                 self.show_output(f"❌ {error_msg}", is_error=True)
                 
         except Exception as e:

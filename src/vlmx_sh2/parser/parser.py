@@ -153,16 +153,10 @@ class VLMXParser:
             raise ValueError(f"Handler requirements not met: {parse_result.errors}")
         
         # Call the handler with the parsed data
-        entity_value = None
-        if parse_result.entity_values:  # Property access - works
-            # Get the first entity value (for commands with entities)
-            entity_value = next(iter(parse_result.entity_values.values()))
-        elif parse_result.entity_name:
-            # For commands without entities (like navigation), use entity_name
-            entity_value = parse_result.entity_name
+        entity_value = parse_result.entity_name
         
         # For delete operations, we need to pass the list of field words to delete
-        field_words_to_process = [w.id for w in parse_result.attribute_words]  # Property access - works
+        field_words_to_process = [w.id for w in parse_result.field_words]
         
         try:
             return await parse_result.action_handler(  # Property access - works
