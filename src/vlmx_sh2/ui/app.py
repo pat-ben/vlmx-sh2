@@ -19,7 +19,6 @@ from ..models.context import Context
 from ..models.results import CommandResult, ErrorResult, FormWizardRequest, RecordPickerWizardRequest, QueryWizardRequest
 from .results import format_command_result
 from .widgets.form_wizard import FormWizard
-from .widgets.record_picker import RecordPicker
 
 
 class VLMX(App):
@@ -223,11 +222,11 @@ class CommandBlock(VerticalGroup):
     async def _handle_record_picker(self, picker_request: RecordPickerWizardRequest, event):
         """Handle record picker request by showing an interactive record selector."""
         try:
-            # Create the record picker widget
-            record_picker = RecordPicker(picker_request)
+            # Create the dynamic entity screen with split layout
+            from .screens.dynamic_entity_screen import DynamicEntityScreen
             
-            # Create the modal screen and push it, waiting for result
-            screen = RecordPickerScreen(record_picker, self, picker_request)
+            # Create the modal screen and push it
+            screen = DynamicEntityScreen(picker_request, self)
             await self.app.push_screen(screen)
             
         except Exception as e:
@@ -380,141 +379,5 @@ class FormWizardScreen(ModalScreen):
         self.app.call_after_refresh(self.command_block._create_new_prompt)
 
 
-class RecordPickerScreen(ModalScreen):
-    """Modal screen for displaying record pickers."""
-    
-    def __init__(self, record_picker, command_block, picker_request):
-        super().__init__()
-        self.record_picker = record_picker
-        self.command_block = command_block
-        self.picker_request = picker_request
-
-    def compose(self) -> ComposeResult:
-        """Compose the modal screen with the record picker."""
-        yield self.record_picker
-
-    async def on_record_picker_record_selected(self, message) -> None:
-        """Handle record selection."""
-        # Create a form wizard for the selected record
-        try:
-            from ..dsl.words import get_word
-            from ..models.words import EntityWord
-            
-            # Get the entity model from the picker request
-            entity_word = get_word(self.picker_request.entity_id)
-            if not entity_word or not isinstance(entity_word, EntityWord):
-                self.command_block.show_output(f"Invalid entity type: {self.picker_request.entity_id}", is_error=True)
-                self.dismiss()
-                self.app.call_after_refresh(self.command_block._create_new_prompt)
-                return
-            
-            # Create form wizard request with pre-filled values from selected record
-            system_fields = {
-                'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 
-                'source_db', 'last_synced_at'
-            }
-            
-            # Get all entity model fields except system fields
-            requested_fields = [
-                field for field in entity_word.entity_model.model_fields.keys() 
-                if field not in system_fields
-            ]
-            
-            # Extract pre-filled values from selected record
-            pre_filled_values = {}
-            for field in requested_fields:
-                if field in message.record_data and message.record_data[field] is not None:
-                    pre_filled_values[field] = str(message.record_data[field])
-            
-            # Create form wizard request
-            form_wizard_request = FormWizardRequest(
-                entity_id=self.picker_request.entity_id,
-                entity_name=self.picker_request.entity_name,
-                fields=requested_fields,
-                pre_filled_values=pre_filled_values,
-                title=f"Edit {self.picker_request.entity_id.title()} Record"
-            )
-            
-            # Store the record ID for update operation
-            self.command_block._current_record_id = message.record_id
-            
-            # Dismiss picker and show form wizard
-            self.dismiss()
-            
-            # Create form wizard screen
-            form_wizard = FormWizard(form_wizard_request)
-            form_screen = FormWizardScreen(form_wizard, self.command_block, form_wizard_request)
-            await self.app.push_screen(form_screen)
-            
-        except Exception as e:
-            self.command_block.show_output(f"Error creating form for selected record: {str(e)}", is_error=True)
-            self.dismiss()
-            self.app.call_after_refresh(self.command_block._create_new_prompt)
-
-    async def on_record_picker_add_new(self, message) -> None:
-        """Handle add new record request."""
-        # Create a form wizard for a new record
-        try:
-            from ..dsl.words import get_word
-            from ..models.words import EntityWord
-            
-            # Get the entity model from the picker request
-            entity_word = get_word(self.picker_request.entity_id)
-            if not entity_word or not isinstance(entity_word, EntityWord):
-                self.command_block.show_output(f"Invalid entity type: {self.picker_request.entity_id}", is_error=True)
-                self.dismiss()
-                self.app.call_after_refresh(self.command_block._create_new_prompt)
-                return
-            
-            # Create form wizard request with empty values for new record
-            system_fields = {
-                'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 
-                'source_db', 'last_synced_at'
-            }
-            
-            # Get all entity model fields except system fields
-            requested_fields = [
-                field for field in entity_word.entity_model.model_fields.keys() 
-                if field not in system_fields
-            ]
-            
-            # Create form wizard request
-            form_wizard_request = FormWizardRequest(
-                entity_id=self.picker_request.entity_id,
-                entity_name=self.picker_request.entity_name,
-                fields=requested_fields,
-                pre_filled_values={},
-                title=f"Add New {self.picker_request.entity_id.title()} Record"
-            )
-            
-            # Clear any stored record ID (this is a new record)
-            self.command_block._current_record_id = None
-            
-            # Dismiss picker and show form wizard
-            self.dismiss()
-            
-            # Create form wizard screen
-            form_wizard = FormWizard(form_wizard_request)
-            form_screen = FormWizardScreen(form_wizard, self.command_block, form_wizard_request)
-            await self.app.push_screen(form_screen)
-            
-        except Exception as e:
-            self.command_block.show_output(f"Error creating form for new record: {str(e)}", is_error=True)
-            self.dismiss()
-            self.app.call_after_refresh(self.command_block._create_new_prompt)
-
-    async def on_record_picker_cancel(self, message) -> None:
-        """Handle picker cancellation."""
-        self.command_block.show_output("Record picker cancelled", is_error=True)
-        self.dismiss()
-        # Create new prompt after modal is dismissed
-        self.app.call_after_refresh(self.command_block._create_new_prompt)
-    
-    def key_escape(self) -> None:
-        """Handle escape key to cancel picker."""
-        self.command_block.show_output("Record picker cancelled", is_error=True)
-        self.dismiss()
-        # Create new prompt after modal is dismissed
-        self.app.call_after_refresh(self.command_block._create_new_prompt)
 
 

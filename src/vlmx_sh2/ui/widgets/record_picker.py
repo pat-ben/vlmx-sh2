@@ -5,10 +5,10 @@ Provides interactive record selection for multi-record entities.
 Displays existing records in a table format with "Add New" option.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from textual.widget import Widget
 from textual.app import ComposeResult
-from textual.widgets import Button, Label, Static, DataTable
+from textual.widgets import Button, Label, Static
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
 from ...models.results import RecordPickerWizardRequest
@@ -44,34 +44,34 @@ class RecordPicker(Widget):
         """
         super().__init__(**kwargs)
         self.picker_request = picker_request
-        self.data_table: Optional[DataTable] = None
     
     def compose(self) -> ComposeResult:
         """Compose the record picker interface."""
         yield Static(f"📋 {self.picker_request.title}")
         yield Static("")
         
-        # Show records in a data table
+        # Show records with edit buttons
         with Vertical(id="records-container"):
             if self.picker_request.records:
-                # Create data table for records
-                table = DataTable(id="records-table")
-                self.data_table = table
-                yield table
+                yield Static(f"Found {len(self.picker_request.records)} record(s):")
+                yield Static("")
                 
-                # Add table headers
-                display_fields = self.picker_request.display_fields
-                table.add_columns(*display_fields)
-                
-                # Add table rows
+                # Create a card for each record with an edit button
                 for i, record in enumerate(self.picker_request.records):
-                    row_data = []
-                    for field in display_fields:
-                        value = record.get(field, "")
-                        # Convert value to string for display
-                        row_data.append(str(value) if value is not None else "")
-                    
-                    table.add_row(*row_data, key=str(i))
+                    with Horizontal(classes="record-row"):
+                        # Show key fields for identification
+                        display_parts = []
+                        for field in self.picker_request.display_fields:
+                            value = record.get(field, "")
+                            if value:
+                                display_parts.append(f"{field}: {value}")
+                        
+                        record_info = " | ".join(display_parts[:3])  # Limit to 3 fields for readability
+                        if len(display_parts) > 3:
+                            record_info += "..."
+                            
+                        yield Static(record_info, classes="record-info")
+                        yield Button("✏️ Edit", variant="primary", id=f"edit-btn-{i}", classes="edit-button")
                 
                 yield Static("")
             else:
@@ -90,31 +90,35 @@ class RecordPicker(Widget):
             self._handle_add_new()
         elif event.button.id == "cancel-btn":
             self._handle_cancel()
-    
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        """Handle data table row selection."""
-        if self.data_table and event.data_table is self.data_table:
-            # Get the selected record index
-            row_key = event.row_key
+        elif event.button.id.startswith("edit-btn-"):
+            # Extract record index from button ID
             try:
-                record_index = int(row_key)
-                if 0 <= record_index < len(self.picker_request.records):
-                    selected_record = self.picker_request.records[record_index]
-                    
-                    # Extract record ID - try common ID fields
-                    record_id = (
-                        selected_record.get('id') or 
-                        selected_record.get('_id') or 
-                        str(record_index)
-                    )
-                    
-                    self.post_message(self.RecordSelected(
-                        record_id=str(record_id),
-                        record_data=selected_record
-                    ))
+                record_index = int(event.button.id.replace("edit-btn-", ""))
+                self._handle_record_edit(record_index)
             except (ValueError, IndexError):
-                # Invalid selection, ignore
+                # Invalid button ID, ignore
                 pass
+    
+    def _handle_record_edit(self, record_index: int) -> None:
+        """Handle edit button click for a specific record."""
+        try:
+            if 0 <= record_index < len(self.picker_request.records):
+                selected_record = self.picker_request.records[record_index]
+                
+                # Extract record ID - try common ID fields
+                record_id = (
+                    selected_record.get('id') or 
+                    selected_record.get('_id') or 
+                    str(record_index)
+                )
+                
+                self.post_message(self.RecordSelected(
+                    record_id=str(record_id),
+                    record_data=selected_record
+                ))
+        except (ValueError, IndexError):
+            # Invalid record index, ignore
+            pass
     
     def _handle_add_new(self) -> None:
         """Handle add new record request."""

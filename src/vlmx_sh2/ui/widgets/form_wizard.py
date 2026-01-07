@@ -75,15 +75,18 @@ class FormWizard(Widget):
         elif event.button.id == "cancel-btn":
             self._handle_cancel()
     
-    def _handle_submit(self) -> None:
-        """Handle form submission."""
-        # Collect data from all input fields
+    def get_form_data(self) -> Dict[str, str]:
+        """Get current form data."""
         data = {}
         for field_name, input_widget in self.inputs.items():
             value = input_widget.value.strip()
             if value:  # Only include non-empty values
                 data[field_name] = value
-        
+        return data
+    
+    def _handle_submit(self) -> None:
+        """Handle form submission."""
+        data = self.get_form_data()
         self.post_message(self.Submit(data))
     
     def _handle_cancel(self) -> None:
