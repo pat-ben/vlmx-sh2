@@ -28,16 +28,18 @@ class FormWizard(Widget):
         """Message sent when form is cancelled."""
         pass
     
-    def __init__(self, wizard_request: FormWizardRequest, **kwargs):
+    def __init__(self, wizard_request: FormWizardRequest, show_buttons: bool = True, **kwargs):
         """
         Initialize the form wizard.
         
         Args:
             wizard_request: The wizard request data containing entity info and fields
+            show_buttons: Whether to show the form's built-in buttons (default True)
             **kwargs: Additional widget arguments
         """
         super().__init__(**kwargs)
         self.wizard_request = wizard_request
+        self.show_buttons = show_buttons
         self.inputs: Dict[str, Input] = {}
     
     def compose(self) -> ComposeResult:
@@ -63,10 +65,11 @@ class FormWizard(Widget):
                 yield input_widget
                 yield Static("")  # Spacing
         
-        # Buttons
-        with Horizontal(id="button-container"):
-            yield Button("Submit", variant="success", id="submit-btn")
-            yield Button("Cancel", variant="error", id="cancel-btn")
+        # Buttons (only if show_buttons is True)
+        if self.show_buttons:
+            with Horizontal(id="button-container"):
+                yield Button("Submit", variant="success", id="submit-btn")
+                yield Button("Cancel", variant="error", id="cancel-btn")
     
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""

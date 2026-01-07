@@ -6,6 +6,13 @@ Enum definitions for VLMX schema.
 from enum import Enum
 
 
+class Cardinality(str, Enum):
+    """Entity cardinality types"""
+    
+    SINGLE = "single"
+    MULTIPLE = "multiple"
+
+
 class Legal(str, Enum):
     """Company legal entity types"""
 

@@ -8,6 +8,7 @@ Returns FormWizardRequest models for UI interpretation.
 from typing import Optional, List
 from ..models.results import FormWizardRequest, RecordPickerWizardRequest, ErrorResult
 from ..models.context import Context
+from ..models.schema.enums import Cardinality
 from ..handlers.utils import get_company_name_from_context
 from ..storage.database import entity_exists, load_entity, load_all_entities
 
@@ -114,7 +115,7 @@ async def fill_handler(
             )
         
         # Check entity cardinality to determine flow
-        if entity_model.cardinality == "single":
+        if entity_model.cardinality == Cardinality.SINGLE:
             # Static entity flow - single record per company
             # Check if entity exists in database
             if not entity_exists(entity_type, company_name, context):

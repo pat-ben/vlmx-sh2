@@ -5,8 +5,9 @@ Defines common base classes that all database schemas and entity models inherit 
 Provides shared functionality for table naming, configuration, and schema organization.
 """
 
-from typing import List, Type, ClassVar, Literal
+from typing import List, Type, ClassVar
 from sqlmodel import SQLModel
+from .enums import Cardinality
 
 
 # ============================================
@@ -32,7 +33,7 @@ class DatabaseModel(SQLModel):
     """Base class for all database models"""
 
     # Entity cardinality classification
-    cardinality: ClassVar[Literal["single", "multiple"]] = "single"
+    cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
     
     model_config = { # type: ignore[assignment]
         "from_attributes": True,

@@ -17,6 +17,7 @@ from textual.screen import ModalScreen
 from ..parser import VLMXParser
 from ..models.context import Context
 from ..models.results import CommandResult, ErrorResult, FormWizardRequest, RecordPickerWizardRequest, QueryWizardRequest
+from ..models.schema.enums import Cardinality
 from .results import format_command_result
 from .widgets.form_wizard import FormWizard
 
@@ -268,7 +269,7 @@ class CommandBlock(VerticalGroup):
                 self.show_output(f"Updating existing {wizard_request.entity_id} record (ID: {self._current_record_id})")
                 
                 # Determine if this is a dynamic entity (multiple records) or static entity (single record)
-                is_dynamic_entity = hasattr(entity_word.entity_model, 'cardinality') and entity_word.entity_model.cardinality == "multiple"
+                is_dynamic_entity = hasattr(entity_word.entity_model, 'cardinality') and entity_word.entity_model.cardinality == Cardinality.MULTIPLE
                 
                 if is_dynamic_entity:
                     # Dynamic entity - update specific record in array

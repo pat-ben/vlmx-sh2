@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..models.context import Context, ContextLevel
+from ..models.schema.enums import Cardinality
 from .mappings import get_entity_json_filename
 
 
@@ -277,7 +278,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                     entity_file = company_folder / json_filename
                     
                     # Determine the default data structure based on cardinality
-                    if hasattr(entity_class, 'cardinality') and entity_class.cardinality == "single":
+                    if hasattr(entity_class, 'cardinality') and entity_class.cardinality == Cardinality.SINGLE:
                         # Single record entity - create default record with model defaults
                         try:
                             # Create a default instance to get all field defaults

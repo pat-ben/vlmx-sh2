@@ -9,9 +9,9 @@ OfferingEntity, TargetEntity, and ValuesEntity.
 # src/vlmx_sh2/models/schema/company.py
 
 from datetime import date, datetime
-from typing import Optional, ClassVar, List, Type, Literal
+from typing import Optional, ClassVar, List, Type
 from sqlmodel import Field, SQLModel
-from .enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize
+from .enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
 from .base import DatabaseSchema, DatabaseModel
 
 
@@ -30,7 +30,7 @@ class CompanyEntity(DatabaseModel, table=True):
     Description: Core company information (one record per company database)
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "single"
+    cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -66,7 +66,7 @@ class AddressEntity(DatabaseModel, table=True):
     Description: company address elements
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
+    cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
 
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
@@ -100,7 +100,7 @@ class MetadataEntity(DatabaseModel, table=True):
     Description: Relational
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
+    cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
 
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
@@ -138,7 +138,7 @@ class BrandEntity(DatabaseModel, table=True):
     - ValueModel → brand_values table
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "single"
+    cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
     
@@ -174,7 +174,7 @@ class OfferingEntity(DatabaseModel, table=True):
         key="Consulting", value="Strategic advisory for digital transformation"
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
+    cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
     id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Offering title/category")
@@ -209,7 +209,7 @@ class TargetEntity(DatabaseModel, table=True):
         key="Customer Profile", value="CFOs and finance teams"
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
+    cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
     id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Target segment title/category")
@@ -244,7 +244,7 @@ class ValuesEntity(DatabaseModel, table=True):
         key="Inclusivity", value="We build products that serve everyone, regardless of background"
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
+    cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
     id: Optional[int] = Field(default=None, primary_key=True)
     brand_id: int = Field(default=1, description="Reference to brand.id")
     key: str = Field(..., description="Value name/title")
@@ -269,7 +269,7 @@ class NewsEntity(DatabaseModel, table=True):
 
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
+    cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
     news_date: date = Field(default_factory=date.today)
@@ -294,7 +294,7 @@ class CompetitorsEntity(DatabaseModel, table=True):
 
     """
     
-    cardinality: ClassVar[Literal["single", "multiple"]] = "multiple"
+    cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
     name: str = Field(default="", description="Name of the competitor")
