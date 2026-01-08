@@ -6,8 +6,8 @@ Provides a split-screen interface for managing multi-record dynamic entities.
 
 from textual.screen import ModalScreen
 from textual.app import ComposeResult
-from ..widgets.dynamic_entity_manager import DynamicEntityManager
-from ...models.results import RecordPickerWizardRequest
+from ...widgets.dynamic_entity_manager import DynamicEntityManager
+from ....models.results import RecordPickerWizardRequest
 
 
 class DynamicEntityScreen(ModalScreen):
@@ -15,18 +15,18 @@ class DynamicEntityScreen(ModalScreen):
     Modal screen for dynamic entity management.
     """
     
-    def __init__(self, picker_request: RecordPickerWizardRequest, command_block, **kwargs):
+    def __init__(self, picker_request: RecordPickerWizardRequest, main_screen, **kwargs):
         """
         Initialize the dynamic entity screen.
         
         Args:
             picker_request: The picker request data
-            command_block: Reference to the command block for result handling
+            main_screen: Reference to the main screen for result handling
             **kwargs: Additional screen arguments
         """
         super().__init__(**kwargs)
         self.picker_request = picker_request
-        self.command_block = command_block
+        self.main_screen = main_screen
     
     def compose(self) -> ComposeResult:
         """Compose the screen content."""
@@ -39,24 +39,27 @@ class DynamicEntityScreen(ModalScreen):
             await self._process_form_submission(message)
             
         except Exception as e:
-            self.command_block.show_output(f"Error processing form: {str(e)}", is_error=True)
+            # Show error within the modal (don't close it)
+            self._show_error_message_in_modal(f"❌ Error processing form: {str(e)}")
     
     async def on_dynamic_entity_manager_cancel(self, message: DynamicEntityManager.Cancel) -> None:
         """Handle cancellation from the dynamic entity manager."""
         self.dismiss()
-        self.app.call_after_refresh(self.command_block._create_new_prompt)
+        self.app.call_after_refresh(self.main_screen._create_new_command_block)
     
     async def _process_form_submission(self, message: DynamicEntityManager.FormSubmitted) -> None:
         """Process the form submission."""
-        from ...storage.database import update_dynamic_entity_record, save_entity_array, load_all_entities
-        from ...handlers.utils import get_company_name_from_context
+        from ....storage.database import update_dynamic_entity_record, save_entity_array, load_all_entities
+        from ....handlers.utils import get_company_name_from_context
         
         # Get current context and company
-        context = self.command_block.context
+        context = self.main_screen.context
         company_name = get_company_name_from_context(context)
         
+        # Check that we have a valid company context
         if not company_name:
-            self.command_block.show_output("Error: Not in organization context", is_error=True)
+            self.dismiss()
+            self.app.call_after_refresh(self._show_error_and_new_prompt, "Error: Not in organization context")
             return
         
         entity_type = self.picker_request.entity_id
@@ -64,7 +67,6 @@ class DynamicEntityScreen(ModalScreen):
         
         if message.record_id is None:
             # Creating new record
-            self.command_block.show_output(f"Creating new {entity_type} record...")
             
             # Load current entity data (array)
             current_data = load_all_entities(entity_type, company_name, context)
@@ -86,17 +88,19 @@ class DynamicEntityScreen(ModalScreen):
             save_result = save_entity_array(entity_type, current_data, company_name, context)
             
             if save_result.get("success", False):
-                self.command_block.show_output(f"✅ Created new {entity_type} record")
                 # Refresh the screen to show new record
                 await self._refresh_screen()
+                # Show success message within the modal (don't close it)
+                self._show_success_message_in_modal(f"✅ Created new {entity_type} record")
+                return
             else:
                 error_msg = save_result.get("error", f"Failed to create {entity_type} record")
-                self.command_block.show_output(f"❌ {error_msg}", is_error=True)
+                # Show error message within the modal (don't close it)
+                self._show_error_message_in_modal(f"❌ {error_msg}")
+                return
         
         else:
             # Updating existing record
-            self.command_block.show_output(f"Updating {entity_type} record (ID: {message.record_id})...")
-            
             # Update the record in the array
             update_result = update_dynamic_entity_record(
                 entity_type=entity_type,
@@ -107,27 +111,28 @@ class DynamicEntityScreen(ModalScreen):
             )
             
             if update_result.get("success", False):
-                self.command_block.show_output(f"✅ Updated {entity_type} record")
                 # Refresh the screen to show updated record
                 await self._refresh_screen()
+                # Show success message within the modal (don't close it)
+                self._show_success_message_in_modal(f"✅ Updated {entity_type} record")
             else:
                 error_msg = update_result.get("error", f"Failed to update {entity_type} record")
-                self.command_block.show_output(f"❌ {error_msg}", is_error=True)
+                # Show error message within the modal (don't close it)
+                self._show_error_message_in_modal(f"❌ {error_msg}")
     
     async def _refresh_screen(self) -> None:
         """Refresh the screen with updated data."""
         try:
             # Reload records from database
-            from ...storage.database import load_all_entities
-            from ...handlers.utils import get_company_name_from_context
+            from ....storage.database import load_all_entities
+            from ....handlers.utils import get_company_name_from_context
             
-            context = self.command_block.context
+            context = self.main_screen.context
             company_name = get_company_name_from_context(context)
             entity_type = self.picker_request.entity_id
             
             # Handle potential None company_name
             if not company_name:
-                self.command_block.show_output("Error: Not in organization context", is_error=True)
                 return
             
             # Load fresh data
@@ -149,4 +154,37 @@ class DynamicEntityScreen(ModalScreen):
             count_widget.update(f"📈 Total: {len(updated_records)} {record_text}")
             
         except Exception as e:
-            self.command_block.show_output(f"Error refreshing screen: {str(e)}", is_error=True)
+            # Silently handle refresh errors - the screen will still work
+            pass
+
+    def _show_success_message_in_modal(self, message: str) -> None:
+        """Show success message within the modal without closing it."""
+        try:
+            # Use Textual's notification system for success messages
+            self.notify(message, severity="information")
+        except Exception:
+            pass
+
+    def _show_error_message_in_modal(self, message: str) -> None:
+        """Show error message within the modal without closing it."""
+        try:
+            # Use Textual's notification system for error messages  
+            self.notify(message, severity="error")
+        except Exception:
+            pass
+
+    def _show_success_and_new_prompt(self, message: str) -> None:
+        """Show success message and create new command block."""
+        from ...widgets.command_block import CommandBlock
+        new_block = CommandBlock(context=self.main_screen.context)
+        self.main_screen.mount(new_block)
+        new_block.show_output(f"✅ {message}", is_error=False)
+        self.main_screen.call_after_refresh(self.main_screen._focus_command_block, new_block)
+
+    def _show_error_and_new_prompt(self, message: str) -> None:
+        """Show error message and create new command block."""
+        from ...widgets.command_block import CommandBlock
+        new_block = CommandBlock(context=self.main_screen.context)
+        self.main_screen.mount(new_block)
+        new_block.show_output(f"❌ {message}", is_error=True)
+        self.main_screen.call_after_refresh(self.main_screen._focus_command_block, new_block)

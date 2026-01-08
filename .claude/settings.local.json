@@ -67,7 +67,8 @@
       "Bash(PYTHONPATH=src uv run rg \"Cardinality\\.\" .)",
       "Bash(rg:*)",
       "Bash(sed:*)",
-      "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"class.*Brand.*Entity\" {} ;)"
+      "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"class.*Brand.*Entity\" {} ;)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": [],
