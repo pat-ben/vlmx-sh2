@@ -71,7 +71,7 @@ def _delete_entity_at_sys_level(
         )
 
 
-def _delete_current_company(company_name: str, entity_value: str, context: Context) -> Optional[HandlerResult]:
+def _delete_current_company(company_name: str, entity_value: Optional[str], context: Context) -> Optional[HandlerResult]:
     """
     Check if user wants to delete current company and handle it.
     
@@ -375,6 +375,10 @@ async def add_handler(
         # Load current entity data
         load_result = StorageInterface.load_entity(entity_type, company_name, context)
         current_data = load_result.data if load_result.success else {}
+        
+        # Ensure current_data is not None
+        if current_data is None:
+            current_data = {}
 
         # Create updated data with new fields
         updated_data = current_data.copy()
@@ -469,7 +473,7 @@ async def update_handler(
         current_data = load_result.data
 
         # Create updated data
-        updated_data = current_data.copy()
+        updated_data = current_data.copy() if current_data else {}
         updated_data.update(fields)
         updated_data["updated_at"] = datetime.now().isoformat()
 
@@ -608,7 +612,7 @@ async def list_handler(
     """
     try:
         # Check if this entity supports listing (MULTIPLE cardinality)
-        if not hasattr(entity_model, 'cardinality') or entity_model.cardinality != Cardinality.MULTIPLE:
+        if not hasattr(entity_model, 'cardinality') or getattr(entity_model, 'cardinality', None) != Cardinality.MULTIPLE:
             entity_type = entity_model.__name__.replace("Entity", "").lower()
             return ErrorResult(
                 errors=[f"Entity '{entity_type}' does not support listing (single record entity)"],
@@ -630,7 +634,7 @@ async def list_handler(
         all_records = load_all_entities(entity_type, company_name, context)
         
         # Apply filters if present
-        if parsed_command and parsed_command.has_filters:
+        if parsed_command and parsed_command.has_filters and parsed_command.filters:
             try:
                 filtered_records = apply_filters(all_records, parsed_command.filters)
             except Exception as filter_error:
@@ -722,9 +726,10 @@ async def delete_handler(
                 )
 
             # Check if user wants to delete the entire current company
-            company_deletion_result = _delete_current_company(company_name, entity_value, context)
-            if company_deletion_result:
-                return company_deletion_result
+            if entity_value:  # Only call if entity_value is not None
+                company_deletion_result = _delete_current_company(company_name, entity_value, context)
+                if company_deletion_result:
+                    return company_deletion_result
 
             # Check if we have specific fields to delete
             if not field_words:

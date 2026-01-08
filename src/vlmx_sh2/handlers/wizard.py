@@ -87,9 +87,9 @@ def _determine_requested_fields(
     elif field_words:
         # Use specific fields from field words  
         return field_words
-    elif parsed_command and hasattr(parsed_command, 'fields') and parsed_command.fields:
+    elif parsed_command and hasattr(parsed_command, 'attributes') and parsed_command.attributes:
         # Use specific fields from parsed command
-        return list(parsed_command.fields.keys())
+        return list(parsed_command.attributes.keys())
     else:
         # Use all entity model fields except system fields
         return [
@@ -249,7 +249,7 @@ async def fill_handler(
             )
         
         # Check entity cardinality to determine flow
-        if entity_model.cardinality == Cardinality.SINGLE:
+        if getattr(entity_model, 'cardinality', None) == Cardinality.SINGLE:
             # Static entity flow - single record per company
             # Check if entity exists in database
             if not entity_exists(entity_type, company_name, context):
@@ -281,7 +281,9 @@ async def fill_handler(
                     suggestions=[f"Check {entity_type} entity model has user-editable fields"]
                 )
             
-            return _create_form_wizard_request(entity_type, entity_value, company_name, requested_fields, load_result.data)
+            # Ensure we have valid data
+            entity_data = load_result.data if load_result.data else {}
+            return _create_form_wizard_request(entity_type, entity_value, company_name, requested_fields, entity_data)
         
         else:
             # Dynamic entity flow - multiple records per company

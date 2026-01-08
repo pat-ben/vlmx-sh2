@@ -209,3 +209,9 @@ async def navigate_handler(
             errors=[f"Navigation failed: {str(e)}"],
             suggestions=["Check command format and system status"]
         )
+    
+    # Fallback return (should not reach here)
+    return ErrorResult(
+        errors=["Unknown navigation error"],
+        suggestions=["Check command format"]
+    )
