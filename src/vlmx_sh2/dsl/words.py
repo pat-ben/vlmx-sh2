@@ -29,6 +29,7 @@ from ..handlers.crud import (
     add_handler,
     update_handler,
     show_handler,
+    list_handler,
     delete_handler
 )
 from ..handlers.navigation import navigate_handler
@@ -104,7 +105,17 @@ WORDS: List[Word] = [
         aliases=["s","read","get"],
         handler=show_handler,
         action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.READ        ,
+        crud_operation=CRUDOperation.READ,
+    ),
+    
+    ActionWord(
+        id="list",
+        context=ContextLevel.ORG,
+        description="List all records of entities with multiple cardinality, with optional filtering",
+        aliases=["l","ls","find"],
+        handler=list_handler,
+        action_category=ActionCategory.CRUD,
+        crud_operation=CRUDOperation.READ,
     ),
     
     ActionWord(

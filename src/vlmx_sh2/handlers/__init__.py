@@ -10,6 +10,7 @@ from .crud import (
     add_handler,
     update_handler,
     show_handler,
+    list_handler,
     delete_handler
 )
 from .navigation import navigate_handler
@@ -20,6 +21,7 @@ __all__ = [
     'add_handler', 
     'update_handler',
     'show_handler',
+    'list_handler',
     'delete_handler',
     'navigate_handler',
     'fill_handler'

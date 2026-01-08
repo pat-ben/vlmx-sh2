@@ -9,6 +9,7 @@ by the recognizer.
 from typing import Optional, Dict, List
 from ..models.parser import RecognizedToken, ParsedCommand
 from ..models.words import ActionWord, EntityWord
+from .filter import FilterParser
 
 
 class CommandBuilder:
@@ -23,8 +24,11 @@ class CommandBuilder:
     the already-classified tokens into a structured object.
     """
     
-    @staticmethod
-    def build(tokens: List[RecognizedToken], raw_input: str) -> ParsedCommand:
+    def __init__(self):
+        """Initialize the CommandBuilder with its dependencies."""
+        self.filter_parser = FilterParser()
+    
+    def build(self, tokens: List[RecognizedToken], raw_input: str) -> ParsedCommand:
         """
         Build a ParsedCommand from recognized tokens.
         
@@ -53,29 +57,32 @@ class CommandBuilder:
             'ACME'
         """
         # Extract action first to check if entity is required
-        action = CommandBuilder._extract_action(tokens)
+        action = self._extract_action(tokens)
         
         # Only extract entity and entity_name if the action requires it
         entity = None
         entity_name = None
         if action.requires_entity:
-            entity = CommandBuilder._extract_entity(tokens)
-            entity_name = CommandBuilder._extract_entity_name(tokens)
+            entity = self._extract_entity(tokens)
+            entity_name = self._extract_entity_name(tokens)
         else:
             # For commands that don't require entity (like cd), extract entity_name from UNKNOWN tokens
-            entity_name = CommandBuilder._extract_navigation_target(tokens)
+            entity_name = self._extract_navigation_target(tokens)
+        
+        # Extract filters if present (using raw input to access brackets)
+        filters = self.filter_parser.parse_filters_from_raw_input(raw_input)
         
         return ParsedCommand(
             action=action,
             entity=entity,
             entity_name=entity_name,
-            attributes=CommandBuilder._extract_fields(tokens),
+            attributes=self._extract_fields(tokens),
             raw_input=raw_input,
-            tokens=tokens
+            tokens=tokens,
+            filters=filters
         )
     
-    @staticmethod
-    def _extract_action(tokens: List[RecognizedToken]) -> ActionWord:
+    def _extract_action(self, tokens: List[RecognizedToken]) -> ActionWord:
         """
         Extract the action word from tokens.
         
@@ -97,8 +104,7 @@ class CommandBuilder:
         
         raise ValueError("No action word found in command")
     
-    @staticmethod
-    def _extract_entity(tokens: List[RecognizedToken]) -> EntityWord:
+    def _extract_entity(self, tokens: List[RecognizedToken]) -> EntityWord:
         """
         Extract the entity word from tokens.
         
@@ -120,8 +126,7 @@ class CommandBuilder:
         
         raise ValueError("No entity word found in command")
     
-    @staticmethod
-    def _extract_entity_name(tokens: List[RecognizedToken]) -> Optional[str]:
+    def _extract_entity_name(self, tokens: List[RecognizedToken]) -> Optional[str]:
         """
         Extract entity name from tokens.
         
@@ -155,8 +160,7 @@ class CommandBuilder:
         
         return None
     
-    @staticmethod
-    def _extract_navigation_target(tokens: List[RecognizedToken]) -> Optional[str]:
+    def _extract_navigation_target(self, tokens: List[RecognizedToken]) -> Optional[str]:
         """
         Extract navigation target from UNKNOWN tokens for commands like cd.
         
@@ -190,8 +194,7 @@ class CommandBuilder:
         
         return None
     
-    @staticmethod
-    def _extract_fields(tokens: List[RecognizedToken]) -> Dict[str, str]:
+    def _extract_fields(self, tokens: List[RecognizedToken]) -> Dict[str, str]:
         """
         Extract field-value pairs from tokens.
         

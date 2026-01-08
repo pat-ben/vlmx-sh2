@@ -327,6 +327,86 @@ async def show_handler(
         )
 
 
+async def list_handler(
+    entity_model, entity_value, fields, context, field_words=None, parsed_command=None
+):
+    """
+    Truly dynamic list handler - works for ANY entity type with MULTIPLE cardinality.
+    
+    Lists all records of the specified entity type, with optional filtering support.
+    Only works for entities that have cardinality.MULTIPLE.
+    """
+    from ..handlers.utils import get_company_name_from_context
+    from ..storage.database import load_all_entities
+    from ..storage.filters import apply_filters
+    from ..models.schema.enums import Cardinality
+    # ErrorResult and CommandResult already imported at module level
+    
+    try:
+        # Check if this entity supports listing (MULTIPLE cardinality)
+        if not hasattr(entity_model, 'cardinality') or entity_model.cardinality != Cardinality.MULTIPLE:
+            entity_type = entity_model.__name__.replace("Entity", "").lower()
+            return ErrorResult(
+                errors=[f"Entity '{entity_type}' does not support listing (single record entity)"],
+                suggestions=[f"Use 'show {entity_type}' instead of 'list {entity_type}'"]
+            )
+        
+        # Get current company name from context
+        company_name = get_company_name_from_context(context)
+        if not company_name:
+            return ErrorResult(
+                errors=["Must be in organization context to list entities"],
+                suggestions=["Navigate to an organization first"]
+            )
+
+        # Determine entity type from entity_model
+        entity_type = entity_model.__name__.replace("Entity", "").lower()
+
+        # Load all records for this entity
+        all_records = load_all_entities(entity_type, company_name, context)
+        
+        # Apply filters if present
+        if parsed_command and parsed_command.has_filters:
+            try:
+                filtered_records = apply_filters(all_records, parsed_command.filters)
+            except Exception as filter_error:
+                return ErrorResult(
+                    errors=[f"Filter application failed: {str(filter_error)}"],
+                    suggestions=["Check filter syntax and field names"]
+                )
+        else:
+            filtered_records = all_records
+
+        # Format results
+        count = len(filtered_records)
+        total_count = len(all_records)
+        
+        # Create display message
+        if parsed_command and parsed_command.has_filters:
+            message = f"Found {count} of {total_count} {entity_type} records matching filters"
+        else:
+            message = f"Found {count} {entity_type} records"
+
+        return CommandResult(
+            success=True,
+            message=message,
+            data={
+                "entity_type": entity_type,
+                "records": filtered_records,
+                "count": count,
+                "total_count": total_count,
+                "filtered": parsed_command.has_filters if parsed_command else False,
+                "filters": str(parsed_command.filters) if (parsed_command and parsed_command.has_filters) else None
+            }
+        )
+
+    except Exception as e:
+        return ErrorResult(
+            errors=[f"Failed to list entities: {str(e)}"],
+            suggestions=["Check entity type and database connection"]
+        )
+
+
 async def delete_handler(
     entity_model, entity_value, fields, context, field_words=None, parsed_command=None
 ):

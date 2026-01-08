@@ -9,6 +9,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from .recognized_token import RecognizedToken
+from .filter import FilterExpression
 from ..words import ActionWord, EntityWord, FieldWord
 
 
@@ -66,6 +67,12 @@ class ParsedCommand(BaseModel):
         description="All recognized tokens from parsing"
     )
     
+    # Filtering
+    filters: Optional[FilterExpression] = Field(
+        default=None,
+        description="Parsed filter expression for list/show commands"
+    )
+    
     class Config:
         arbitrary_types_allowed = True
     
@@ -88,6 +95,11 @@ class ParsedCommand(BaseModel):
     def has_attributes(self) -> bool:
         """True if any attributes were provided."""
         return len(self.attributes) > 0
+    
+    @property
+    def has_filters(self) -> bool:
+        """True if any filters were provided."""
+        return self.filters is not None
     
     def get_entity_data(self) -> Dict[str, Any]:
         """

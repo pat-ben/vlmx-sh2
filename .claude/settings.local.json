@@ -59,7 +59,9 @@
       "Bash(PYTHONPATH=src find D:Codevlmx-sh2src -name \"*.py\" -exec grep -l \"for VLMX DSL\" {} ;)",
       "Bash(PYTHONPATH=src python test_form_wizard_cancel.py)",
       "WebSearch",
-      "Bash(PYTHONPATH=src python:*)"
+      "Bash(PYTHONPATH=src python:*)",
+      "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"load_all_dynamic_entities\" {} ;)",
+      "Bash(PYTHONPATH=src rg \"load_all_dynamic_entities\" .)"
     ],
     "deny": [],
     "ask": [],

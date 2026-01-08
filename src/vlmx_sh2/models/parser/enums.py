@@ -19,7 +19,7 @@ class Operator(str, Enum):
 
 class QueryKeyword(str, Enum):
     """Query keywords for filtering"""
-    WHERE = "where"
+    WHERE = "where"  # DEPRECATED: Use [ ] brackets instead
     AND = "and"
     OR = "or"
 
