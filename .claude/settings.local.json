@@ -61,7 +61,11 @@
       "WebSearch",
       "Bash(PYTHONPATH=src python:*)",
       "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"load_all_dynamic_entities\" {} ;)",
-      "Bash(PYTHONPATH=src rg \"load_all_dynamic_entities\" .)"
+      "Bash(PYTHONPATH=src rg \"load_all_dynamic_entities\" .)",
+      "Bash(PYTHONPATH=src rg \"LogicalOperator\" .)",
+      "Bash(PYTHONPATH=src rg \"Cardinality\\.\" .)",
+      "Bash(PYTHONPATH=src uv run rg \"Cardinality\\.\" .)",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "ask": [],

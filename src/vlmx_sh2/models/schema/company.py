@@ -104,7 +104,7 @@ class MetadataEntity(DatabaseModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
-    stage: Stage = Field(default=Stage.early)
+    stage: Stage = Field(default=Stage.EARLY)
     round: Optional[Round] = None
     phase: Optional[Phase] = None
     sector: Sector = Field(default=Sector.AI)
