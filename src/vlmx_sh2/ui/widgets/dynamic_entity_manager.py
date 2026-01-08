@@ -154,6 +154,7 @@ from textual.message import Message
 from ...models.results import RecordPickerWizardRequest
 from .form_wizard import FormWizard
 from ...models.results import FormWizardRequest
+from ...constants import SYSTEM_FIELDS
 
 
 class DynamicEntityManager(Widget):
@@ -374,14 +375,9 @@ class DynamicEntityManager(Widget):
                 return
             
             # Create form wizard request
-            system_fields = {
-                'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 
-                'source_db', 'last_synced_at'
-            }
-            
             requested_fields = [
                 field for field in entity_word.entity_model.model_fields.keys() 
-                if field not in system_fields
+                if field not in SYSTEM_FIELDS
             ]
             
             # Extract pre-filled values
@@ -424,14 +420,9 @@ class DynamicEntityManager(Widget):
                 return
             
             # Create form wizard request for new record
-            system_fields = {
-                'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 
-                'source_db', 'last_synced_at'
-            }
-            
             requested_fields = [
                 field for field in entity_word.entity_model.model_fields.keys() 
-                if field not in system_fields
+                if field not in SYSTEM_FIELDS
             ]
             
             form_wizard_request = FormWizardRequest(

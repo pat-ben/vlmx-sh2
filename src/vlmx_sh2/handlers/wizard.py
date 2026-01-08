@@ -13,6 +13,7 @@ from ..models.context import Context
 from ..models.schema.enums import Cardinality
 from ..models.parser.parsed_command import ParsedCommand
 from ..handlers.utils import get_company_name_from_context
+from ..constants import SYSTEM_FIELDS
 from ..storage.database import StorageInterface, entity_exists, load_all_entities
 
 
@@ -75,12 +76,6 @@ def _determine_requested_fields(
     Returns:
         List of field names to include in the wizard
     """
-    # System fields to exclude
-    system_fields = {
-        'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 
-        'source_db', 'last_synced_at'
-    }
-    
     if fields:
         # Use specific fields from fields parameter
         return list(fields.keys())
@@ -94,7 +89,7 @@ def _determine_requested_fields(
         # Use all entity model fields except system fields
         return [
             field for field in entity_model.model_fields.keys() 
-            if field not in system_fields
+            if field not in SYSTEM_FIELDS
         ]
 
 
@@ -148,16 +143,10 @@ def _get_display_fields_for_entity(entity_type: str, entity_model) -> List[str]:
     Returns:
         List of field names to display in the picker
     """
-    # Default system fields to exclude
-    system_fields = {
-        'id', 'co_id', 'brand_id', 'created_at', 'updated_at', 
-        'source_db', 'last_synced_at'
-    }
-    
     # Get all model fields excluding system fields
     all_fields = [
         field for field in entity_model.model_fields.keys() 
-        if field not in system_fields
+        if field not in SYSTEM_FIELDS
     ]
     
     # Entity-specific display field priorities

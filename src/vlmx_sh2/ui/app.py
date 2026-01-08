@@ -381,19 +381,19 @@ class FormWizardScreen(ModalScreen):
         # Create new prompt after modal is dismissed
         self.app.call_after_refresh(self.command_block._create_new_prompt)
 
-    async def on_form_wizard_cancel(self, message) -> None:
-        """Handle form cancellation."""
+    def _handle_cancellation(self) -> None:
+        """Common cancellation logic for both explicit cancel and escape key."""
         self.command_block.show_output("Form wizard cancelled", is_error=True)
         self.dismiss()
-        # Create new prompt after modal is dismissed
         self.app.call_after_refresh(self.command_block._create_new_prompt)
+
+    async def on_form_wizard_cancel(self, message) -> None:
+        """Handle form cancellation."""
+        self._handle_cancellation()
     
     def key_escape(self) -> None:
         """Handle escape key to cancel form."""
-        self.command_block.show_output("Form wizard cancelled", is_error=True)
-        self.dismiss()
-        # Create new prompt after modal is dismissed
-        self.app.call_after_refresh(self.command_block._create_new_prompt)
+        self._handle_cancellation()
 
 
 

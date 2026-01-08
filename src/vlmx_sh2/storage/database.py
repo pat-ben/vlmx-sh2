@@ -876,6 +876,48 @@ def update_dynamic_entity_record(entity_type: str, record_id: str, updated_field
         }
 
 
+def save_entity_array(entity_type: str, entity_array: List[Dict[str, Any]], company_name: str, context: Context) -> Dict[str, Any]:
+    """
+    Save an array of entities for multi-record entity types.
+    
+    Args:
+        entity_type: Entity type name (e.g., 'metadata', 'offering', 'target', 'values')
+        entity_array: List of entity records to save
+        company_name: Name of the company 
+        context: Execution context
+        
+    Returns:
+        Result dictionary with success status and details
+    """
+    try:
+        # Get the JSON filename for this entity
+        json_filename = get_entity_json_filename(entity_type)
+        if not json_filename:
+            return {
+                "success": False,
+                "error": f"Unknown entity type: {entity_type}"
+            }
+        
+        company_folder = get_company_folder_path(company_name, context)
+        entity_file = company_folder / json_filename
+        
+        # Save the entity array
+        with open(entity_file, 'w', encoding='utf-8') as f:
+            json.dump(entity_array, f, indent=2, default=str, ensure_ascii=False)
+        
+        return {
+            "success": True,
+            "message": f"Successfully saved {len(entity_array)} {entity_type} records",
+            "file_path": str(entity_file)
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to save {entity_type} array: {str(e)}"
+        }
+
+
 def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
     """
     Find a company using intelligent matching with tolerance for:

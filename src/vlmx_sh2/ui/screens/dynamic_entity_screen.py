@@ -48,7 +48,7 @@ class DynamicEntityScreen(ModalScreen):
     
     async def _process_form_submission(self, message: DynamicEntityManager.FormSubmitted) -> None:
         """Process the form submission."""
-        from ...storage.database import update_dynamic_entity_record, save_entity, load_entity
+        from ...storage.database import update_dynamic_entity_record, save_entity_array, load_all_entities
         from ...handlers.utils import get_company_name_from_context
         
         # Get current context and company
@@ -67,7 +67,7 @@ class DynamicEntityScreen(ModalScreen):
             self.command_block.show_output(f"Creating new {entity_type} record...")
             
             # Load current entity data (array)
-            current_data = load_entity(entity_type, company_name, context) or []
+            current_data = load_all_entities(entity_type, company_name, context)
             
             # Add new record with generated ID
             new_record = form_data.copy()
@@ -83,7 +83,7 @@ class DynamicEntityScreen(ModalScreen):
             current_data.append(new_record)
             
             # Save updated array
-            save_result = save_entity(entity_type, current_data, company_name, context)
+            save_result = save_entity_array(entity_type, current_data, company_name, context)
             
             if save_result.get("success", False):
                 self.command_block.show_output(f"✅ Created new {entity_type} record")
@@ -118,15 +118,20 @@ class DynamicEntityScreen(ModalScreen):
         """Refresh the screen with updated data."""
         try:
             # Reload records from database
-            from ...storage.database import load_entity
+            from ...storage.database import load_all_entities
             from ...handlers.utils import get_company_name_from_context
             
             context = self.command_block.context
             company_name = get_company_name_from_context(context)
             entity_type = self.picker_request.entity_id
             
+            # Handle potential None company_name
+            if not company_name:
+                self.command_block.show_output("Error: Not in organization context", is_error=True)
+                return
+            
             # Load fresh data
-            updated_records = load_entity(entity_type, company_name, context) or []
+            updated_records = load_all_entities(entity_type, company_name, context)
             
             # Update picker request with fresh data
             self.picker_request.records = updated_records
@@ -138,8 +143,10 @@ class DynamicEntityScreen(ModalScreen):
             entity_manager._populate_table()
             
             # Update record count
-            count_widget = entity_manager.query_one("#record-count")
-            count_widget.update(f"Total: {len(updated_records)} records")
+            from textual.widgets import Static
+            count_widget = entity_manager.query_one("#record-count", Static)
+            record_text = "record" if len(updated_records) == 1 else "records"
+            count_widget.update(f"📈 Total: {len(updated_records)} {record_text}")
             
         except Exception as e:
             self.command_block.show_output(f"Error refreshing screen: {str(e)}", is_error=True)
