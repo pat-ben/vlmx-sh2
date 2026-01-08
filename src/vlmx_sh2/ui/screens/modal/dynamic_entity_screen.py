@@ -153,7 +153,7 @@ class DynamicEntityScreen(ModalScreen):
             record_text = "record" if len(updated_records) == 1 else "records"
             count_widget.update(f"📈 Total: {len(updated_records)} {record_text}")
             
-        except Exception as e:
+        except Exception:
             # Silently handle refresh errors - the screen will still work
             pass
 

@@ -188,52 +188,67 @@ class MainScreen(Screen):
         """Process form wizard submission by updating entity fields."""
         try:
             from ....handlers.crud import add_handler, update_handler
-            from ....models.parser.parsed_command import ParsedCommand
+            from ....dsl.words import get_word, WordType
+            
+            # Get the entity model for the entity type
+            entity_word = get_word(wizard_request.entity_id)
+            if not entity_word or entity_word.word_type != WordType.ENTITY:
+                error_msg = f"Unknown entity type: {wizard_request.entity_id}"
+                self.call_after_refresh(self._show_delayed_output, error_msg, True)
+                return
             
             # Determine if this is an update or add based on pre-filled values
             is_update = bool(wizard_request.pre_filled_values)
             
             if is_update:
-                # Create parsed command for update
-                parsed_command = ParsedCommand(
-                    command_type="update",
-                    entity_type=wizard_request.entity_id,
-                    attributes=fields
+                # Use update handler with correct signature
+                result = await update_handler(
+                    entity_model=entity_word.entity_model,
+                    entity_value=wizard_request.entity_name,
+                    fields=fields,
+                    context=self.context,
+                    field_words=None,
+                    parsed_command=None
                 )
-                
-                # Use update handler
-                result = await update_handler(parsed_command, self.context)
             else:
-                # Create parsed command for add
-                parsed_command = ParsedCommand(
-                    command_type="add",
-                    entity_type=wizard_request.entity_id,
-                    attributes=fields
+                # Use add handler with correct signature
+                result = await add_handler(
+                    entity_model=entity_word.entity_model,
+                    entity_value=wizard_request.entity_name,
+                    fields=fields,
+                    context=self.context,
+                    field_words=None,
+                    parsed_command=None
                 )
-                
-                # Use add handler
-                result = await add_handler(parsed_command, self.context)
             
-            # Display result using format_command_result
-            if result.type == 'command_result':
-                formatted_result = format_command_result(result)
-                
-                # Split the formatted result into lines and display each
-                for line in formatted_result.split('\n'):
-                    if line.strip():  # Skip empty lines
-                        is_error = not result.success
-                        # Show output on a new command block after the modal closes
-                        self.call_after_refresh(self._show_delayed_output, line, is_error)
-            elif result.type == 'error':
-                # Display error
-                for error in result.errors:
-                    self.call_after_refresh(self._show_delayed_output, f"Error: {error}", True)
-                for suggestion in result.suggestions:
-                    self.call_after_refresh(self._show_delayed_output, f"  → {suggestion}", True)
+            # Display result using format_command_result - create ONE command block with all output
+            self._create_new_command_block_with_result(result)
             
         except Exception as e:
             error_msg = f"Error processing form submission: {str(e)}"
             self.call_after_refresh(self._show_delayed_output, error_msg, True)
+
+    def _create_new_command_block_with_result(self, result):
+        """Create a single new command block and display all result output in it."""
+        new_block = CommandBlock(context=self.context)
+        self.mount(new_block)
+        
+        if result.type == 'command_result':
+            formatted_result = format_command_result(result)
+            
+            # Split the formatted result into lines and display each in the same block
+            for line in formatted_result.split('\n'):
+                if line.strip():  # Skip empty lines
+                    is_error = not result.success
+                    new_block.show_output(line, is_error=is_error)
+        elif result.type == 'error':
+            # Display error
+            for error in result.errors:
+                new_block.show_output(f"Error: {error}", is_error=True)
+            for suggestion in result.suggestions:
+                new_block.show_output(f"  → {suggestion}", is_error=True)
+        
+        self.call_after_refresh(self._focus_command_block, new_block)
 
     def _show_delayed_output(self, message: str, is_error: bool = False):
         """Show output message and create new command block."""

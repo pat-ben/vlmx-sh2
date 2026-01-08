@@ -22,8 +22,7 @@ class FormWizardScreen(ModalScreen):
         # Process the submitted form data
         await self.main_screen._process_wizard_submission(self.wizard_request, message.data)
         self.dismiss()
-        # Create new prompt after modal is dismissed
-        self.app.call_after_refresh(self.main_screen._create_new_command_block)
+        # _process_wizard_submission already creates a new command block via _show_delayed_output
 
     def _handle_cancellation(self) -> None:
         """Common cancellation logic for both explicit cancel and escape key."""
