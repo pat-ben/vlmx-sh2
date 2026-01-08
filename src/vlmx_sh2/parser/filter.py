@@ -46,7 +46,7 @@ class FilterParser:
             FilterParseError: If filter syntax is invalid
         """
         # For now, return None since we need the raw input to properly parse filters
-        # This will be updated when we modify the CommandBuilder to pass raw input
+        # This is used by VLMXParser which passes raw input for filter parsing
         return None
     
     def parse_filters_from_raw_input(self, raw_input: str) -> Optional[FilterExpression]:

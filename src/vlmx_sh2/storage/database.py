@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from ..models.context import Context, ContextLevel
 from ..models.schema.enums import Cardinality
+from ..models.results import StorageResult
 from .mappings import get_entity_json_filename, _entity_class_to_json_filename
 
 
@@ -61,6 +62,206 @@ def get_company_folder_path(company_name: str, context: Context) -> Path:
     """
     data_dir = get_data_directory_path(context)
     return data_dir / company_name.lower()
+
+
+# ==================== STORAGE INTERFACE ====================
+
+class StorageInterface:
+    """
+    Single point of access for all storage operations.
+    
+    All other code must use this interface - no direct JSON file operations allowed.
+    Standardizes return types and centralizes error handling.
+    """
+    
+    @staticmethod
+    def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> StorageResult:
+        """Create a new entity with standardized error handling."""
+        try:
+            result = create_entity(entity_type, data, context)
+            
+            if result is None:
+                return StorageResult(
+                    success=False,
+                    error=f"Failed to create {entity_type}: Unknown error"
+                )
+            
+            if not isinstance(result, dict):
+                return StorageResult(
+                    success=False,
+                    error=f"Invalid storage result format for {entity_type}"
+                )
+                
+            if result.get("success"):
+                return StorageResult(
+                    success=True,
+                    data=result,
+                    message=result.get("message", f"Successfully created {entity_type}")
+                )
+            else:
+                return StorageResult(
+                    success=False,
+                    error=result.get("error", f"Failed to create {entity_type}"),
+                    message=result.get("message")
+                )
+                
+        except Exception as e:
+            return StorageResult(
+                success=False,
+                error=f"Exception during create {entity_type}: {str(e)}"
+            )
+    
+    @staticmethod
+    def load_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """Load an entity with standardized error handling."""
+        try:
+            result = load_entity(entity_type, company_name, context)
+            
+            if result is None:
+                return StorageResult(
+                    success=False,
+                    error=f"{entity_type.title()} not found for company '{company_name}'"
+                )
+            
+            return StorageResult(
+                success=True,
+                data=result,
+                message=f"Successfully loaded {entity_type}"
+            )
+            
+        except Exception as e:
+            return StorageResult(
+                success=False,
+                error=f"Exception during load {entity_type}: {str(e)}"
+            )
+    
+    @staticmethod  
+    def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, context: Context) -> StorageResult:
+        """Save an entity with standardized error handling."""
+        try:
+            result = save_entity(entity_type, data, company_name, context)
+            
+            if result is None:
+                return StorageResult(
+                    success=False,
+                    error=f"Failed to save {entity_type}: Unknown error"
+                )
+            
+            if not isinstance(result, dict):
+                return StorageResult(
+                    success=False,
+                    error=f"Invalid storage result format for {entity_type}"
+                )
+                
+            if result.get("success"):
+                return StorageResult(
+                    success=True,
+                    data=result,
+                    message=result.get("message", f"Successfully saved {entity_type}")
+                )
+            else:
+                return StorageResult(
+                    success=False,
+                    error=result.get("error", f"Failed to save {entity_type}"),
+                    message=result.get("message")
+                )
+                
+        except Exception as e:
+            return StorageResult(
+                success=False,
+                error=f"Exception during save {entity_type}: {str(e)}"
+            )
+    
+    @staticmethod
+    def delete_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """Delete an entity with standardized error handling."""
+        try:
+            result = delete_entity(entity_type, company_name, context)
+            
+            if result is None:
+                return StorageResult(
+                    success=False,
+                    error=f"Failed to delete {entity_type}: Unknown error"
+                )
+            
+            if not isinstance(result, dict):
+                return StorageResult(
+                    success=False,
+                    error=f"Invalid storage result format for {entity_type}"
+                )
+                
+            if result.get("success"):
+                return StorageResult(
+                    success=True,
+                    data=result,
+                    message=result.get("message", f"Successfully deleted {entity_type}")
+                )
+            else:
+                return StorageResult(
+                    success=False,
+                    error=result.get("error", f"Failed to delete {entity_type}"),
+                    message=result.get("message")
+                )
+                
+        except Exception as e:
+            return StorageResult(
+                success=False,
+                error=f"Exception during delete {entity_type}: {str(e)}"
+            )
+    
+    @staticmethod
+    def list_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """List entities with standardized error handling."""
+        try:
+            if entity_type == 'company':
+                result = list_companies(context)
+            else:
+                result = load_all_entities(entity_type, company_name, context)
+                # Convert list result to standard format
+                if isinstance(result, list):
+                    result = {
+                        "success": True,
+                        "data": result,
+                        "count": len(result)
+                    }
+            
+            if result is None:
+                return StorageResult(
+                    success=False,
+                    error=f"Failed to list {entity_type}: Unknown error"
+                )
+            
+            if isinstance(result, list):
+                return StorageResult(
+                    success=True,
+                    data={"entities": result, "count": len(result)},
+                    message=f"Successfully listed {len(result)} {entity_type} entities"
+                )
+            
+            if not isinstance(result, dict):
+                return StorageResult(
+                    success=False,
+                    error=f"Invalid storage result format for list {entity_type}"
+                )
+                
+            if result.get("success", True):  # Some list functions don't have success field
+                return StorageResult(
+                    success=True,
+                    data=result,
+                    message=result.get("message", f"Successfully listed {entity_type} entities")
+                )
+            else:
+                return StorageResult(
+                    success=False,
+                    error=result.get("error", f"Failed to list {entity_type}"),
+                    message=result.get("message")
+                )
+                
+        except Exception as e:
+            return StorageResult(
+                success=False,
+                error=f"Exception during list {entity_type}: {str(e)}"
+            )
 
 
 # ==================== GENERIC ENTITY STORAGE ====================

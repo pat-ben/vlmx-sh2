@@ -9,6 +9,7 @@ from typing import List, Optional, Tuple
 from ..dsl.words import get_all_words, get_word
 from ..models.words import WordType, Word
 from ..models.parser import Token, RecognizedToken, TokenType, ValueContext
+from .suggestions import SuggestionEngine
 
 
 class WordRecognizer:
@@ -24,6 +25,7 @@ class WordRecognizer:
     def __init__(self):
         """Initialize word recognizer with registry and alias mappings."""
         self.word_registry = get_all_words()
+        self.suggestion_engine = SuggestionEngine()
         
         # Build alias mapping for fast lookup
         self.alias_to_word = {}
@@ -68,44 +70,9 @@ class WordRecognizer:
             return word, 100.0, []
         
         # No match - provide suggestions
-        suggestions = self._get_suggestions(token_text)
+        suggestions = self.suggestion_engine.get_token_suggestions(token_text)
         return None, 0.0, suggestions
     
-    def _get_suggestions(self, token_text: str) -> List[str]:
-        """
-        Get suggestions for unrecognized tokens.
-        
-        Args:
-            token_text: The unrecognized token
-            
-        Returns:
-            List of up to 3 suggestions
-        """
-        suggestions = []
-        token_lower = token_text.lower()
-        
-        # Suggest common action words based on first letter
-        if len(token_text) <= 6:
-            first_char = token_lower[0] if token_lower else ''
-            action_suggestions = {
-                'c': ['create', 'cd'],
-                's': ['show'],
-                'u': ['update'],
-                'd': ['delete'],
-                'a': ['add']
-            }
-            if first_char in action_suggestions:
-                suggestions.extend(action_suggestions[first_char])
-        
-        # Suggest common entity words if prefix matches
-        if len(token_text) >= 3:
-            common_entities = ['company', 'brand', 'metadata', 'offering', 'target', 'values']
-            prefix = token_lower[:3]
-            for entity in common_entities:
-                if entity.startswith(prefix):
-                    suggestions.append(entity)
-        
-        return suggestions[:3]  # Limit to top 3
     
     def process_tokens(self, tokens: List[Token]) -> List[RecognizedToken]:
         """

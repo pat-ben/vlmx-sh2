@@ -13,13 +13,11 @@ The main entry point is VLMXParser, which coordinates all parsing steps.
 from .parser import VLMXParser
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
-from .builder import CommandBuilder
 from .utils import expand_macros
 
 __all__ = [
     'VLMXParser',
     'Tokenizer',
     'WordRecognizer',
-    'CommandBuilder',
     'expand_macros',
 ]

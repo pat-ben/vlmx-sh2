@@ -5,30 +5,53 @@ Handles context navigation (cd command) between different levels
 of the application (SYS, ORG, APP).
 """
 
+from typing import Type, Optional, Dict, Any, List
+from pydantic import BaseModel
+
+from ..models.context import Context
+from ..models.results import HandlerResult
+from ..models.parser.parsed_command import ParsedCommand
+
 # Navigation command aliases
 ROOT_NAVIGATION_ALIASES = {"~", "root", None}
 UP_NAVIGATION_ALIASES = {".."}  # Go up one level in context hierarchy
 
 
-async def navigate_handler(entity_model, entity_value, fields, context, field_words=None, parsed_command=None):
+async def navigate_handler(
+    entity_model: Type[BaseModel],
+    entity_value: Optional[str],
+    fields: Dict[str, Any],
+    context: Context,
+    field_words: Optional[List[str]] = None,
+    parsed_command: Optional[ParsedCommand] = None
+) -> HandlerResult:
     """
-    Dynamic navigation handler for context switching.
+    Handler for 'cd' command - manages context navigation between system levels.
     
-    Handles commands like:
-    - cd ~          (navigate to root/SYS level)
-    - cd root       (navigate to root/SYS level) 
-    - cd ..         (navigate up one level in hierarchy)
-    - cd company    (navigate to company if specified)
+    Provides hierarchical navigation through the system's three-tier context structure:
+    SYS (system) → ORG (organization) → APP (application). Supports various navigation
+    patterns including relative navigation (..), absolute navigation (~, root), and
+    direct organization targeting by name.
+    
+    Navigation patterns:
+    - cd ~          : Navigate to root/SYS level from any context
+    - cd root       : Navigate to root/SYS level from any context 
+    - cd ..         : Navigate up one level in hierarchy (APP→ORG→SYS)
+    - cd company    : Navigate to specific organization by name (with fuzzy matching)
     
     Args:
-        entity_model: Not used for navigation
-        entity_value: Navigation target (company name, ~, root, etc.)
-        fields: Additional navigation parameters
-        context: Current execution context
-        field_words: Not used for navigation
+        entity_model: Pydantic model class (not used for navigation, may be None)
+        entity_value: Navigation target (company name, ~, .., root, etc.)
+        fields: Additional navigation parameters (not currently used)
+        context: Current execution context defining current position in hierarchy
+        field_words: List of field identifiers (not used for navigation)
+        parsed_command: Parsed command object (not used for navigation)
         
     Returns:
-        Result dictionary with navigation outcome
+        CommandResult with navigation outcome and new context data, or ErrorResult on failure
+        
+    Raises:
+        Returns ErrorResult for invalid navigation attempts, missing organizations, or system errors
     """
     from ..models.results import CommandResult, ErrorResult
     from ..models.context import Context as NewContext, ContextLevel

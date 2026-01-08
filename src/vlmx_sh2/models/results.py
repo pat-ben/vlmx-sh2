@@ -6,7 +6,7 @@ completely UI-agnostic and serializable. The UI layer interprets these
 models to decide how to render them.
 """
 
-from typing import Dict, List, Any, Optional, Literal
+from typing import Dict, List, Any, Optional, Literal, Union
 from pydantic import BaseModel
 
 
@@ -56,3 +56,15 @@ class ErrorResult(BaseModel):
     type: Literal['error'] = 'error'
     errors: List[str]
     suggestions: List[str] = []
+
+
+class StorageResult(BaseModel):
+    """Standardized result for all storage operations."""
+    success: bool
+    data: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    message: Optional[str] = None
+
+
+# Unified handler result type
+HandlerResult = Union[CommandResult, ErrorResult, FormWizardRequest, RecordPickerWizardRequest, QueryWizardRequest]
