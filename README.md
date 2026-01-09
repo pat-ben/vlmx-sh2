@@ -33,13 +33,19 @@ uv run vlmx
 ### Basic Commands
 ```bash
 # Create a company folder with JSON files + fill organization JSON + change context
-create company XX entity=SA currency=USD
+create company XX legal=SA currency=USD
 
 # Add a vision to the brand table
 add brand vision=This_is_a_test
 
 # Delete the vision
 delete brand vision
+
+# Open wizard for filling entity data interactively
+fill brand
+
+# List records with filtering for multi-cardinality entities
+list offering key="Premium Service"
 
 # Navigate one level up
 cd ..
@@ -71,27 +77,44 @@ VLMX-SH2 follows a layered architecture that separates concerns between parsing,
 
 ## Core Concepts
 
-### 1. Entities and Database Models
+### 1. UI Components
+
+**Modal Screens**:
+- **FormWizardScreen**: Interactive form-based data entry with validation
+- **DynamicEntityScreen**: Split-screen interface for multi-record entity management
+
+**Widgets**:
+- **FormWizard**: Configurable form widget with field validation and pre-filled values
+- **DynamicEntityManager**: Split-view widget combining searchable record lists with editing forms
+- **RecordPicker**: Selection widget for choosing records from lists
+- **CommandBlock**: Terminal-style command input and output blocks
+
+### 2. Entities and Database Models
 
 Entities represent real-world business objects and map directly to database tables:
 
 ```python
-class OrganizationEntity(DatabaseModel):
+class CompanyEntity(DatabaseModel):
     name: str                    # Company name
-    entity: Entity              # Legal entity type (SA, LLC, INC)
-    type: Type                  # Organization type (company, fund)
+    legal: Legal                 # Legal entity type (SA, LLC, INC)
+    type: TypeOrg               # Organization type (company, fund)
     currency: Currency          # Operating currency (EUR, USD, GBP)
     unit: Unit                  # Financial units (thousands, millions)
+    closing: int                # Fiscal year end month
+    incorporation: Optional[date] # Date of incorporation
     # ... additional fields
 ```
 
 **Entity Hierarchy:**
-- **OrganizationEntity**: Core company information
+- **CompanyEntity**: Core company information
 - **MetadataEntity**: Key-value extension data
 - **BrandEntity**: Brand identity (vision, mission, values)
 - **OfferingEntity**: Product/service offerings
 - **TargetEntity**: Market segments and audiences
-- **ValueEntity**: Core company values
+- **ValuesEntity**: Core company values
+- **AddressEntity**: Company address information
+- **NewsEntity**: Company news and announcements
+- **CompetitorsEntity**: Competitor analysis data
 
 ### 2. Word Registry System
 
@@ -115,25 +138,16 @@ ActionWord(
 EntityWord(
     id="company",
     description="A business entity",
-    entity_model=OrganizationEntity  # Links to database model
+    entity_model=CompanyEntity  # Links to database model
 )
 ```
 
-**fieldWord**: Entity properties
+**FieldWord**: Entity properties
 ```python
-fieldWord(
+FieldWord(
     id="currency", 
     description="Operating currency",
-    entity_models=[OrganizationEntity]  # Can belong to multiple entities
-)
-```
-
-**ModifierWord**: Behavioral modifiers
-```python
-ModifierWord(
-    id="holding",
-    description="Holding company modifier",
-    applies_to=["company"]
+    entity_models=[CompanyEntity]  # Can belong to multiple entities
 )
 ```
 
@@ -241,17 +255,17 @@ storage_result = create_company(entity_dict, context)
 ### Adding New Commands
 
 #### Static Commands
-1. **Define the vocabulary** in `words.py`:
+1. **Define the vocabulary** in `dsl/words.py`:
 ```python
 ActionWord(id="update", description="Update existing entity", ...)
 ```
 
-2. **Create the command** in `handlers.py`:
+2. **Create the command** in `handlers/crud.py`:
 ```python
 @register_command(
     command_id="update_company",
     required_words={"update", "company"},
-    optional_words={"entity", "currency"}
+    optional_words={"legal", "currency"}
 )
 async def update_company_handler(parse_result, context):
     # Implementation
@@ -259,7 +273,7 @@ async def update_company_handler(parse_result, context):
 
 3. **Test the command**:
 ```bash
-update company ACME entity=LLC
+update company ACME legal=LLC
 ```
 
 #### Dynamic Commands
@@ -288,7 +302,7 @@ process organization name=NewName
 
 ### Adding New Entity Types
 
-1. **Create the entity model** in `entities.py`:
+1. **Create the entity model** in `models/schema/company.py`:
 ```python
 class ProjectEntity(DatabaseModel):
     name: str
@@ -300,6 +314,7 @@ class ProjectEntity(DatabaseModel):
 ```python
 EntityWord(
     id="project",
+    description="Project management entity",
     entity_model=ProjectEntity
 )
 ```
@@ -313,23 +328,32 @@ The new dynamic command system provides powerful flexibility:
 ```bash
 # Dynamic entity operations - works with any entity-field combination
 add brand vision=This_is_our_vision
-add metadata category=Technology sector=SaaS
-add organization incorporation=Delaware
-add offering name=Premium_Service price=99
+add metadata stage=GROWTH sector=AI
+add company legal=LLC
+add offering key=Premium_Service value=Enterprise_solutions
 
 # Update any existing fields
 update brand mission=Change_the_world
-update organization currency=EUR
-update metadata key=new_value
+update company currency=EUR
+update metadata stage=MATURE
 
 # Show entity data or specific fields
 show brand                    # Shows all brand data
-show organization name currency  # Shows only name and currency
+show company name currency   # Shows only name and currency
 show metadata                # Shows all metadata
+
+# Interactive wizard for filling data
+fill brand                   # Opens form wizard for brand entity
+fill offering               # Opens split-screen manager for offerings
+
+# List multi-cardinality entities with filtering
+list offering               # Shows all offerings
+list target key=Primary     # Filter targets by key
+list news category=FUNDING  # Filter news by category
 
 # Delete/clear specific fields
 delete brand vision          # Sets vision to null
-delete metadata key         # Removes the key-value pair completely
+delete metadata stage       # Sets stage to null
 
 # Navigation commands
 cd ..                       # Go up one level
@@ -340,32 +364,74 @@ cd ACME                    # Enter company context
 
 ```
 src/vlmx_sh2/
-├── __init__.py         # Package initialization
-├── enums.py           # Type definitions and constants  
-├── entities.py        # Database entity models
-├── words.py           # Word registry and vocabulary
-├── commands.py        # Command system and registry
-├── parser.py          # Natural language parser
-├── handlers.py        # Command implementations
-├── results.py         # Result formatting
-├── storage.py         # Data persistence layer
-├── context.py         # Session management
-├── syntax.py          # Composition rules
-├── databases.py       # Schema definitions
-└── layout.py          # Textual UI application
+├── __init__.py              # Package initialization
+├── main.py                  # Application entry point
+├── constants.py             # System constants
+├── dsl/                     # Domain-specific language components
+│   ├── words.py            # Word registry and vocabulary
+│   └── macros.py           # Command macros
+├── models/                  # Data models
+│   ├── context.py          # Session management
+│   ├── results.py          # Result formatting
+│   ├── words.py            # Word type definitions
+│   ├── parser/             # Parser-related models
+│   │   ├── enums.py        # Parser enums
+│   │   ├── filter.py       # Filter models
+│   │   ├── parse_result.py # Parse result models
+│   │   ├── parsed_command.py # Parsed command models
+│   │   ├── recognized_token.py # Token recognition
+│   │   └── token.py        # Token definitions
+│   └── schema/             # Database schema models
+│       ├── base.py         # Base schema classes
+│       ├── company.py      # Company entity models
+│       ├── enums.py        # Schema enums
+│       └── fund.py         # Fund entity models
+├── parser/                  # Natural language parser
+│   ├── parser.py           # Main parser logic
+│   ├── tokenizer.py        # Text tokenization
+│   ├── recognizer.py       # Word recognition
+│   ├── filter.py           # Filter parsing
+│   ├── suggestions.py      # Suggestion engine
+│   └── utils.py            # Parser utilities
+├── handlers/                # Command implementations
+│   ├── crud.py             # CRUD operations
+│   ├── navigation.py       # Navigation commands
+│   ├── wizard.py           # Wizard commands
+│   └── utils.py            # Handler utilities
+├── storage/                 # Data persistence layer
+│   ├── database.py         # Database operations
+│   ├── mappings.py         # Data mappings
+│   └── filters.py          # Data filtering
+├── ui/                      # User interface components
+│   ├── app.py              # Main Textual application
+│   ├── results.py          # Result formatting
+│   ├── screens/            # Screen components
+│   │   ├── main/           # Main screen
+│   │   │   └── main_screen.py
+│   │   └── modal/          # Modal screens
+│   │       ├── dynamic_entity_screen.py  # Split-screen entity manager
+│   │       └── form_wizard_screen.py     # Form wizard modal
+│   ├── widgets/            # UI widgets
+│   │   ├── command_block.py          # Command input blocks
+│   │   ├── dynamic_entity_manager.py # Split-view entity manager
+│   │   ├── form_wizard.py            # Interactive form wizard
+│   │   └── record_picker.py          # Record selection widget
+│   └── styles/             # CSS styling
+└── enums/                   # Shared enumerations
+    └── forms.py            # Form-related enums
 ```
 
 ## Configuration
 
 ### Adding Custom Vocabulary
 
-Extend the word registry by adding new entries to `words.py`:
+Extend the word registry by adding new entries to `dsl/words.py`:
 
 ```python
 WORDS.extend([
     ActionWord(id="analyze", description="Analyze entity data", ...),
-    EntityWord(id="report", entity_model=ReportEntity),
-    fieldWord(id="format", entity_models=[ReportEntity])
+    EntityWord(id="report", description="Report entity", entity_model=ReportEntity),
+    FieldWord(id="format", description="Report format", entity_models=[ReportEntity])
 ])
 ```
 
@@ -374,22 +440,25 @@ WORDS.extend([
 Implement the storage interface for different backends:
 
 ```python
-def create_entity(entity_dict: dict, context: Context) -> dict:
+def create_entity(entity_type: str, data: dict, context: Context) -> dict:
     # Custom implementation (database, API, etc.)
-    return {"success": True, "id": "generated_id"}
+    return {"success": True, "message": "Entity created"}
 ```
 
 ## Testing
 
 ```bash
+# Run the application
+uv run vlmx
+
 # Run with development mode
-uv run textual run --dev src.vlmx_sh2.layout
+uv run textual run --dev src.vlmx_sh2.ui.app:VLMX
 
 # Test individual components
 uv run python -c "
 from src.vlmx_sh2.parser import VLMXParser
 parser = VLMXParser()
-result = parser.parse('create company TEST entity=SA')
+result = parser.parse('create company TEST legal=SA')
 print(result.best_command.command_id)
 "
 ```
