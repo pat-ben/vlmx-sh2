@@ -29,13 +29,12 @@ class MainScreen(Screen):
     async def on_command_block_command_submitted(self, message):
         """Handle command submission from CommandBlock."""
         command = message.command
-        # Get the command block that sent the message
-        command_block = getattr(message, 'sender_widget', None) or getattr(message, 'sender', None)
-        if not command_block:
-            # Fallback: create a new command block for output
-            from ...widgets.command_block import CommandBlock
-            command_block = CommandBlock(context=self.context)
-            self.mount(command_block)
+        command_block = message.sender_widget
+        # if not command_block:
+        #     # Fallback: create a new command block for output
+        #     from ...widgets.command_block import CommandBlock
+        #     command_block = CommandBlock(context=self.context)
+        #     self.mount(command_block)
         
         try:
             # Parse the command
