@@ -83,4 +83,4 @@ class DatabaseModel(SQLModel):
     """Base class for database schemas"""
     name: str
     description: str
-    tables: ClassVar[List[Type[SQLModel]]] = []
+    tables: ClassVar[List[Type[EntityModel]]] = []

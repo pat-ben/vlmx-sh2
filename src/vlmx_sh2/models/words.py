@@ -6,6 +6,7 @@ the DSL vocabulary foundation. These models represent the structure and behavior
 of different word categories in natural language command parsing.
 """
 
+from decimal import DefaultContext
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from typing import Type, Optional, Literal, List, Any
@@ -25,8 +26,7 @@ class BaseWord(BaseModel):
     Base word model - shared fields for all word types.
     """
     
-    id: str = Field(description="Unique word identifier (e.g., 'create', 'company', 'currency')")
-    context: ContextLevel = Field(default=ContextLevel.SYS, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
+    id: str = Field(description="Unique word identifier (e.g., 'create', 'company', 'currency')")    
     description: str = Field(description="Human-readable description of the word")    
     deprecated: bool = Field(default=False, description="Whether this word is deprecated and should not be used")
     replaced_by: Optional[str] = Field(default=None, description="If deprecated, which word replaces this one")    
@@ -64,7 +64,7 @@ class ActionWord(BaseWord):
     word_type: Literal[WordType.ACTION] = WordType.ACTION
     execution_type: ExecutionType = Field(default=ExecutionType.STANDARD, description="Type of execution for this action")
     handler: Any = Field(description="Function to handle this action")
-    action_category: ActionCategory = Field(description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
+    action_category: ActionCategory = Field(default=ActionCategory.CRUD, description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
     crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
     database: bool = Field(default=False, description="Whether this action operates at the database level")
     requires_entity: bool = Field(default=True, description="Whether this action requires an entity to operate on")
@@ -80,6 +80,7 @@ class EntityWord(BaseWord):
     """
     
     word_type: Literal[WordType.ENTITY] = WordType.ENTITY
+    context: ContextLevel = Field(default=ContextLevel.ORG, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
     entity_model: Type[BaseModel] = Field(description="Reference to the Pydantic model representing this entity")
     # wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
 
