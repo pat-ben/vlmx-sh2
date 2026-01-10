@@ -42,7 +42,6 @@ def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:
     return entity_words
 
 
-# File: D:\Code\vlmx-sh2\src\vlmx_sh2\dsl\words\generator.py
 
 def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
     """

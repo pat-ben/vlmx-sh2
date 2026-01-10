@@ -8,7 +8,7 @@ while EntityWord and FieldWord objects are auto-generated.
 
 from typing import List
 
-from ...models.words import ActionWord, ActionCategory, CRUDOperation, ContextLevel, ExecutionType
+from ...models.words import ActionWord, ActionCategory, CRUDOperation, ExecutionType
 
 # Import handlers
 from ...handlers.crud import (
@@ -52,7 +52,6 @@ ACTION_WORDS: List[ActionWord] = [
         aliases=[],
         handler=navigate_handler,
         action_category=ActionCategory.NAVIGATION,
-        crud_operation=CRUDOperation.NONE,
         requires_entity=False
     ),
     
