@@ -6,10 +6,10 @@ the DSL vocabulary foundation. These models represent the structure and behavior
 of different word categories in natural language command parsing.
 """
 
-from decimal import DefaultContext
+
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
-from typing import Type, Optional, Literal, List, Any
+from typing import Type, Optional, Literal, List, Any, Sequence
 from .context import ContextLevel
 
 
@@ -95,7 +95,7 @@ class FieldWord(BaseWord):
     """
     
     word_type: Literal[WordType.FIELD] = WordType.FIELD
-    entity_models: List[Type[BaseModel]] = Field(description="Reference to the Pydantic model representing this entity")
+    entity_models: Sequence[Type[BaseModel]] = Field(description="Reference to the Pydantic model representing this entity")
     # number_format_mode: str = Field(default="not_applicable", description="Number formatting mode for this field")
     # currency_mode: str = Field(default="not_applicable", description="Currency mode for this field")
  

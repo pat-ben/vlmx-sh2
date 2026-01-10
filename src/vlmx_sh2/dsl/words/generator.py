@@ -43,6 +43,8 @@ def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:
     return entity_words
 
 
+# File: D:\Code\vlmx-sh2\src\vlmx_sh2\dsl\words\generator.py
+
 def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
     """
     Generate FieldWord objects from entity fields.
@@ -63,35 +65,28 @@ def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
     field_to_entities: Dict[str, List[Type[EntityModel]]] = defaultdict(list)
     field_to_descriptions: Dict[str, str] = {}
 
+    # Process each entity class in the schema
     for entity_cls in schema.tables:
-
-        # Filter system fields
+        # Get system fields once per entity (includes auto-detected foreign keys)
         system_fields = entity_cls.get_all_system_fields()
+        
+        # Process each field in the entity
         for field_name, field_info in entity_cls.model_fields.items():
+            # Skip system fields (id, created_at, updated_at, *_id, etc.)
             if field_name in system_fields:
                 continue
-
+            
             # Add entity to field mapping
             field_to_entities[field_name].append(entity_cls)
-
-            # Process each field in the entity
-            for field_name, field_info in entity_cls.model_fields.items():
-                # Skip system fields
-                if field_name in system_fields:
-                    continue
-    
-                # Add entity to field mapping
-                field_to_entities[field_name].append(entity_cls)
-    
-                # Extract field description (only once per field name - first wins)
-                if field_name not in field_to_descriptions:
-                    # Pydantic v2: description is directly on field_info
-                    field_description = field_info.description or ""
-                    
-                    field_to_descriptions[field_name] = (
-                        field_description or f"Field '{field_name}'"
-                    )
-                       
+            
+            # Extract field description (only once per field name - first wins)
+            if field_name not in field_to_descriptions:
+                # Pydantic v2: description is directly on field_info
+                field_description = field_info.description or ""
+                
+                field_to_descriptions[field_name] = (
+                    field_description or f"Field '{field_name}'"
+                )
 
     # Create FieldWord objects
     field_words = {}
