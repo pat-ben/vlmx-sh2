@@ -7,7 +7,7 @@ enabling complex filtering of entities with cardinality.MULTIPLE.
 
 from typing import List, Dict, Any, Union
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
-from ..models.parser.enums import Operator
+from vlmx_sh2.enums import Operator
 
 
 class FilterApplicationError(Exception):

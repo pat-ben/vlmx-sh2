@@ -8,7 +8,7 @@ FilterExpression trees for dynamic table filtering.
 from typing import List, Optional, Tuple
 from ..models.parser import Token, RecognizedToken
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
-from ..models.parser.enums import Operator, QueryKeyword, Bracket
+from vlmx_sh2.enums import Operator, QueryKeyword, Bracket
 
 
 class FilterParseError(Exception):

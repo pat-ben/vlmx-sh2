@@ -10,9 +10,8 @@ OfferingEntity, TargetEntity, and ValuesEntity.
 
 from datetime import date, datetime
 from typing import Optional, ClassVar, List, Type
-from sqlalchemy.sql.expression import desc
 from sqlmodel import Field, SQLModel
-from .enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
+from vlmx_sh2.enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
 from .base import DatabaseSchema, DatabaseModel
 from ..context import ContextLevel
 
@@ -255,6 +254,11 @@ class ValuesEntity(DatabaseModel, table=True):
     def table_name(cls) -> str:
         return "brand_values"
 
+
+# ============================================
+# NEWS ENTITY
+# ============================================
+
 class NewsEntity(DatabaseModel, table=True):
     """
     Python Model: NewsEntity
@@ -283,6 +287,11 @@ class NewsEntity(DatabaseModel, table=True):
     @classmethod
     def table_name(cls) -> str:
         return "news"
+
+
+# ============================================
+# COMPETITOR ENTITY
+# ============================================
 
 class CompetitorsEntity(DatabaseModel, table=True):
     """
@@ -313,6 +322,7 @@ class CompetitorsEntity(DatabaseModel, table=True):
     @classmethod
     def table_name(cls) -> str:
         return "competitors"
+
 
 # ============================================
 # DATABASE SCHEMA

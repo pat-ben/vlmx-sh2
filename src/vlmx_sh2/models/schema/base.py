@@ -8,7 +8,7 @@ Provides shared functionality for table naming, configuration, and schema organi
 import re
 from typing import List, Type, ClassVar, Set
 from sqlmodel import SQLModel
-from .enums import Cardinality
+from vlmx_sh2.enums import Cardinality
 from ..context import ContextLevel
 
 

@@ -23,8 +23,6 @@ class Legal(str, Enum):
     SA = "SA"
     SARL = "SARL"
     SAS = "SAS"
-    HOLDING = "HOLDING"
-    OPERATING = "OPERATING"
     LLC = "LLC"
     INC = "INC"
     LTD = "LTD"
@@ -56,12 +54,15 @@ class Country(str, Enum):
 class TypeOrg(str, Enum):
     """Types of organization allowed in VLMX."""
     COMPANY = "company"  # the most common type of organization
+    HOLDING = "holding"  # a holding is a parent company of multiple companies
+    SUBSIDIARY = "subsidiary"  # a subsidiary is a company owned by another company
     FUND = "fund"  # a fund is a cluster of multiple companies
-    FOUNDATION = "individual"  # an individual is a person
+    FOUNDATION = "foundation"  # a foundation is a non-profit organization
 
 
 class Unit(str, Enum):
     """Financial units for displaying monetary amounts."""
+    UNITS = "UNITS"
     THOUSANDS = "THOUSANDS"
     MILLIONS = "MILLIONS"
 

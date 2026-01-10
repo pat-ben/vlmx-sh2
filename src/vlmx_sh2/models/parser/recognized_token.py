@@ -8,7 +8,7 @@ from typing import Optional, List
 from pydantic import Field
 
 from .token import Token
-from .enums import TokenType, ValueContext
+from vlmx_sh2.enums import TokenType, ValueContext
 from ..words import Word, WordType
 
 

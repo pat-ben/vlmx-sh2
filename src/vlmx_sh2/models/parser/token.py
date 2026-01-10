@@ -7,7 +7,7 @@ Contains only text processing results with no semantic classification.
 from typing import Optional
 from pydantic import BaseModel, Field
 
-from .enums import Operator
+from vlmx_sh2.enums import Operator
 
 
 class Token(BaseModel):

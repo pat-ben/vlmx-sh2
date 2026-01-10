@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..models.context import Context, ContextLevel
-from ..models.schema.enums import Cardinality
+from vlmx_sh2.enums import Cardinality
 from ..models.results import StorageResult
 from .mappings import get_entity_json_filename, _entity_class_to_json_filename
 

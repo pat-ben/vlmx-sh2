@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from ..models.context import Context, ContextLevel
 from ..models.results import CommandResult, ErrorResult, HandlerResult
 from ..models.parser.parsed_command import ParsedCommand
-from ..models.schema.enums import Cardinality
+from vlmx_sh2.enums import Cardinality
 from ..handlers.utils import get_company_name_from_context, format_entity_data_for_display
 from ..storage.database import StorageInterface, entity_exists, find_company_by_name, load_all_entities
 from ..storage.filters import apply_filters

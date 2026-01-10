@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from ..models.results import FormWizardRequest, RecordPickerWizardRequest, ErrorResult, HandlerResult
 from ..models.context import Context
-from ..models.schema.enums import Cardinality
+from vlmx_sh2.enums import Cardinality
 from ..models.parser.parsed_command import ParsedCommand
 from ..handlers.utils import get_company_name_from_context
 from ..constants import SYSTEM_FIELDS

@@ -1,15 +1,15 @@
 """
-Form and UI ENUMs package.
+ENUMs package - Single Export Hub.
 
-Contains all ENUMs that are visible to users in forms, dropdowns,
-and other UI components. These ENUMs represent user choices and
-business domain values that users directly interact with.
+Contains all ENUMs used throughout the VLMX DSL system.
+This is the single source of truth for all ENUM imports.
 
 Usage:
-    from vlmx_sh2.enums import Legal, Currency, Country
-    from vlmx_sh2.enums.forms import NewsCategory
+    from vlmx_sh2.enums import Legal, Currency, Cardinality, Operator
+    from vlmx_sh2.enums import TokenType, ValueContext
 """
 
+# Form/UI ENUMs (user-facing business domain values)
 from .forms import (
     Legal,
     Currency, 
@@ -25,7 +25,22 @@ from .forms import (
     TypeOrg,
 )
 
+# Core schema ENUMs (fundamental schema architecture)
+from .core import (
+    Cardinality,
+)
+
+# Parser ENUMs (parsing pipeline)
+from .parser import (
+    Operator,
+    QueryKeyword,
+    Bracket,
+    TokenType,
+    ValueContext,
+)
+
 __all__ = [
+    # Form/UI ENUMs
     'Legal',
     'Currency',
     'Country', 
@@ -38,4 +53,14 @@ __all__ = [
     'Round',
     'Unit',
     'TypeOrg',
+    
+    # Core schema ENUMs
+    'Cardinality',
+    
+    # Parser ENUMs
+    'Operator',
+    'QueryKeyword',
+    'Bracket',
+    'TokenType',
+    'ValueContext',
 ]
