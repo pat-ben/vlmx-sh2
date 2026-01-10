@@ -16,8 +16,19 @@ from ...models.entities.company import CompanyDatabase
 
 # ==================== AUTO-GENERATED WORD REGISTRY ====================
 
-# Auto-generate entity and field words from entities
-SCHEMA_WORDS = generate_schema_words(CompanyDatabase)
+# List of all database schemas to include in the word registry
+SCHEMAS = [
+    CompanyDatabase,
+    # Add more database schemas here as they are created:
+    # FundDatabase,
+    # HoldingDatabase,
+]
+
+# Auto-generate entity and field words from all schemas
+SCHEMA_WORDS = {}
+for schema in SCHEMAS:
+    schema_words = generate_schema_words(schema)
+    SCHEMA_WORDS.update(schema_words)  # Later schemas override earlier ones if conflicts exist
 
 # Convert action list to dict
 ACTION_WORD_DICT = {word.id: word for word in ACTION_WORDS}
