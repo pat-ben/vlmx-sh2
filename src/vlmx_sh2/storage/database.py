@@ -408,7 +408,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                     pass
             
             # Import CompanyEntity to get proper defaults
-            from ..models.schema.company import CompanyEntity
+            from ..models.entities.company import CompanyEntity
             
             # Create organization data using CompanyEntity model defaults
             base_data = {
@@ -435,7 +435,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             company_folder.mkdir(parents=True, exist_ok=True)
             
             # Import CompanyDatabase to get all entity classes  
-            from ..models.schema.company import CompanyDatabase
+            from ..models.entities.company import CompanyDatabase
             
             created_files = []
             

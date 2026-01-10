@@ -2,7 +2,7 @@
 Automatic word generation from database schemas.
 
 This module implements the auto-generation of EntityWord and FieldWord objects
-from database schema definitions at runtime, eliminating manual duplication
+from database entities definitions at runtime, eliminating manual duplication
 between database models and DSL word registrations.
 """
 
@@ -10,16 +10,16 @@ from collections import defaultdict
 from typing import Dict, List, Set, Type
 
 from ..models.context import ContextLevel
-from ..models.schema.base import DatabaseModel, EntityModel
+from ..models.entities.base import DatabaseModel, EntityModel
 from ..models.words import EntityWord, FieldWord, Word
 
 
 def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:
     """
-    Generate EntityWord objects from schema entities.
+    Generate EntityWord objects from entities entities.
 
     Args:
-        schema: Database schema containing entity definitions
+        schema: Database entities containing entity definitions
 
     Returns:
         Dictionary mapping entity word IDs to EntityWord objects
@@ -48,13 +48,13 @@ def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:
 
 def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
     """
-    Generate FieldWord objects from schema entity fields.
+    Generate FieldWord objects from entities entity fields.
 
     Aggregates fields by name across all entities, creating one FieldWord
     per unique field name that references all entities containing that field.
 
     Args:
-        schema: Database schema containing entity definitions
+        schema: Database entities containing entity definitions
 
     Returns:
         Dictionary mapping field word IDs to FieldWord objects
@@ -120,10 +120,10 @@ def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
 
 def generate_schema_words(schema: Type[DatabaseModel]) -> Dict[str, Word]:
     """
-    Generate all EntityWord and FieldWord objects from a database schema.
+    Generate all EntityWord and FieldWord objects from a database entities.
 
     Args:
-        schema: Database schema containing entity definitions
+        schema: Database entities containing entity definitions
 
     Returns:
         Dictionary mapping word IDs to Word objects (EntityWords + FieldWords)

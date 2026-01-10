@@ -25,7 +25,7 @@ from .forms import (
     TypeOrg,
 )
 
-# Core schema ENUMs (fundamental schema architecture)
+# Core entities ENUMs (fundamental entities architecture)
 from .core import (
     Cardinality,
 )
@@ -54,7 +54,7 @@ __all__ = [
     'Unit',
     'TypeOrg',
     
-    # Core schema ENUMs
+    # Core entities ENUMs
     'Cardinality',
     
     # Parser ENUMs

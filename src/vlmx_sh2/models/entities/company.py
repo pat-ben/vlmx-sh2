@@ -1,12 +1,12 @@
 """
-Database schema and entity models for company database.
+Database entities and entity models for company database.
 
-Contains the CompanyDatabase schema definition and all company-related
+Contains the CompanyDatabase entities definition and all company-related
 entity models including CompanyEntity, MetadataEntity, BrandEntity,
 OfferingEntity, TargetEntity, and ValuesEntity.
 """
 
-# src/vlmx_sh2/models/schema/company.py
+# src/vlmx_sh2/models/entities/company.py
 
 from datetime import date, datetime
 from typing import Optional, ClassVar, List, Type

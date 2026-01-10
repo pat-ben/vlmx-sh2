@@ -1,5 +1,5 @@
 """
-Schema package containing database schema definitions and entity models.
+Schema package containing database entities definitions and entity models.
 """
 
 from .base import DatabaseModel, EntityModel

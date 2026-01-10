@@ -32,7 +32,7 @@ def _generate_entity_mappings() -> Dict[str, str]:
     """
     try:
         # Import here to avoid circular imports at module level
-        from ..models.schema.company import CompanyDatabase
+        from ..models.entities.company import CompanyDatabase
         
         mappings = {}
         
