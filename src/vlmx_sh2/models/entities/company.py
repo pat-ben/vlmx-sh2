@@ -331,7 +331,7 @@ class CompetitorsEntity(EntityModel, table=True):
 class CompanyDatabase(DatabaseModel):
     name: str = "company"
     description: str = "Single company database"
-    tables: ClassVar[List[Type[SQLModel]]] = [
+    tables: ClassVar[List[Type[EntityModel]]] = [
         CompanyEntity,
         AddressEntity,
         MetadataEntity,
