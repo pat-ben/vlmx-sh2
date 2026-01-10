@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from ..models.context import Context, ContextLevel
 from vlmx_sh2.enums import Cardinality
-from ..models.results import StorageResult
+from ..models.responses import StorageResult
 from .mappings import get_entity_json_filename, _entity_class_to_json_filename
 
 

@@ -13,26 +13,12 @@ from ..context import ContextLevel
 
 
 # ============================================
-# DATABASE SCHEMA
-# ============================================
-
-class DatabaseSchema(SQLModel):
-    """Base class for database schemas"""
-    name: str
-    description: str
-    
-    # This is a class variable, NOT a database column
-    # ClassVar tells Pydantic/SQLModel to ignore this for validation/DB
-    tables: ClassVar[List[Type[SQLModel]]] = []
-
-
-# ============================================
 # BASE MODEL
 # ============================================
 
 
-class DatabaseModel(SQLModel):
-    """Base class for all database models"""
+class EntityModel(SQLModel):
+    """Base class for all entity (= table) models"""
 
     # Entity cardinality classification
     cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
@@ -52,6 +38,8 @@ class DatabaseModel(SQLModel):
         "from_attributes": True,
         "use_enum_values": True
     }
+    
+    # ==================== CLASS METHODS ====================
     
     @classmethod
     def get_entity_word_id(cls) -> str:
@@ -84,3 +72,15 @@ class DatabaseModel(SQLModel):
     def table_name(cls) -> str:
         """Returns the SQL table name for this model"""
         raise NotImplementedError
+        
+        
+        
+# ============================================
+# DATABASE MODEL
+# ============================================
+
+class DatabaseModel(SQLModel):
+    """Base class for database schemas"""
+    name: str
+    description: str
+    tables: ClassVar[List[Type[SQLModel]]] = []

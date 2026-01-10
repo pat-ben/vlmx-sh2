@@ -12,7 +12,7 @@ from datetime import date, datetime
 from typing import Optional, ClassVar, List, Type
 from sqlmodel import Field, SQLModel
 from vlmx_sh2.enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
-from .base import DatabaseSchema, DatabaseModel
+from .base import DatabaseModel, EntityModel
 from ..context import ContextLevel
 
 
@@ -20,7 +20,7 @@ from ..context import ContextLevel
 # COMPANY ENTITY created at the same time as the database
 # ============================================
 
-class CompanyEntity(DatabaseModel, table=True):
+class CompanyEntity(EntityModel, table=True):
     """Company information."""
     
     # ==================== CLASS METADATA ====================
@@ -52,7 +52,7 @@ class CompanyEntity(DatabaseModel, table=True):
 # ADDRESS ENTITY
 # ============================================
 
-class AddressEntity(DatabaseModel, table=True):
+class AddressEntity(EntityModel, table=True):
     """
     Python Model: AddressEntity
     SQL Table: company address
@@ -84,7 +84,7 @@ class AddressEntity(DatabaseModel, table=True):
 # METADATA ENTITY (company metadata extension)
 # ============================================
 
-class MetadataEntity(DatabaseModel, table=True):
+class MetadataEntity(EntityModel, table=True):
     """
     Python Model: MetadataEntity
     SQL Table: metadata
@@ -117,7 +117,7 @@ class MetadataEntity(DatabaseModel, table=True):
 # BRAND ENTITY (Parent - Core brand info only)
 # ============================================
 
-class BrandEntity(DatabaseModel, table=True):
+class BrandEntity(EntityModel, table=True):
     """
     Python Model: BrandEntity
     SQL Table: brand
@@ -152,7 +152,7 @@ class BrandEntity(DatabaseModel, table=True):
 # OFFERING ENTITY RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
-class OfferingEntity(DatabaseModel, table=True):
+class OfferingEntity(EntityModel, table=True):
     """
     Python Model: OfferingEntity
     SQL Table: brand_offerings
@@ -186,7 +186,7 @@ class OfferingEntity(DatabaseModel, table=True):
 # TARGET ENTITY RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
-class TargetEntity(DatabaseModel, table=True):
+class TargetEntity(EntityModel, table=True):
     """
     Python Model: TargetEntity
     SQL Table: brand_targets
@@ -222,7 +222,7 @@ class TargetEntity(DatabaseModel, table=True):
 # VALUE ENTITY RELATED TO BRAND (Key-Value Pairs)
 # ============================================
 
-class ValuesEntity(DatabaseModel, table=True):
+class ValuesEntity(EntityModel, table=True):
     """
     Python Model: ValuesEntity
     SQL Table: brand_values
@@ -259,7 +259,7 @@ class ValuesEntity(DatabaseModel, table=True):
 # NEWS ENTITY
 # ============================================
 
-class NewsEntity(DatabaseModel, table=True):
+class NewsEntity(EntityModel, table=True):
     """
     Python Model: NewsEntity
     SQL Table: news
@@ -293,7 +293,7 @@ class NewsEntity(DatabaseModel, table=True):
 # COMPETITOR ENTITY
 # ============================================
 
-class CompetitorsEntity(DatabaseModel, table=True):
+class CompetitorsEntity(EntityModel, table=True):
     """
     Python Model: CompetitorsEntity
     SQL Table: competitors
@@ -325,14 +325,12 @@ class CompetitorsEntity(DatabaseModel, table=True):
 
 
 # ============================================
-# DATABASE SCHEMA
+# DATABASE MODEL
 # ============================================
 
-class CompanyDatabase(DatabaseSchema):
+class CompanyDatabase(DatabaseModel):
     name: str = "company"
     description: str = "Single company database"
-    
-    # Override the tables ClassVar with the actual entities
     tables: ClassVar[List[Type[SQLModel]]] = [
         CompanyEntity,
         AddressEntity,

@@ -10,7 +10,7 @@ from textual.app import ComposeResult
 from textual.widgets import Input, Button, Label, Static
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
-from ...models.results import FormWizardRequest
+from ...models.responses import FormRequest
 
 
 class FormWizard(Widget):
@@ -28,7 +28,7 @@ class FormWizard(Widget):
         """Message sent when form is cancelled."""
         pass
     
-    def __init__(self, wizard_request: FormWizardRequest, show_buttons: bool = True, **kwargs):
+    def __init__(self, wizard_request: FormRequest, show_buttons: bool = True, **kwargs):
         """
         Initialize the form wizard.
         

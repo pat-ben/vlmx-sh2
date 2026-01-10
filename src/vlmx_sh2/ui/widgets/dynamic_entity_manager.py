@@ -151,9 +151,9 @@ from textual.app import ComposeResult
 from textual.widgets import Button, Label, Static, DataTable, Input
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
-from ...models.results import RecordPickerWizardRequest
+from ...models.responses import PickerRequest
 from .form_wizard import FormWizard
-from ...models.results import FormWizardRequest
+from ...models.responses import FormRequest
 from ...constants import SYSTEM_FIELDS
 
 
@@ -184,7 +184,7 @@ class DynamicEntityManager(Widget):
         """Message sent when manager is cancelled."""
         pass
     
-    def __init__(self, picker_request: RecordPickerWizardRequest, **kwargs):
+    def __init__(self, picker_request: PickerRequest, **kwargs):
         """
         Initialize the dynamic entity manager.
         
@@ -386,7 +386,7 @@ class DynamicEntityManager(Widget):
                 if field in record_data and record_data[field] is not None:
                     pre_filled_values[field] = str(record_data[field])
             
-            form_wizard_request = FormWizardRequest(
+            form_wizard_request = FormRequest(
                 entity_id=self.picker_request.entity_id,
                 entity_name=self.picker_request.entity_name,
                 fields=requested_fields,
@@ -425,7 +425,7 @@ class DynamicEntityManager(Widget):
                 if field not in SYSTEM_FIELDS
             ]
             
-            form_wizard_request = FormWizardRequest(
+            form_wizard_request = FormRequest(
                 entity_id=self.picker_request.entity_id,
                 entity_name=self.picker_request.entity_name,
                 fields=requested_fields,

@@ -2,25 +2,25 @@
 Schema package containing database schema definitions and entity models.
 """
 
-from .base import DatabaseSchema, DatabaseModel
+from .base import DatabaseModel, EntityModel
 from .company import (
+    BrandEntity,
     CompanyDatabase,
     CompanyEntity,
     MetadataEntity,
-    BrandEntity,
     OfferingEntity,
     TargetEntity,
-    ValuesEntity
+    ValuesEntity,
 )
 
 __all__ = [
-    "DatabaseSchema", 
     "DatabaseModel",
+    "EntityModel",
     "CompanyDatabase",
     "CompanyEntity",
     "MetadataEntity",
     "BrandEntity",
     "OfferingEntity",
     "TargetEntity",
-    "ValuesEntity"
+    "ValuesEntity",
 ]

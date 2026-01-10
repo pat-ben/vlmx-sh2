@@ -16,10 +16,8 @@ from .context import ContextLevel
 
 class WordType(Enum):
     ACTION = "action"  # verbs only (eg. create, update, delete)
-    ENTITY = "entity"  # noun only :An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
-    FIELD = "field"  # noun or adjective: Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
-
-
+    ENTITY = "entity"  # An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
+    FIELD = "field"  # Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
 
 
 class BaseWord(BaseModel):
@@ -83,7 +81,7 @@ class EntityWord(BaseWord):
     
     word_type: Literal[WordType.ENTITY] = WordType.ENTITY
     entity_model: Type[BaseModel] = Field(description="Reference to the Pydantic model representing this entity")
-    wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
+    # wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
 
 
 # ==================== FIELD WORD MODEL ====================
@@ -97,8 +95,8 @@ class FieldWord(BaseWord):
     
     word_type: Literal[WordType.FIELD] = WordType.FIELD
     entity_models: List[Type[BaseModel]] = Field(description="Reference to the Pydantic model representing this entity")
-    number_format_mode: str = Field(default="not_applicable", description="Number formatting mode for this field")
-    currency_mode: str = Field(default="not_applicable", description="Currency mode for this field")
+    # number_format_mode: str = Field(default="not_applicable", description="Number formatting mode for this field")
+    # currency_mode: str = Field(default="not_applicable", description="Currency mode for this field")
  
 
 # ==================== UNION TYPE ====================

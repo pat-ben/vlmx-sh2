@@ -7,7 +7,7 @@ Provides a split-screen interface for managing multi-record dynamic entities.
 from textual.screen import ModalScreen
 from textual.app import ComposeResult
 from ...widgets.dynamic_entity_manager import DynamicEntityManager
-from ....models.results import RecordPickerWizardRequest
+from ....models.responses import PickerRequest
 
 
 class DynamicEntityScreen(ModalScreen):
@@ -15,7 +15,7 @@ class DynamicEntityScreen(ModalScreen):
     Modal screen for dynamic entity management.
     """
     
-    def __init__(self, picker_request: RecordPickerWizardRequest, main_screen, **kwargs):
+    def __init__(self, picker_request: PickerRequest, main_screen, **kwargs):
         """
         Initialize the dynamic entity screen.
         

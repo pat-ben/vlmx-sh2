@@ -11,7 +11,7 @@ from textual.app import ComposeResult
 from textual.widgets import Button, Label, Static
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
-from ...models.results import RecordPickerWizardRequest
+from ...models.responses import PickerRequest
 
 
 class RecordPicker(Widget):
@@ -34,7 +34,7 @@ class RecordPicker(Widget):
         """Message sent when picker is cancelled."""
         pass
     
-    def __init__(self, picker_request: RecordPickerWizardRequest, **kwargs):
+    def __init__(self, picker_request: PickerRequest, **kwargs):
         """
         Initialize the record picker.
         

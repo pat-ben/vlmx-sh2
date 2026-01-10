@@ -8,7 +8,7 @@ Returns FormWizardRequest models for UI interpretation.
 from typing import Optional, List, Type, Dict, Any
 from pydantic import BaseModel
 
-from ..models.results import FormWizardRequest, RecordPickerWizardRequest, ErrorResult, HandlerResult
+from ..models.responses import FormRequest, PickerRequest, ErrorResult, HandlerResult
 from ..models.context import Context
 from vlmx_sh2.enums import Cardinality
 from ..models.parser.parsed_command import ParsedCommand
@@ -24,7 +24,7 @@ def _handle_multiple_cardinality_entity(
     entity_value: Optional[str],
     company_name: str,
     context: Context
-) -> RecordPickerWizardRequest:
+) -> PickerRequest:
     """
     Handle fill request for multiple cardinality entities.
     
@@ -48,7 +48,7 @@ def _handle_multiple_cardinality_entity(
     title = f"Select {entity_type.title()} Record"
     entity_name = entity_value or company_name
     
-    return RecordPickerWizardRequest(
+    return PickerRequest(
         entity_id=entity_type,
         entity_name=entity_name,
         records=all_records,
@@ -99,7 +99,7 @@ def _create_form_wizard_request(
     company_name: str,
     requested_fields: List[str],
     entity_data: Dict[str, Any]
-) -> FormWizardRequest:
+) -> FormRequest:
     """
     Create a FormWizardRequest with pre-filled values.
     
@@ -123,7 +123,7 @@ def _create_form_wizard_request(
     title = f"Fill {entity_type.title()} Information"
     entity_name = entity_value or company_name
     
-    return FormWizardRequest(
+    return FormRequest(
         entity_id=entity_type,
         entity_name=entity_name,
         fields=requested_fields,

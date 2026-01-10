@@ -9,7 +9,7 @@ from typing import Type, Optional, Dict, Any, List
 from pydantic import BaseModel
 
 from ..models.context import Context
-from ..models.results import HandlerResult
+from ..models.responses import HandlerResult
 from ..models.parser.parsed_command import ParsedCommand
 
 # Navigation command aliases
@@ -53,7 +53,7 @@ async def navigate_handler(
     Raises:
         Returns ErrorResult for invalid navigation attempts, missing organizations, or system errors
     """
-    from ..models.results import CommandResult, ErrorResult
+    from ..models.responses import CommandResult, ErrorResult
     from ..models.context import Context as NewContext, ContextLevel
     from ..storage.database import find_company_by_name
     

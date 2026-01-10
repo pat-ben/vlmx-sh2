@@ -11,7 +11,7 @@ from typing import Type, Optional, Dict, Any, List
 from pydantic import BaseModel
 
 from ..models.context import Context, ContextLevel
-from ..models.results import CommandResult, ErrorResult, HandlerResult
+from ..models.responses import CommandResult, ErrorResult, HandlerResult
 from ..models.parser.parsed_command import ParsedCommand
 from vlmx_sh2.enums import Cardinality
 from ..handlers.utils import get_company_name_from_context, format_entity_data_for_display

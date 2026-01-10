@@ -6,7 +6,7 @@ from textual.widgets import Footer, Header
 
 from ....parser import VLMXParser
 from ....models.context import Context
-from ....models.results import CommandResult, ErrorResult, FormWizardRequest, RecordPickerWizardRequest, QueryWizardRequest
+from ....models.responses import CommandResult, ErrorResult, FormRequest, PickerRequest, QueryRequest
 from ...results import format_command_result
 from ...widgets.command_block import CommandBlock
 
@@ -142,7 +142,7 @@ class MainScreen(Screen):
         # Create new prompt
         self._create_new_command_block()
 
-    async def _handle_form_wizard(self, wizard_request: FormWizardRequest, command_block: CommandBlock):
+    async def _handle_form_wizard(self, wizard_request: FormRequest, command_block: CommandBlock):
         """Handle form wizard request by showing an interactive form."""
         try:
             # Import here to avoid circular imports
@@ -160,7 +160,7 @@ class MainScreen(Screen):
             command_block.show_output(f"Error showing form wizard: {str(e)}", is_error=True)
             self._create_new_command_block()
 
-    async def _handle_record_picker(self, picker_request: RecordPickerWizardRequest, command_block: CommandBlock):
+    async def _handle_record_picker(self, picker_request: PickerRequest, command_block: CommandBlock):
         """Handle record picker request by showing an interactive record selector."""
         try:
             # Create the dynamic entity screen with split layout
@@ -174,7 +174,7 @@ class MainScreen(Screen):
             command_block.show_output(f"Error showing record picker: {str(e)}", is_error=True)
             self._create_new_command_block()
 
-    async def _handle_query_wizard(self, wizard_request: QueryWizardRequest, command_block: CommandBlock):
+    async def _handle_query_wizard(self, wizard_request: QueryRequest, command_block: CommandBlock):
         """Handle query wizard request (future implementation)."""
         # Stub for future implementation
         command_block.show_output(f"Query wizard requested for {wizard_request.entity_id}")
@@ -183,7 +183,7 @@ class MainScreen(Screen):
         # Create new prompt since wizard is not implemented
         self._create_new_command_block()
 
-    async def _process_wizard_submission(self, wizard_request: FormWizardRequest, fields: dict):
+    async def _process_wizard_submission(self, wizard_request: FormRequest, fields: dict):
         """Process form wizard submission by updating entity fields."""
         try:
             from ....handlers.crud import add_handler, update_handler
