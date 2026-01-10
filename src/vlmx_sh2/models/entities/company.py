@@ -10,7 +10,7 @@ OfferingEntity, TargetEntity, and ValuesEntity.
 
 from datetime import date, datetime
 from typing import Optional, ClassVar, List, Type
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field
 from vlmx_sh2.enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
 from .base import DatabaseModel, EntityModel
 from ..context import ContextLevel
