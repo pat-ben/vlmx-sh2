@@ -9,7 +9,6 @@ between database models and DSL word registrations.
 from collections import defaultdict
 from typing import Dict, List, Type
 
-from ...models.context import ContextLevel
 from ...models.entities.base import DatabaseModel, EntityModel
 from ...models.words import EntityWord, FieldWord, Word
 
