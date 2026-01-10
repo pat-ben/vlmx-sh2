@@ -8,11 +8,11 @@ while EntityWord and FieldWord objects are auto-generated.
 
 from typing import List
 
-from ..models.words import ActionWord
-from ..models.words import ActionCategory, CRUDOperation, ContextLevel, ExecutionType
+from ...models.words import ActionWord
+from ...models.words import ActionCategory, CRUDOperation, ContextLevel, ExecutionType
 
 # Import handlers
-from ..handlers.crud import (
+from ...handlers.crud import (
     create_handler,
     add_handler,
     update_handler,
@@ -20,8 +20,8 @@ from ..handlers.crud import (
     list_handler,
     delete_handler
 )
-from ..handlers.navigation import navigate_handler
-from ..handlers.wizard import fill_handler
+from ...handlers.navigation import navigate_handler
+from ...handlers.wizard import fill_handler
 
 
 # ==================== ACTION WORDS ====================

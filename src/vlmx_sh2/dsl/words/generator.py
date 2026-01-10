@@ -9,9 +9,9 @@ between database models and DSL word registrations.
 from collections import defaultdict
 from typing import Dict, List, Set, Type
 
-from ..models.context import ContextLevel
-from ..models.entities.base import DatabaseModel, EntityModel
-from ..models.words import EntityWord, FieldWord, Word
+from ...models.context import ContextLevel
+from ...models.entities.base import DatabaseModel, EntityModel
+from ...models.words import EntityWord, FieldWord, Word
 
 
 def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:

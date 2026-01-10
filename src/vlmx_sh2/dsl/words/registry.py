@@ -8,10 +8,10 @@ between database models and DSL word registrations.
 
 from typing import Dict
 
-from ..models.words import WordType, Word
-from .word_generator import generate_schema_words
-from .action_words import ACTION_WORDS
-from ..models.entities.company import CompanyDatabase
+from ...models.words import WordType, Word
+from .generator import generate_schema_words
+from .actions import ACTION_WORDS
+from ...models.entities.company import CompanyDatabase
 
 
 # ==================== AUTO-GENERATED WORD REGISTRY ====================
