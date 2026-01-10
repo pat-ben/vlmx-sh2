@@ -1,282 +1,31 @@
 """
 Word registry and models.
 
-Defines all word types (actions, entities, fields, modifiers) and their
-relationships to database models. The word registry serves as the vocabulary
-foundation for natural language command parsing and validation.
+Auto-generates EntityWord and FieldWord objects from database schema definitions
+while maintaining manual ActionWord definitions. This eliminates duplication
+between database models and DSL word registrations.
 """
 
-from typing import List, Dict
-from ..models.words import (
-    WordType, ActionCategory, CRUDOperation, ContextLevel,
-    ActionWord, EntityWord, FieldWord, Word, ExecutionType
-)
-from ..models.schema.company import (
-    CompanyEntity, 
-    MetadataEntity, 
-    BrandEntity, 
-    OfferingEntity, 
-    TargetEntity, 
-    ValuesEntity,
-    AddressEntity,
-    NewsEntity,
-    CompetitorsEntity
-)
+from typing import Dict
 
-# Import dynamic handlers from the handlers module
-from ..handlers.crud import (
-    create_handler,
-    add_handler,
-    update_handler,
-    show_handler,
-    list_handler,
-    delete_handler
-)
-from ..handlers.navigation import navigate_handler
-from ..handlers.wizard import fill_handler
+from ..models.words import WordType, Word
+from .word_generator import generate_schema_words
+from .action_words import ACTION_WORDS
+from ..models.schema.company import CompanyDatabase
 
 
-# ==================== WORD REGISTRATIONS ====================
+# ==================== AUTO-GENERATED WORD REGISTRY ====================
 
+# Auto-generate entity and field words from schema
+SCHEMA_WORDS = generate_schema_words(CompanyDatabase)
 
+# Convert action list to dict
+ACTION_WORD_DICT = {word.id: word for word in ACTION_WORDS}
 
-# Define all words in a list
-WORDS: List[Word] = [
-    # ==================== ACTIONS ====================
-    ActionWord(
-        id="create",
-        context=ContextLevel.SYS,
-        description="Create a new entity (company, milestone, etc.)",
-        aliases=["c","post"],
-        handler=create_handler,
-        action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.CREATE,
-        database=True,
-    ),
-    
-    ActionWord(
-        id="delete",
-        context=ContextLevel.SYS,
-        description="Delete an existing entity",
-        aliases=["d","remove","rm"],
-        handler=delete_handler,
-        action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.DELETE,
-        database=True,        
-        destructive=True,
-        warning="This action will permanently delete the entity"
-    ),
-    
-    ActionWord(
-        id="cd",
-        context=ContextLevel.SYS,  # Available from SYS level and up (all levels)
-        description="Navigate between contexts (SYS, ORG, APP levels)",
-        aliases=[],
-        handler=navigate_handler,
-        action_category=ActionCategory.NAVIGATION,
-        crud_operation=CRUDOperation.NONE,
-        requires_entity=False
-    ),
-    
-    ActionWord(
-        id="add",
-        context=ContextLevel.ORG,
-        description="Add or set field values to entities",
-        aliases=["a","set"],
-        handler=add_handler,
-        action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.CREATE,
-    ),
-    
-    ActionWord(
-        id="update",
-        context=ContextLevel.ORG,
-        description="Update existing field values for entities",
-        aliases=["u","put", "patch"],
-        handler=update_handler,
-        action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.UPDATE,
-    ),
-    
-    ActionWord(
-        id="show",
-        context=ContextLevel.ORG,
-        description="Display entity data or specific fields",
-        aliases=["s","read","get"],
-        handler=show_handler,
-        action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.READ,
-    ),
-    
-    ActionWord(
-        id="list",
-        context=ContextLevel.ORG,
-        description="List all records of entities with multiple cardinality, with optional filtering",
-        aliases=["l","ls","find"],
-        handler=list_handler,
-        action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.READ,
-    ),
-    
-    ActionWord(
-        id="fill",
-        context=ContextLevel.ORG,
-        description="displays an intermediate form for filling out",
-        aliases=["viz","wiz","f"],
-        handler=fill_handler,
-        execution_type=ExecutionType.WIZARD,
-        action_category=ActionCategory.CRUD,
-        crud_operation=CRUDOperation.UPDATE,
-        requires_entity=True
-    ),
-    
-
-    
-    # ==================== ENTITIES ====================
-   
-    EntityWord(
-        id="company",
-        description="A business entity that can be managed in the terminal",
-        entity_model=CompanyEntity        
-    ),
-    
-    EntityWord(
-        id="metadata",
-        description="Key-value metadata for extending company information",
-        entity_model=MetadataEntity
-    ),
-    
-    EntityWord(
-        id="brand",
-        description="Company brand identity (vision, mission, personality)",
-        entity_model=BrandEntity
-    ),
-    
-    EntityWord(
-        id="offering",
-        description="Company product or service offerings",
-        entity_model=OfferingEntity
-    ),
-    
-    EntityWord(
-        id="target",
-        description="Target audience or market segments",
-        entity_model=TargetEntity
-    ),
-    
-    EntityWord(
-        id="values",
-        description="Company core values",
-        entity_model=ValuesEntity
-    ),
-    
-    EntityWord(
-        id="address",
-        description="Company address information",
-        entity_model=AddressEntity
-    ),
-    
-    EntityWord(
-        id="news",
-        description="Company news and announcements",
-        entity_model=NewsEntity
-    ),
-    
-    EntityWord(
-        id="competitors",
-        description="Company competitors and competitive analysis",
-        entity_model=CompetitorsEntity
-    ),
-    
-    # ==================== FIELDS ====================
-    
-    # Common fields across multiple entities
-    
-    FieldWord(
-        id="name",
-        description="Name or title of the entity",
-        entity_models=[CompanyEntity, BrandEntity, OfferingEntity, TargetEntity, ValuesEntity]
-    ),
-    
-    FieldWord(
-        id="key",
-        description="Key identifier or category",
-        entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
-    ),
-    
-    FieldWord(
-        id="value",
-        description="Value or description content",
-        entity_models=[MetadataEntity, OfferingEntity, TargetEntity, ValuesEntity]
-    ),
-    
-    # Company-specific fields
-    FieldWord(
-        id="legal",
-        description="Legal entity type (SA, LLC, INC, etc.)",   
-        entity_models=[CompanyEntity]
-    ),
-    
-    FieldWord(
-        id="type",
-        description="Organization type (company, fund, foundation)",
-        entity_models=[CompanyEntity]
-    ),
-    
-    FieldWord(
-        id="currency",
-        description="Currency used for financial data (EUR, USD, GBP, etc.)",
-        entity_models=[CompanyEntity]
-    ),
-    
-    FieldWord(
-        id="unit",
-        description="Unit for financial data (THOUSANDS, MILLIONS, etc.)",
-        entity_models=[CompanyEntity]
-    ),
-    
-    FieldWord(
-        id="closing",
-        description="Fiscal year end month (1-12)",
-        entity_models=[CompanyEntity]
-    ),
-    
-    FieldWord(
-        id="incorporation",
-        description="Date of incorporation",
-        entity_models=[CompanyEntity]
-    ),
-    
-    # Brand-specific fields
-    FieldWord(
-        id="vision",
-        description="Company vision statement",
-        entity_models=[BrandEntity]
-    ),
-    
-    FieldWord(
-        id="mission",
-        description="Company mission statement",
-        entity_models=[BrandEntity]
-    ),
-    
-    FieldWord(
-        id="personality",
-        description="Brand personality description",
-        entity_models=[BrandEntity]
-    ),
-    
-    FieldWord(
-        id="promise",
-        description="Brand promise to customers",
-        entity_models=[BrandEntity]
-    ),
-    
-]
-
-# Auto-build the registry from the list (NO REPETITION!)
+# Combine into final registry
 WORD_REGISTRY: Dict[str, Word] = {
-    word.id: word for word in WORDS
+    **SCHEMA_WORDS,      # Auto-generated EntityWords and FieldWords
+    **ACTION_WORD_DICT,  # Manual ActionWords
 }
 
 

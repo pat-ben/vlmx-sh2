@@ -5,9 +5,11 @@ Defines common base classes that all database schemas and entity models inherit 
 Provides shared functionality for table naming, configuration, and schema organization.
 """
 
-from typing import List, Type, ClassVar
+import re
+from typing import List, Type, ClassVar, Set
 from sqlmodel import SQLModel
 from .enums import Cardinality
+from ..context import ContextLevel
 
 
 # ============================================
@@ -34,11 +36,49 @@ class DatabaseModel(SQLModel):
 
     # Entity cardinality classification
     cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
+    context: ClassVar[ContextLevel] = ContextLevel.ORG
     
+    # ==================== DEFAULT SYSTEM FIELDS ====================
+    # These fields are excluded from word registry by default
+    _system_fields: ClassVar[Set[str]] = {
+        'id',
+        'created_at',
+        'updated_at',
+        'source_db',
+        'last_synced_at'
+    }
+        
     model_config = { # type: ignore[assignment]
         "from_attributes": True,
         "use_enum_values": True
     }
+    
+    @classmethod
+    def get_entity_word_id(cls) -> str:
+        """
+        Auto-derive word ID from class name.
+        CompanyEntity → 'company'
+        NewsEntity → 'news'
+        BrandEntity → 'brand'
+        """
+        return cls.__name__.replace("Entity", "").lower()
+    
+    @classmethod
+    def get_entity_description(cls) -> str:
+        """Get entity description from docstring."""
+        return cls.__doc__.strip() if cls.__doc__ else ""
+    
+    @classmethod
+    def get_all_system_fields(cls) -> Set[str]:
+        """Get system fields including auto-detected foreign keys."""
+        system_fields = cls._system_fields.copy()
+        
+        # Auto-detect foreign keys
+        for field_name in cls.model_fields.keys():
+            if re.match(r'.*_id$', field_name):
+                system_fields.add(field_name)
+        
+        return system_fields
 
     @classmethod
     def table_name(cls) -> str:
