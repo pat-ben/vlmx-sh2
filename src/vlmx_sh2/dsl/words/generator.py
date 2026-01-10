@@ -110,10 +110,10 @@ def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
 
 def generate_schema_words(schema: Type[DatabaseModel]) -> Dict[str, Word]:
     """
-    Generate all EntityWord and FieldWord objects from a database entities.
+    Generate all EntityWord and FieldWord objects from an entity database.
 
     Args:
-        schema: Database entities containing entity definitions
+        schema: Database containing entity definitions
 
     Returns:
         Dictionary mapping word IDs to Word objects (EntityWords + FieldWords)
