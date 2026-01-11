@@ -10,7 +10,7 @@ from typing import Dict
 
 from ...models.words import WordType, Word
 from .generator import generate_schema_words, generate_entity_words, generate_field_words
-from .actions import ACTION_WORDS
+from .actions import ACTION_WORDS_LIST
 from ...models.entities.company import CompanyDatabase
 
 
@@ -36,11 +36,11 @@ for schema in SCHEMAS:
     FIELD_WORDS.update(field_words)
 
 # Convert action list to dict
-ACTION_WORD_DICT = {word.id: word for word in ACTION_WORDS}
+ACTION_WORDS = {word.id: word for word in ACTION_WORDS_LIST}
 
 # Combine into final registry with proper priority order
 WORD_REGISTRY: Dict[str, Word] = {
-    **ACTION_WORD_DICT,# 1st: Highest priority - actions can't be overridden
+    **ACTION_WORDS,# 1st: Highest priority - actions can't be overridden
     **SCHEMA_WORDS,    # 2nd: Database types (company, fund, holding)
     **ENTITY_WORDS,    # 3rd: Table names (organization, brand, news)
     **FIELD_WORDS,     # 4th: Lowest priority - most common, most conflicts

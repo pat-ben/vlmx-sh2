@@ -30,9 +30,6 @@ def generate_schema_words() -> Dict[str, SchemaWord]:
     # In the future, each TypeOrg will have its own specific DatabaseModel
     from ...models.entities.company import CompanyDatabase
     
-    # Only create SchemaWord for COMPANY type for now
-    # Other types (FUND, HOLDING, SUBSIDIARY, FOUNDATION) will be added
-    # when their respective database schemas are implemented
     type_org = TypeOrg.COMPANY
     schema_class = CompanyDatabase
     

@@ -25,7 +25,7 @@ from ...handlers.wizard import fill_handler
 
 # ==================== ACTION WORDS ====================
 
-ACTION_WORDS: List[ActionWord] = [
+ACTION_WORDS_LIST: List[ActionWord] = [
     ActionWord(
         id="create",        
         description="Create a new entity (company, milestone, etc.)",
