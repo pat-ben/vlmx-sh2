@@ -24,12 +24,11 @@ SCHEMAS = [
     # HoldingDatabase,
 ]
 
-# Generate SchemaWords from TypeOrg enum (highest priority)
+# Generate SchemaWords (highest priority), EntityWords, FieldWords
 SCHEMA_WORDS = generate_schema_words()
-
-# Generate EntityWords and FieldWords from database schemas
 ENTITY_WORDS = {}
 FIELD_WORDS = {}
+
 for schema in SCHEMAS:
     entity_words = generate_entity_words(schema)
     field_words = generate_field_words(schema)
@@ -40,14 +39,12 @@ for schema in SCHEMAS:
 ACTION_WORD_DICT = {word.id: word for word in ACTION_WORDS}
 
 # Combine into final registry with proper priority order
-# Priority: SchemaWords > EntityWords > FieldWords > ActionWords
 WORD_REGISTRY: Dict[str, Word] = {
-    **ACTION_WORD_DICT,   # Lowest priority: create, delete, update, etc.
-    **FIELD_WORDS,        # Lower priority: name, currency, vision, etc.
-    **ENTITY_WORDS,       # Higher priority: organization, brand, news, etc.
-    **SCHEMA_WORDS,       # Highest priority: company, fund, holding, etc.
+    **ACTION_WORD_DICT,# 1st: Highest priority - actions can't be overridden
+    **SCHEMA_WORDS,    # 2nd: Database types (company, fund, holding)
+    **ENTITY_WORDS,    # 3rd: Table names (organization, brand, news)
+    **FIELD_WORDS,     # 4th: Lowest priority - most common, most conflicts
 }
-
 
 # ==================== HELPER FUNCTIONS ====================
 
