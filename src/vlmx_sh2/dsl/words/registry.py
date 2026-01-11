@@ -40,7 +40,7 @@ ACTION_WORDS = {word.id: word for word in ACTION_WORDS_LIST}
 
 # Combine into final registry with proper priority order
 WORD_REGISTRY: Dict[str, Word] = {
-    **ACTION_WORDS,# 1st: Highest priority - actions can't be overridden
+    **ACTION_WORDS,    # 1st: Highest priority - actions can't be overridden
     **SCHEMA_WORDS,    # 2nd: Database types (company, fund, holding)
     **ENTITY_WORDS,    # 3rd: Table names (organization, brand, news)
     **FIELD_WORDS,     # 4th: Lowest priority - most common, most conflicts

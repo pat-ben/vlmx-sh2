@@ -14,21 +14,7 @@ from typing import Dict, List
 MACROS: Dict[str, List[str]] = {
     "cc": ["create", "company"],
     "dc": ["delete", "company"],
-    "am": ["add", "metadata"],
-    "um": ["update", "metadata"],
-    "dm": ["delete", "metadata"],
-    "ab": ["add", "brand"],
-    "ub": ["update", "brand"],
-    "db": ["delete", "brand"],
-    "av": ["add", "value"],
-    "uv": ["update", "value"],
-    "dv": ["delete", "value"],
-    "at": ["add", "target"],
-    "ut": ["update", "target"],
-    "dt": ["delete", "target"],
-    "ao": ["add", "offering"],
-    "uo": ["update", "offering"],
-    "do": ["delete", "offering"],
+    "org": ["organization"],
     
     # Operator macros for filtering
     "&": ["and"],

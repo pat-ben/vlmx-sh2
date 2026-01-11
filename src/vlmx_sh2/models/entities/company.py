@@ -12,7 +12,7 @@ from datetime import date, datetime
 from typing import Optional, ClassVar, List, Type
 from sqlmodel import Field
 from vlmx_sh2.enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
-from .base import DatabaseModel, EntityModel
+from .base import SchemaModel, EntityModel
 from ..context import ContextLevel
 
 
@@ -328,7 +328,7 @@ class CompetitorsEntity(EntityModel, table=True):
 # DATABASE MODEL
 # ============================================
 
-class CompanyDatabase(DatabaseModel):
+class CompanyDatabase(SchemaModel):
     name: str = "company"
     description: str = "Single company database"
     tables: ClassVar[List[Type[EntityModel]]] = [

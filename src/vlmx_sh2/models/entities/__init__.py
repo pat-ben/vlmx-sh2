@@ -2,7 +2,7 @@
 Schema package containing database entities definitions and entity models.
 """
 
-from .base import DatabaseModel, EntityModel
+from .base import SchemaModel, EntityModel
 from .company import (
     BrandEntity,
     CompanyDatabase,
@@ -14,7 +14,7 @@ from .company import (
 )
 
 __all__ = [
-    "DatabaseModel",
+    "SchemaModel",
     "EntityModel",
     "CompanyDatabase",
     "OrganizationEntity",

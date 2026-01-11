@@ -9,7 +9,7 @@ between database models and DSL word registrations.
 from collections import defaultdict
 from typing import Dict, List, Type
 
-from ...models.entities.base import DatabaseModel, EntityModel
+from ...models.entities.base import SchemaModel, EntityModel
 from ...models.words import SchemaWord, EntityWord, FieldWord 
 from ...enums.forms import TypeOrg
 
@@ -48,7 +48,7 @@ def generate_schema_words() -> Dict[str, SchemaWord]:
     return schema_words
 
 
-def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:
+def generate_entity_words(schema: Type[SchemaModel]) -> Dict[str, EntityWord]:
     """
     Generate EntityWord objects from entities.
 
@@ -78,7 +78,7 @@ def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:
 
 
 
-def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
+def generate_field_words(schema: Type[SchemaModel]) -> Dict[str, FieldWord]:
     """
     Generate FieldWord objects from entity fields.
 

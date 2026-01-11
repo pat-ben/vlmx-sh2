@@ -76,10 +76,10 @@ class EntityModel(SQLModel):
         
         
 # ============================================
-# DATABASE MODEL
+# SCHEMA / DATABASE MODEL
 # ============================================
 
-class DatabaseModel(SQLModel):
+class SchemaModel(SQLModel):
     """Base class for database schemas"""
     name: str
     description: str

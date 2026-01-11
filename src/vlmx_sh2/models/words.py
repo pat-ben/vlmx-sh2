@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Type, Optional, Literal, List, Any, Sequence
 from .context import ContextLevel
 from ..enums.forms import TypeOrg
-from .entities.base import DatabaseModel
+from .entities.base import SchemaModel
 
 
 # ==================== BASE WORD MODEL====================
@@ -58,6 +58,7 @@ class ExecutionType(str, Enum):
     STANDARD = "standard"      # Direct execution → result
     WIZARD = "wizard"          # Show widget → await input → execute
 
+
 class ActionWord(BaseWord):
     """
     Action word - represents commands like create, update, delete, show.
@@ -86,7 +87,7 @@ class SchemaWord(BaseWord):
     """
     word_type: Literal[WordType.SCHEMA] = WordType.SCHEMA
     type_value: TypeOrg = Field(description="The TypeOrg enum value")
-    schema_class: Type[DatabaseModel] = Field(description="Database schema class for this org type")
+    schema_class: Type[SchemaModel] = Field(description="Database schema class for this org type")
 
 
 # ==================== ENTITY WORD MODEL ====================
