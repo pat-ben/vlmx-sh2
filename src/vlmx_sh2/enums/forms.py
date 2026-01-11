@@ -53,11 +53,23 @@ class Country(str, Enum):
 
 class TypeOrg(str, Enum):
     """Types of organization allowed in VLMX."""
-    COMPANY = "company"  # the most common type of organization
-    HOLDING = "holding"  # a holding is a parent company of multiple companies
-    SUBSIDIARY = "subsidiary"  # a subsidiary is a company owned by another company
-    FUND = "fund"  # a fund is a cluster of multiple companies
-    FOUNDATION = "foundation"  # a foundation is a non-profit organization
+    COMPANY = "company"
+    HOLDING = "holding"
+    SUBSIDIARY = "subsidiary"
+    FUND = "fund"
+    FOUNDATION = "foundation"
+    
+    @property
+    def description(self) -> str:
+        """Get description for this organization type."""
+        descriptions = {
+            TypeOrg.COMPANY: "The most common type of organization",
+            TypeOrg.HOLDING: "A parent company of multiple companies",
+            TypeOrg.SUBSIDIARY: "A company owned by another company",
+            TypeOrg.FUND: "A cluster of multiple companies",
+            TypeOrg.FOUNDATION: "A non-profit organization"
+        }
+        return descriptions[self]
 
 
 class Unit(str, Enum):

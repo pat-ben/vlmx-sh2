@@ -11,12 +11,15 @@ from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from typing import Type, Optional, Literal, List, Any, Sequence
 from .context import ContextLevel
+from ..enums.forms import TypeOrg
+from .entities.base import DatabaseModel
 
 
 # ==================== BASE WORD MODEL====================
 
 class WordType(Enum):
     ACTION = "action"  # verbs only (eg. create, update, delete)
+    SCHEMA = "schema"  # database-level operations (company, fund, holding, etc.)
     ENTITY = "entity"  # An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
     FIELD = "field"  # Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
 
@@ -72,6 +75,20 @@ class ActionWord(BaseWord):
     warning: Optional[str] = Field(default=None, description="Warning message to display when using this word")
 
 
+# ==================== SCHEMA WORD MODEL ====================
+
+class SchemaWord(BaseWord):
+    """
+    Schema word - represents organization types for database creation.
+    
+    These trigger database-level operations: company, fund, holding, etc.
+    Each SchemaWord maps to a TypeOrg value and a DatabaseModel schema class.
+    """
+    word_type: Literal[WordType.SCHEMA] = WordType.SCHEMA
+    type_value: TypeOrg = Field(description="The TypeOrg enum value")
+    schema_class: Type[DatabaseModel] = Field(description="Database schema class for this org type")
+
+
 # ==================== ENTITY WORD MODEL ====================
 
 class EntityWord(BaseWord):
@@ -102,4 +119,4 @@ class FieldWord(BaseWord):
 
 # ==================== UNION TYPE ====================
 
-Word = ActionWord | EntityWord | FieldWord
+Word = ActionWord | SchemaWord | EntityWord | FieldWord

@@ -21,8 +21,8 @@ from ..storage.filters import apply_filters
 
 # Helper functions for delete_handler
 def _delete_entity_at_sys_level(
-    entity_model: Type[BaseModel], 
-    entity_value: str, 
+    target_model: Type[BaseModel], 
+    target_name: str, 
     context: Context
 ) -> HandlerResult:
     """
@@ -196,8 +196,8 @@ def _delete_entity_fields(
 
 
 async def create_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
+    target_model: Type[BaseModel],
+    target_name: Optional[str],
     fields: Dict[str, Any],
     context: Context,
     field_words: Optional[List[str]] = None,
@@ -211,8 +211,8 @@ async def create_handler(
     For multi cardinality entities (offering, target, values), allows multiple records.
     
     Args:
-        entity_model: Pydantic model class for the entity type
-        entity_value: Optional entity name/identifier
+        target_model: Schema class or entity model class for the target type
+        target_name: Optional target name/identifier  
         fields: Dictionary of field names to values for entity creation
         context: Current execution context (must be at ORG level)
         field_words: Optional list of field identifiers from parser
@@ -305,8 +305,8 @@ async def create_handler(
 
 
 async def add_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
+    target_model: Type[BaseModel],
+    target_name: Optional[str],
     fields: Dict[str, Any],
     context: Context,
     field_words: Optional[List[str]] = None,
@@ -410,8 +410,8 @@ async def add_handler(
 
 
 async def update_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
+    target_model: Type[BaseModel],
+    target_name: Optional[str],
     fields: Dict[str, Any],
     context: Context,
     field_words: Optional[List[str]] = None,
@@ -502,8 +502,8 @@ async def update_handler(
 
 
 async def show_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
+    target_model: Type[BaseModel],
+    target_name: Optional[str],
     fields: Dict[str, Any],
     context: Context,
     field_words: Optional[List[str]] = None,
@@ -582,8 +582,8 @@ async def show_handler(
 
 
 async def list_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
+    target_model: Type[BaseModel],
+    target_name: Optional[str],
     fields: Dict[str, Any],
     context: Context,
     field_words: Optional[List[str]] = None,
@@ -676,8 +676,8 @@ async def list_handler(
 
 
 async def delete_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
+    target_model: Type[BaseModel],
+    target_name: Optional[str],
     fields: Dict[str, Any],
     context: Context,
     field_words: Optional[List[str]] = None,

@@ -13,7 +13,7 @@ def _entity_class_to_json_filename(entity_class_name: str) -> str:
     Convert entity class name to JSON filename without circular imports.
     
     Args:
-        entity_class_name: Name of the entity class (e.g., "CompanyEntity")
+        entity_class_name: Name of the entity class (e.g., "OrganizationEntity")
         
     Returns:
         JSON filename (e.g., "company.json")
@@ -40,16 +40,16 @@ def _generate_entity_mappings() -> Dict[str, str]:
             class_name = entity_class.__name__
             entity_name = class_name.replace("Entity", "").lower()
             
-            # Use standard naming convention for all entities including CompanyEntity
+            # Use standard naming convention for all entities including OrganizationEntity
             json_filename = _entity_class_to_json_filename(class_name)
             
             # Add primary mapping
             mappings[entity_name] = json_filename
             
             # Add common aliases
-            if entity_name == "company":
+            if entity_name == "organization":
                 mappings.update({
-                    "organization": json_filename,
+                    "company": json_filename,  # "company" is an alias for organization
                     "org": json_filename
                 })
             elif entity_name == "brand":

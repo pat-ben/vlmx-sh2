@@ -6,7 +6,7 @@ from .base import DatabaseModel, EntityModel
 from .company import (
     BrandEntity,
     CompanyDatabase,
-    CompanyEntity,
+    OrganizationEntity,
     MetadataEntity,
     OfferingEntity,
     TargetEntity,
@@ -17,7 +17,7 @@ __all__ = [
     "DatabaseModel",
     "EntityModel",
     "CompanyDatabase",
-    "CompanyEntity",
+    "OrganizationEntity",
     "MetadataEntity",
     "BrandEntity",
     "OfferingEntity",

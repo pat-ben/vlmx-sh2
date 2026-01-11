@@ -8,7 +8,7 @@ parsing natural language commands into structured data.
 
 from typing import Any, List, Optional, Dict
 from ..models.parser import ParseResult, ParsedCommand, RecognizedToken
-from ..models.words import ActionWord, EntityWord
+from ..models.words import ActionWord, SchemaWord, EntityWord
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
 from .filter import FilterParser
@@ -91,23 +91,23 @@ class VLMXParser:
         # Extract action first to check if entity is required
         action = self._extract_action(tokens)
         
-        # Only extract entity and entity_name if the action requires it
-        entity = None
-        entity_name = None
+        # Only extract target and target_name if the action requires it
+        target = None
+        target_name = None
         if action.requires_entity:
-            entity = self._extract_entity(tokens)
-            entity_name = self._extract_entity_name(tokens)
+            target = self._extract_target(tokens)
+            target_name = self._extract_target_name(tokens)
         else:
-            # For commands that don't require entity (like cd), extract entity_name from UNKNOWN tokens
-            entity_name = self._extract_navigation_target(tokens)
+            # For commands that don't require entity (like cd), extract target_name from UNKNOWN tokens
+            target_name = self._extract_navigation_target(tokens)
         
         # Extract filters if present (using raw input to access brackets)
         filters = self.filter_parser.parse_filters_from_raw_input(raw_input)
         
         return ParsedCommand(
             action=action,
-            entity=entity,
-            entity_name=entity_name,
+            target=target,
+            target_name=target_name,
             attributes=self._extract_fields(tokens),
             raw_input=raw_input,
             tokens=tokens,
@@ -134,38 +134,41 @@ class VLMXParser:
         
         raise ValueError("No action word found in command")
     
-    def _extract_entity(self, tokens: List[RecognizedToken]) -> EntityWord:
+    def _extract_target(self, tokens: List[RecognizedToken]):
         """
-        Extract the entity word from tokens.
+        Extract the target word from tokens.
+        
+        This can be either a SchemaWord (for database operations) or EntityWord (for table operations).
+        SchemaWords have higher priority in the word registry, so they'll be recognized first.
         
         Args:
             tokens: List of recognized tokens
             
         Returns:
-            The first EntityWord found
+            The first SchemaWord or EntityWord found
             
         Raises:
-            ValueError: If no entity word found
+            ValueError: If no target word found
         """
         for token in tokens:
             if token.is_entity_word:
-                if token.word and isinstance(token.word, EntityWord):
+                if token.word and (isinstance(token.word, SchemaWord) or isinstance(token.word, EntityWord)):
                     return token.word
         
-        raise ValueError("No entity word found in command")
+        raise ValueError("No target word found in command")
     
-    def _extract_entity_name(self, tokens: List[RecognizedToken]) -> Optional[str]:
+    def _extract_target_name(self, tokens: List[RecognizedToken]) -> Optional[str]:
         """
-        Extract entity name from tokens.
+        Extract target name from tokens.
         
-        Finds entity values (company names, fund names, etc.) by looking
-        for VALUE tokens with ENTITY context that follow entity words.
+        Finds target values (company names, fund names, etc.) by looking
+        for VALUE tokens with ENTITY context that follow target words.
         
         Args:
             tokens: List of recognized tokens
             
         Returns:
-            Entity name if found, None otherwise
+            Target name if found, None otherwise
         """
         for i in range(len(tokens) - 1):
             current = tokens[i]
@@ -283,15 +286,15 @@ class VLMXParser:
             raise ValueError(f"Handler requirements not met: {parse_result.errors}")
         
         # Call the handler with the parsed data
-        entity_value = parse_result.entity_name
+        target_name = parse_result.target_name
         
         # For delete operations, we need to pass the list of field words to delete
         field_words_to_process = [w.id for w in parse_result.field_words]
         
         try:
             return await parse_result.action_handler(  # Property access - works
-                entity_model=parse_result.entity_model,  # Property access - works
-                entity_value=entity_value,
+                target_model=parse_result.target_model,  # Property access - works
+                target_name=target_name,
                 fields=parse_result.attributes,  # Use correct parameter name
                 context=context,
                 field_words=field_words_to_process,

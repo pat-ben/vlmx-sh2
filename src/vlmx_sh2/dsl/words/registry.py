@@ -9,7 +9,7 @@ between database models and DSL word registrations.
 from typing import Dict
 
 from ...models.words import WordType, Word
-from .generator import generate_schema_words
+from .generator import generate_schema_words, generate_entity_words, generate_field_words
 from .actions import ACTION_WORDS
 from ...models.entities.company import CompanyDatabase
 
@@ -24,19 +24,28 @@ SCHEMAS = [
     # HoldingDatabase,
 ]
 
-# Auto-generate entity and field words from all schemas
-SCHEMA_WORDS = {}
+# Generate SchemaWords from TypeOrg enum (highest priority)
+SCHEMA_WORDS = generate_schema_words()
+
+# Generate EntityWords and FieldWords from database schemas
+ENTITY_WORDS = {}
+FIELD_WORDS = {}
 for schema in SCHEMAS:
-    schema_words = generate_schema_words(schema)
-    SCHEMA_WORDS.update(schema_words)  # Later schemas override earlier ones if conflicts exist
+    entity_words = generate_entity_words(schema)
+    field_words = generate_field_words(schema)
+    ENTITY_WORDS.update(entity_words)
+    FIELD_WORDS.update(field_words)
 
 # Convert action list to dict
 ACTION_WORD_DICT = {word.id: word for word in ACTION_WORDS}
 
-# Combine into final registry
+# Combine into final registry with proper priority order
+# Priority: SchemaWords > EntityWords > FieldWords > ActionWords
 WORD_REGISTRY: Dict[str, Word] = {
-    **SCHEMA_WORDS,      # Auto-generated EntityWords and FieldWords
-    **ACTION_WORD_DICT,  # Manual ActionWords
+    **ACTION_WORD_DICT,   # Lowest priority: create, delete, update, etc.
+    **FIELD_WORDS,        # Lower priority: name, currency, vision, etc.
+    **ENTITY_WORDS,       # Higher priority: organization, brand, news, etc.
+    **SCHEMA_WORDS,       # Highest priority: company, fund, holding, etc.
 }
 
 

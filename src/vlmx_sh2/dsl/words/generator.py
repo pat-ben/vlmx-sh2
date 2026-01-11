@@ -10,7 +10,45 @@ from collections import defaultdict
 from typing import Dict, List, Type
 
 from ...models.entities.base import DatabaseModel, EntityModel
-from ...models.words import EntityWord, FieldWord, Word
+from ...models.words import SchemaWord, EntityWord, FieldWord 
+from ...enums.forms import TypeOrg
+
+
+def generate_schema_words() -> Dict[str, SchemaWord]:
+    """
+    Generate SchemaWord objects from TypeOrg enum.
+    
+    Creates one word per organization type that can be used for 
+    database creation/deletion operations.
+    
+    Returns:
+        Dictionary mapping schema word IDs to SchemaWord objects
+    """
+    schema_words = {}
+    
+    # For now, we only support CompanyDatabase
+    # In the future, each TypeOrg will have its own specific DatabaseModel
+    from ...models.entities.company import CompanyDatabase
+    
+    # Only create SchemaWord for COMPANY type for now
+    # Other types (FUND, HOLDING, SUBSIDIARY, FOUNDATION) will be added
+    # when their respective database schemas are implemented
+    type_org = TypeOrg.COMPANY
+    schema_class = CompanyDatabase
+    
+    word_id = type_org.value  # "company"
+    description = type_org.description  # Use the description property from TypeOrg enum
+    
+    schema_word = SchemaWord(
+        id=word_id,
+        description=description,
+        type_value=type_org,
+        schema_class=schema_class
+    )
+    
+    schema_words[word_id] = schema_word
+    
+    return schema_words
 
 
 def generate_entity_words(schema: Type[DatabaseModel]) -> Dict[str, EntityWord]:
@@ -105,25 +143,8 @@ def generate_field_words(schema: Type[DatabaseModel]) -> Dict[str, FieldWord]:
         field_words[field_name] = field_word
 
     return field_words
-    
 
-def generate_schema_words(schema: Type[DatabaseModel]) -> Dict[str, Word]:
-    """
-    Generate all EntityWord and FieldWord objects from an entity database.
 
-    Args:
-        schema: Database containing entity definitions
 
-    Returns:
-        Dictionary mapping word IDs to Word objects (EntityWords + FieldWords)
-    """
-    entity_words = generate_entity_words(schema)
-    field_words = generate_field_words(schema)
 
-    # Combine into single dictionary, with EntityWords taking precedence over FieldWords
-    # This handles naming conflicts where an entity name matches a field name
-    all_words = {}
-    all_words.update(field_words)  # Add field words first
-    all_words.update(entity_words)  # Add entity words second (overwrites conflicts)
 
-    return all_words

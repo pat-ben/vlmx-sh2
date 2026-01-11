@@ -45,7 +45,7 @@ class EntityModel(SQLModel):
     def get_entity_word_id(cls) -> str:
         """
         Auto-derive word ID from class name.
-        CompanyEntity → 'company'
+        OrganizationEntity → 'organization'
         NewsEntity → 'news'
         BrandEntity → 'brand'
         """

@@ -407,10 +407,10 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                     # Keep original value if parsing fails
                     pass
             
-            # Import CompanyEntity to get proper defaults
-            from ..models.entities.company import CompanyEntity
+            # Import OrganizationEntity to get proper defaults
+            from ..models.entities.company import OrganizationEntity
             
-            # Create organization data using CompanyEntity model defaults
+            # Create organization data using OrganizationEntity model defaults
             base_data = {
                 "id": None,
                 "name": data.get('name'),
@@ -421,9 +421,9 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             # Merge user data with base data
             base_data.update(data)
             
-            # Use CompanyEntity model to apply defaults and validate
+            # Use OrganizationEntity model to apply defaults and validate
             try:
-                company_instance = CompanyEntity(**base_data)
+                company_instance = OrganizationEntity(**base_data)
                 organization_data = company_instance.model_dump()
             except Exception as e:
                 return {
@@ -440,7 +440,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             created_files = []
             
             try:
-                # CompanyEntity data is stored as "company.json" following standard convention
+                # OrganizationEntity data is stored as "company.json" following standard convention
                 org_file = company_folder / "company.json"
                 with open(org_file, 'w', encoding='utf-8') as f:
                     json.dump(organization_data, f, indent=2, default=str, ensure_ascii=False)
@@ -448,8 +448,8 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                 
                 # Dynamically create JSON files for all other entities in CompanyDatabase.tables
                 for entity_class in CompanyDatabase.tables:
-                    # Skip CompanyEntity as it's already handled as "company.json"
-                    if entity_class.__name__ == 'CompanyEntity':
+                    # Skip OrganizationEntity as it's already handled as "company.json"
+                    if entity_class.__name__ == 'OrganizationEntity':
                         continue
                     
                     # Generate JSON filename from entity class name

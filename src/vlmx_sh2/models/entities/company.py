@@ -20,8 +20,8 @@ from ..context import ContextLevel
 # COMPANY ENTITY created at the same time as the database
 # ============================================
 
-class CompanyEntity(EntityModel, table=True):
-    """Company information."""
+class OrganizationEntity(EntityModel, table=True):
+    """Organization information - can be company, fund, holding, etc."""
     
     # ==================== CLASS METADATA ====================
     context: ClassVar[ContextLevel] = ContextLevel.SYS
@@ -332,7 +332,7 @@ class CompanyDatabase(DatabaseModel):
     name: str = "company"
     description: str = "Single company database"
     tables: ClassVar[List[Type[EntityModel]]] = [
-        CompanyEntity,
+        OrganizationEntity,
         AddressEntity,
         MetadataEntity,
         BrandEntity,
