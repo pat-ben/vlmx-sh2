@@ -25,7 +25,7 @@ class RecognizedToken(Token):
     Fields:
         token_type: Classification (WORD, VALUE, or UNKNOWN)
         word: Complete Word object from registry (only for WORD tokens)
-        value_context: Context for VALUE tokens (ENTITY or FIELD)
+        value_context: Context for VALUE tokens (SCHEMA, ENTITY, or FIELD)
         confidence: Recognition confidence score (0-100)
         suggestions: Suggestions for unrecognized tokens
     
@@ -38,9 +38,18 @@ class RecognizedToken(Token):
         ...     word=ActionWord(id="create", ...)
         ... )
         
-        # VALUE token (entity)
+        # VALUE token (schema)
         >>> RecognizedToken(
         ...     text="ACME",
+        ...     position=2,
+        ...     was_quoted=True,
+        ...     token_type=TokenType.VALUE,
+        ...     value_context=ValueContext.SCHEMA
+        ... )
+        
+        # VALUE token (entity)
+        >>> RecognizedToken(
+        ...     text="TechCorp",
         ...     position=2,
         ...     was_quoted=True,
         ...     token_type=TokenType.VALUE,
@@ -124,6 +133,11 @@ class RecognizedToken(Token):
         return self.token_type == TokenType.VALUE and self.value_context == ValueContext.FIELD
     
     @property
+    def is_schema_value(self) -> bool:
+        """True if this is a schema value (e.g., company name for database ops)."""
+        return self.token_type == TokenType.VALUE and self.value_context == ValueContext.SCHEMA
+    
+    @property
     def is_action_word(self) -> bool:
         """True if this is an ACTION word."""
         return self.is_word and self.word_type == WordType.ACTION
@@ -137,3 +151,8 @@ class RecognizedToken(Token):
     def is_field_word(self) -> bool:
         """True if this is a FIELD word."""
         return self.is_word and self.word_type == WordType.FIELD
+    
+    @property
+    def is_schema_word(self) -> bool:
+        """True if this is a SCHEMA word."""
+        return self.is_word and self.word_type == WordType.SCHEMA

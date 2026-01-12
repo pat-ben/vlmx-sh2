@@ -41,5 +41,6 @@ class TokenType(str, Enum):
 
 class ValueContext(str, Enum):
     """Context classification for VALUE tokens."""
-    ENTITY = "entity"  # Entity value (company name, fund name, etc.)
+    SCHEMA = "schema"  # Schema value (company name for create/database ops)
+    ENTITY = "entity"  # Entity value (reserved for future use)
     FIELD = "field"    # Field/attribute value (currency, vision, etc.)

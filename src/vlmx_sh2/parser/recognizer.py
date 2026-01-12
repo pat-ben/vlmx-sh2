@@ -83,9 +83,9 @@ class WordRecognizer:
         Classification logic:
         1. Try to match against word registry → WORD
         2. If not matched, check if it's a value:
-           a. Quoted token after entity word → VALUE (ENTITY context)
-           b. Token after field word → VALUE (FIELD context)
-           c. Token after operator → VALUE (FIELD context)
+           a. Quoted token after schema word → VALUE (SCHEMA context)
+           b. Quoted token after action word → VALUE (SCHEMA context)
+           c. Token after operator → VALUE (FIELD context, with or without quotes)
         3. Otherwise → UNKNOWN
         
         Args:
@@ -167,14 +167,19 @@ class WordRecognizer:
         Determine if a token is a value and what context it has.
         
         Rules:
-        1. Entity value: Quoted token immediately after an entity word
-           Example: company "ACME" → "ACME" is ENTITY value
+        1. Schema value (pattern 1): Quoted token immediately after a schema word
+           Example: company "ACME" → "ACME" is SCHEMA value
         
-        2. Field value (pattern 1): Token immediately after a field word
-           Example: vision "Our vision" → "Our vision" is FIELD value
+        2. Schema value (pattern 2): Quoted token immediately after an action word
+           Example: delete "ACME" → "ACME" is SCHEMA value (schema word implied)
         
-        3. Field value (pattern 2): Token immediately after any token with operator
-           Example: currency=EUR → "EUR" is FIELD value
+        3. Field value: Token immediately after any token with operator
+           Example: currency=EUR → "EUR" is FIELD value (with or without quotes)
+           Example: vision="Our vision" → "Our vision" is FIELD value
+        
+        Note: EntityWords (organization, metadata, etc.) don't have direct quoted values.
+        They're used for table operations: show organization, list news, etc.
+        Field words don't take direct values - values only come after operators.
         
         Args:
             token: Current token being classified
@@ -182,7 +187,7 @@ class WordRecognizer:
             current_position: Index of current token
             
         Returns:
-            ValueContext.ENTITY, ValueContext.FIELD, or None
+            ValueContext.SCHEMA, ValueContext.FIELD, or None
         """
         # Need at least one previous token for context
         if current_position == 0:
@@ -190,15 +195,15 @@ class WordRecognizer:
         
         prev_token = recognized_tokens[current_position - 1]
         
-        # Rule 1: Entity value (quoted token after entity word)
-        if (prev_token.is_entity_word and token.was_quoted):
-            return ValueContext.ENTITY
+        # Rule 1: Schema value (quoted token after schema word)
+        if (prev_token.is_schema_word and token.was_quoted):
+            return ValueContext.SCHEMA
         
-        # Rule 2: Field value (token after field word)
-        if prev_token.is_field_word:
-            return ValueContext.FIELD
+        # Rule 2: Schema value (quoted token after action word)
+        if (prev_token.is_action_word and token.was_quoted):
+            return ValueContext.SCHEMA
         
-        # Rule 3: Field value (token after operator)
+        # Rule 3: Field value (token after operator, with or without quotes)
         if prev_token.operator_after is not None:
             return ValueContext.FIELD
         
