@@ -15,7 +15,8 @@ from datetime import datetime
 from typing import Type, Optional, Dict, Any, List
 from pydantic import BaseModel
 
-from ..models.context import Context, ContextLevel
+from ..models.context import Context
+from ..enums.core import ContextLevel
 from ..models.responses import CommandResult, ErrorResult, HandlerResult
 from ..models.parser.parsed_command import ParsedCommand
 from ..models.words import SchemaWord, EntityWord, FieldWord
@@ -30,6 +31,7 @@ from ..handlers.utils import (
     validate_attributes_present,
     handle_storage_result
 )
+from ..utils.context_helpers import is_sys
 from ..storage.database import StorageInterface, entity_exists, find_company_by_name, load_all_entities
 from ..storage.filters import apply_filters
 
@@ -314,7 +316,7 @@ async def _create_schema(
 async def _drop_schema(target_id: str, name: Optional[str], context: Context) -> HandlerResult:
     """Drop schema (organization database)."""
     
-    if context.level != ContextLevel.SYS:
+    if not is_sys(context):
         return ErrorResult(
             errors=["Can only drop schemas from system level"],
             suggestions=["Use 'cd' to navigate to system level first"]

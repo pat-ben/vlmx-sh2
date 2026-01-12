@@ -13,7 +13,7 @@ from typing import Optional, ClassVar, List, Type
 from sqlmodel import Field
 from vlmx_sh2.enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
 from .base import SchemaModel, EntityModel
-from ..context import ContextLevel
+from ...enums.core import ContextLevel
 
 
 # ============================================

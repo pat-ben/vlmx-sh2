@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from ..models.context import Context
 from ..models.responses import HandlerResult
 from ..models.parser.parsed_command import ParsedCommand
+from ..utils.context_helpers import is_sys, is_org, is_app, get_level_name
 
 # Navigation command aliases
 ROOT_NAVIGATION_ALIASES = {"~", "root", None}
@@ -54,21 +55,22 @@ async def navigate_handler(
         Returns ErrorResult for invalid navigation attempts, missing organizations, or system errors
     """
     from ..models.responses import CommandResult, ErrorResult
-    from ..models.context import Context as NewContext, ContextLevel
+    from ..models.context import Context as NewContext
+    from ..enums.core import ContextLevel
     from ..storage.database import find_company_by_name
     
     try:
         # Navigate up one level in context hierarchy
         if entity_value in UP_NAVIGATION_ALIASES:
             # If already at SYS level, can't go up further
-            if context.level == ContextLevel.SYS:
+            if is_sys(context):
                 return ErrorResult(
                     errors=["Already at system level - cannot navigate up"],
                     suggestions=["Try navigating to an organization with: cd company_name"]
                 )
             
             # From ORG level, go back to SYS level
-            if context.level == ContextLevel.ORG:
+            if is_org(context):
                 new_context = NewContext(
                     level=ContextLevel.SYS,
                     org_id=None,
@@ -80,7 +82,7 @@ async def navigate_handler(
                     success=True,
                     message="Navigated to system level",
                     data={
-                        "level": new_context.level_name.upper(),
+                        "level": get_level_name(new_context).upper(),
                         "context": "System Level",
                         "from": f"Organization: {context.org_name}",
                         "context_switch": {
@@ -94,7 +96,7 @@ async def navigate_handler(
                 return result
             
             # From APP level, go back to ORG level
-            if context.level == ContextLevel.APP:
+            if is_app(context):
                 new_context = NewContext(
                     level=ContextLevel.ORG,
                     org_id=context.org_id,
@@ -106,7 +108,7 @@ async def navigate_handler(
                     success=True,
                     message="Navigated to organization level",
                     data={
-                        "level": new_context.level_name.upper(),
+                        "level": get_level_name(new_context).upper(),
                         "organization": context.org_name,
                         "from": f"Application: {context.app_id}",
                         "context_switch": {
@@ -132,7 +134,7 @@ async def navigate_handler(
                 success=True,
                 message="Navigated to system level",
                 data={
-                    "level": new_context.level_name.upper(),
+                    "level": get_level_name(new_context).upper(),
                     "context": "System Level",
                     "context_switch": {
                         "level": "SYS",
@@ -171,7 +173,7 @@ async def navigate_handler(
                 success=True,
                 message=f"Navigated to {org_type} {actual_company_name}",
                 data={
-                    "level": new_context.level_name.upper(),
+                    "level": get_level_name(new_context).upper(),
                     "organization": actual_company_name,
                     "type": org_type,
                     "context_switch": {
@@ -186,10 +188,10 @@ async def navigate_handler(
             
         # Show current location if no target specified
         else:
-            level_name = context.level_name.upper()
-            if context.level == ContextLevel.SYS:
+            level_name = get_level_name(context).upper()
+            if is_sys(context):
                 location = "Root"
-            elif context.level == ContextLevel.ORG:
+            elif is_org(context):
                 location = f"Organization: {context.org_name}"
             else:
                 location = f"Application: {context.app_id}"

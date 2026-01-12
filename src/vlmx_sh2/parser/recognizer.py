@@ -6,7 +6,7 @@ from the tokenizer into RecognizedToken objects with full classification.
 """
 
 from typing import List, Optional, Tuple
-from ..dsl.words import get_all_words, get_word
+from ..words import get_all_words, get_word
 from ..models.words import WordType, Word
 from ..models.parser import Token, RecognizedToken, TokenType, ValueContext
 from .suggestions import SuggestionEngine

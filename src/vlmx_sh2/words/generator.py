@@ -9,9 +9,9 @@ between database models and DSL word registrations.
 from collections import defaultdict
 from typing import Dict, List, Type
 
-from ...models.entities.base import SchemaModel, EntityModel
-from ...models.words import SchemaWord, EntityWord, FieldWord 
-from ...enums.forms import TypeOrg
+from ..models.entities.base import SchemaModel, EntityModel
+from ..models.words import SchemaWord, EntityWord, FieldWord 
+from ..enums.forms import TypeOrg
 
 
 def generate_schema_words() -> Dict[str, SchemaWord]:
@@ -28,7 +28,7 @@ def generate_schema_words() -> Dict[str, SchemaWord]:
     
     # For now, we only support CompanyDatabase
     # In the future, each TypeOrg will have its own specific DatabaseModel
-    from ...models.entities.company import CompanyDatabase
+    from ..models.entities.company import CompanyDatabase
     
     type_org = TypeOrg.COMPANY
     schema_class = CompanyDatabase

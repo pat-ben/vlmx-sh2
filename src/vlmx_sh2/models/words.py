@@ -10,7 +10,7 @@ of different word categories in natural language command parsing.
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from typing import Type, Optional, Literal, List, Any, Sequence
-from .context import ContextLevel
+from ..enums.core import ContextLevel
 from ..enums.forms import TypeOrg
 from .entities.base import SchemaModel
 

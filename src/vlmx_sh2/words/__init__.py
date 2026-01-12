@@ -13,7 +13,7 @@ Public API:
 """
 
 from .registry import WORD_REGISTRY, get_word, get_all_words, get_words_by_type
-from ...models.words import WordType
+from ..models.words import WordType
 
 __all__ = [
     'WORD_REGISTRY',

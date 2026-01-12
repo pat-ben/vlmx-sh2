@@ -9,7 +9,7 @@ import re
 from typing import List, Type, ClassVar, Set
 from sqlmodel import SQLModel
 from vlmx_sh2.enums import Cardinality
-from ..context import ContextLevel
+from ...enums.core import ContextLevel
 
 
 # ============================================

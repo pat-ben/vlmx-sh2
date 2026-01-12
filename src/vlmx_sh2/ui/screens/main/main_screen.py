@@ -115,7 +115,8 @@ class MainScreen(Screen):
         if result.success and result.data and result.data.get("context_switch"):
             # Update context based on context_switch data
             context_switch = result.data["context_switch"]
-            from ....models.context import Context, ContextLevel
+            from ....models.context import Context
+            from ....enums.core import ContextLevel
             if context_switch["level"] == "SYS":
                 self.context = Context(level=ContextLevel.SYS)
             elif context_switch["level"] == "ORG":
@@ -187,7 +188,7 @@ class MainScreen(Screen):
         """Process form wizard submission by updating entity fields."""
         try:
             from ....handlers.crud import add_handler
-            from ....dsl.words import get_word, WordType
+            from ....words import get_word, WordType
             from ....models.parser.parsed_command import ParsedCommand
             
             # Get the entity model for the entity type

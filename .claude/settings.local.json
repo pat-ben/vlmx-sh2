@@ -68,7 +68,8 @@
       "Bash(rg:*)",
       "Bash(sed:*)",
       "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"class.*Brand.*Entity\" {} ;)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(PYTHONPATH=src rg \"from.*context.*import.*Context.*ContextLevel\" .)"
     ],
     "deny": [],
     "ask": [],

@@ -14,10 +14,12 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..models.context import Context, ContextLevel
+from ..models.context import Context
+from ..enums.core import ContextLevel
 from vlmx_sh2.enums import Cardinality
 from ..models.responses import StorageResult
 from .mappings import get_entity_json_filename, _entity_class_to_json_filename
+from ..utils.context_helpers import is_sys
 
 
 # ==================== PATH UTILITIES ====================
@@ -35,7 +37,7 @@ def get_data_directory_path(context: Context) -> Path:
     Returns:
         Path to the data directory
     """
-    if context.level == ContextLevel.SYS:
+    if is_sys(context):
         # Use current directory or a default system path
         base_path = context.sys_path or Path.cwd()
         return base_path / "data"
@@ -503,7 +505,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             
         else:
             # For other entities, we need a company context
-            if context.level == ContextLevel.SYS or not context.org_name:
+            if is_sys(context) or not context.org_name:
                 return {
                     "success": False,
                     "error": "Must be in organization context to create non-company entities"

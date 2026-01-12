@@ -11,16 +11,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Optional
-from enum import IntEnum
 
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.config import ConfigDict
 
-
-class ContextLevel(IntEnum):
-    SYS = 0  # system / root level
-    ORG = 1  # organization level (most of the time company)
-    APP = 2  # application level (could be plugin)
+from ..enums.core import ContextLevel
 
 
 
@@ -84,44 +79,6 @@ class Context(BaseModel):
                 )
         return self
 
-    # Convenience properties for new terminology
-    @property
-    def is_sys(self) -> bool:
-        """True if at system level"""
-        return self.level == ContextLevel.SYS
-    
-    @property
-    def is_org(self) -> bool:
-        """True if at organization level"""
-        return self.level == ContextLevel.ORG
-    
-    @property
-    def is_app(self) -> bool:
-        """True if at application level"""
-        return self.level == ContextLevel.APP
-
-    @property
-    def level_name(self) -> str:
-        """Human-readable level name"""
-        if self.level == ContextLevel.SYS:
-            return "sys"
-        elif self.level == ContextLevel.ORG:
-            return "org"
-        elif self.level == ContextLevel.APP:
-            return "app"
-        else:
-            return f"unknown({self.level})"
-
-
-    # Helper methods
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)
-
-    def is_at_level(self, level: int) -> bool:
-        return self.level == level
-
-    def can_run_command(self, required_level: int) -> bool:
-        return self.level >= required_level
 
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump(exclude_none=True)

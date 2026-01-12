@@ -65,7 +65,7 @@ class FilterParser:
             FilterParseError: If filter syntax is invalid
         """
         # Expand macros first
-        from ..dsl.macros import expand_macros
+        from ..words.macros import expand_macros
         expanded_input = expand_macros(raw_input)
         
         # Tokenize to get brackets
