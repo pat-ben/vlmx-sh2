@@ -28,6 +28,7 @@ from .forms import (
 # Core entities ENUMs (fundamental entities architecture)
 from .core import (
     Cardinality,
+    ContextLevel,
 )
 
 # Parser ENUMs (parsing pipeline)
@@ -56,6 +57,7 @@ __all__ = [
     
     # Core entities ENUMs
     'Cardinality',
+    'ContextLevel',
     
     # Parser ENUMs
     'Operator',
