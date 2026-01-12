@@ -52,6 +52,17 @@ class EntityModel(SQLModel):
         return cls.__name__.replace("Entity", "").lower()
     
     @classmethod
+    def get_word_aliases(cls) -> List[str]:
+        """
+        Get word aliases for this entity.
+        Override in subclasses to provide custom aliases.
+        
+        Returns:
+            List of alias words that map to this entity
+        """
+        return []
+    
+    @classmethod
     def get_entity_description(cls) -> str:
         """Get entity description from docstring."""
         return cls.__doc__.strip() if cls.__doc__ else ""

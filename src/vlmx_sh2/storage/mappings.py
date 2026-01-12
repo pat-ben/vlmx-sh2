@@ -8,19 +8,6 @@ Naming convention: EntityClass -> entity.json (remove "Entity" suffix and lowerc
 from typing import Dict, Optional
 
 
-def _entity_class_to_json_filename(entity_class_name: str) -> str:
-    """
-    Convert entity class name to JSON filename without circular imports.
-    
-    Args:
-        entity_class_name: Name of the entity class (e.g., "OrganizationEntity")
-        
-    Returns:
-        JSON filename (e.g., "company.json")
-    """
-    # Remove "Entity" suffix and convert to lowercase
-    entity_name = entity_class_name.replace("Entity", "").lower()
-    return f"{entity_name}.json"
 
 
 def _generate_entity_mappings() -> Dict[str, str]:
@@ -38,72 +25,27 @@ def _generate_entity_mappings() -> Dict[str, str]:
         
         for entity_class in CompanyDatabase.tables:
             class_name = entity_class.__name__
-            entity_name = class_name.replace("Entity", "").lower()
             
-            # Use standard naming convention for all entities including OrganizationEntity
-            json_filename = _entity_class_to_json_filename(class_name)
+            # Use the Entity's own get_entity_word_id() method for consistent naming
+            entity_name = entity_class.get_entity_word_id()
+            json_filename = f"{entity_name}.json"
             
-            # Add primary mapping
+            # Add primary mapping using the Entity's own word ID
             mappings[entity_name] = json_filename
             
-            # Add common aliases
-            if entity_name == "organization":
-                mappings.update({
-                    "company": json_filename,  # "company" is an alias for organization
-                    "org": json_filename
-                })
-            elif entity_name == "brand":
-                mappings.update({
-                    "branding": json_filename,
-                    "identity": json_filename
-                })
-            elif entity_name == "metadata":
-                mappings.update({
-                    "meta": json_filename,
-                    "info": json_filename
-                })
-            elif entity_name == "offering":
-                mappings.update({
-                    "product": json_filename,
-                    "service": json_filename
-                })
-            elif entity_name == "target":
-                mappings.update({
-                    "audience": json_filename,
-                    "segment": json_filename
-                })
-            elif entity_name == "values":
-                mappings.update({
-                    "value": json_filename,
-                    "principles": json_filename
-                })
-            elif entity_name == "address":
-                mappings.update({
-                    "addresses": json_filename,
-                    "location": json_filename
-                })
-            elif entity_name == "news":
-                mappings.update({
-                    "article": json_filename,
-                    "articles": json_filename
-                })
-            elif entity_name == "competitors":
-                mappings.update({
-                    "competitor": json_filename
-                })
+            # Generate dynamic aliases based on Entity class if it has an aliases method
+            if hasattr(entity_class, 'get_word_aliases'):
+                for alias in entity_class.get_word_aliases():
+                    mappings[alias] = json_filename
         
         return mappings
         
     except Exception as e:
-        # Fallback in case of any import issues during module loading
+        # Minimal fallback in case of any import issues during module loading
         print(f"Warning: Could not generate dynamic mappings: {e}")
         return {
-            "company": "company.json",
-            "organization": "company.json", 
-            "org": "company.json",
-            "brand": "brand.json",
-            "branding": "brand.json",
-            "identity": "brand.json"
+            "organization": "organization.json", 
+            "brand": "brand.json"
         }
 
 

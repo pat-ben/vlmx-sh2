@@ -431,20 +431,37 @@ async def _add_field_values(
         if not entity_exists(entity_type, company_name, context):
             # Create default entity data using the entity model's Pydantic defaults
             default_entity_data = {
-                "name": f"default_{entity_type}",
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat(),
             }
             
-            # Validate and apply model defaults
+            # For entities with a "name" field, set a default name
+            if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
+                default_entity_data["name"] = f"default_{entity_type}"
+            
+            # Validate and apply model defaults including None values for optional fields
             try:
                 if entity_model is None:
                     return ErrorResult(
                         errors=["Entity model is required for default creation"],
                         suggestions=["Check entity model configuration"]
                     )
+                
+                # Create instance with minimal required data
                 entity_instance = entity_model(**default_entity_data)
-                default_data = entity_instance.model_dump()
+                
+                # Get all model fields and create a complete data dict with explicit None for optional fields
+                complete_data = {}
+                for field_name, field_info in entity_model.model_fields.items():
+                    if hasattr(entity_instance, field_name):
+                        value = getattr(entity_instance, field_name)
+                        complete_data[field_name] = value
+                    else:
+                        # For fields not in the instance, explicitly set to None if they're optional
+                        if not field_info.is_required():
+                            complete_data[field_name] = None
+                
+                default_data = complete_data
             except Exception as e:
                 return ErrorResult(
                     errors=[f"Failed to create default entity: {str(e)}"],
@@ -583,13 +600,29 @@ async def _reset_entity_content(
     # Reset to model defaults
     try:
         default_entity_data = {
-            "name": f"default_{entity_type}",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
         }
         
+        # For entities with a "name" field, set a default name
+        if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
+            default_entity_data["name"] = f"default_{entity_type}"
+        
+        # Create instance with minimal required data
         entity_instance = entity_model(**default_entity_data)
-        default_data = entity_instance.model_dump()
+        
+        # Get all model fields and create a complete data dict with explicit None for optional fields
+        complete_data = {}
+        for field_name, field_info in entity_model.model_fields.items():
+            if hasattr(entity_instance, field_name):
+                value = getattr(entity_instance, field_name)
+                complete_data[field_name] = value
+            else:
+                # For fields not in the instance, explicitly set to None if they're optional
+                if not field_info.is_required():
+                    complete_data[field_name] = None
+        
+        default_data = complete_data
     except Exception as e:
         return ErrorResult(
             errors=[f"Failed to generate defaults: {str(e)}"],

@@ -201,9 +201,9 @@ class VLMXParser:
             current = tokens[i]
             next_token = tokens[i + 1]
             
-            # Simple: ENTITY/SCHEMA word followed by ENTITY value
+            # Simple: ENTITY/SCHEMA word followed by SCHEMA value
             # Recognizer already classified these!
-            if (current.is_entity_word or current.is_schema_word) and next_token.is_entity_value:
+            if (current.is_entity_word or current.is_schema_word) and next_token.is_schema_value:
                 return next_token.text
         
         # Also check for standalone entity values (when entity word is implied)

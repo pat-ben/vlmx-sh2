@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 from ..models.context import Context
 from vlmx_sh2.enums import Cardinality
 from ..models.responses import StorageResult
-from .mappings import get_entity_json_filename, _entity_class_to_json_filename
+from .mappings import get_entity_json_filename
 from ..utils.context_helpers import is_sys
 
 
@@ -453,8 +453,9 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                     if entity_class.__name__ == 'OrganizationEntity':
                         continue
                     
-                    # Generate JSON filename from entity class name
-                    json_filename = _entity_class_to_json_filename(entity_class.__name__)
+                    # Generate JSON filename using Entity's own word ID method
+                    entity_word_id = entity_class.get_entity_word_id()
+                    json_filename = f"{entity_word_id}.json"
                     entity_file = company_folder / json_filename
                     
                     # Determine the default data structure based on cardinality

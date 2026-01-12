@@ -47,6 +47,11 @@ class OrganizationEntity(EntityModel, table=True):
     @classmethod
     def table_name(cls) -> str:
         return "company"
+    
+    @classmethod
+    def get_word_aliases(cls) -> List[str]:
+        """Organization can be referred to as company or org."""
+        return ["company", "org"]
 
 # ============================================
 # ADDRESS ENTITY
