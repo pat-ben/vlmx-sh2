@@ -129,7 +129,7 @@ ActionWord(
     description="Create a new entity",
     action_category=ActionCategory.CRUD,
     crud_operation=CRUDOperation.CREATE,
-    requires_entity=True
+    standalone=False
 )
 ```
 
@@ -208,8 +208,8 @@ The parser converts user input into structured commands through multiple stages:
 - Alias and abbreviation support
 
 #### Value Extraction
-- **Entity values**: Company names, IDs (ACME, ACME-CORP)
-- **field values**: Properties and settings (SA, EUR, THOUSANDS)
+- **Schema values**: Company names, IDs (ACME, ACME-CORP)
+- **Field values**: Properties and settings (SA, EUR, THOUSANDS)
 - **Key=value pairs**: Modern syntax (entity=SA currency=EUR)
 
 #### Command Matching
@@ -243,7 +243,7 @@ storage_result = create_company(entity_dict, context)
 [
   {
     "name": "ACME",
-    "entity": "SA", 
+    "legal": "SA", 
     "currency": "EUR",
     "created_at": "2025-01-15T10:30:00"
   }

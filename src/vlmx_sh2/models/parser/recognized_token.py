@@ -5,7 +5,7 @@ Extends Token with word recognition and value classification results.
 """
 
 from typing import Optional, List
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 from .token import Token
 from vlmx_sh2.enums import TokenType, ValueContext
@@ -98,9 +98,10 @@ class RecognizedToken(Token):
         description="Suggestions for unrecognized tokens"
     )
     
-    class Config:
-        arbitrary_types_allowed = True
-        frozen = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=False
+    )
     
     @property
     def is_word(self) -> bool:

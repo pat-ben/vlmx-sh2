@@ -82,9 +82,9 @@ def _determine_requested_fields(
     elif field_words:
         # Use specific fields from field words  
         return field_words
-    elif parsed_command and hasattr(parsed_command, 'attributes') and parsed_command.attributes:
+    elif parsed_command and parsed_command.field_values:
         # Use specific fields from parsed command
-        return list(parsed_command.attributes.keys())
+        return list(parsed_command.field_values.keys())
     else:
         # Use all entity model fields except system fields
         return [

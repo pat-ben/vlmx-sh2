@@ -26,7 +26,7 @@ from ..handlers.utils import (
     get_target_id, 
     validate_target_exists,
     validate_org_context,
-    validate_attributes_present,
+    validate_field_values_present,
     handle_storage_result
 )
 from ..utils.context_helpers import is_sys
@@ -115,7 +115,7 @@ async def add_handler(parsed_command: ParsedCommand, context: Context) -> Handle
     """Add or set field values."""
     
     # Step 1: Validate
-    error = validate_attributes_present(parsed_command)
+    error = validate_field_values_present(parsed_command)
     if error:
         return error
     

@@ -1,7 +1,7 @@
 """
 Form wizard widget.
 
-Provides interactive form-based data collection for entity attributes.
+Provides interactive form-based data collection for entity field values.
 """
 
 from typing import Dict

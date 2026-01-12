@@ -24,11 +24,11 @@ class ParsedCommand(BaseModel):
     Fields:
         action: The action word (create, update, show, delete, etc.)
         target: The target word (SchemaWord for database ops, EntityWord for table ops)
-        target_name: The name of the target instance ("ACME", "TechCorp", etc.)
-        attributes: Field-value pairs ({"currency": "EUR", "vision": "Our vision"})
+        target_name: Schema value - name of the target instance ("ACME", "TechCorp", etc.)
+        field_values: Field-value pairs ({"currency": "EUR", "vision": "Our vision"})
         field_words: Field names without values (["vision", "mission"])
         raw_input: Original user input text
-        tokens: All recognized tokens from the parser
+        command_tokens: All recognized tokens from the parser
     
     Examples:
         >>> # Database operation
@@ -36,18 +36,18 @@ class ParsedCommand(BaseModel):
         ...     action=ActionWord(id="create", ...),
         ...     target=SchemaWord(id="company", ...),
         ...     target_name="ACME",
-        ...     attributes={"currency": "EUR"},
+        ...     field_values={"currency": "EUR"},
         ...     raw_input='create company "ACME" currency=EUR',
-        ...     tokens=[...]
+        ...     command_tokens=[...]
         ... )
         >>> # Table operation  
         >>> ParsedCommand(
         ...     action=ActionWord(id="show", ...),
         ...     target=EntityWord(id="organization", ...),
         ...     target_name=None,
-        ...     attributes={},
+        ...     field_values={},
         ...     raw_input='show organization',
-        ...     tokens=[...]
+        ...     command_tokens=[...]
         ... )
     """
     
@@ -63,7 +63,7 @@ class ParsedCommand(BaseModel):
     # Command data
     target_name: Optional[str] = Field(
         default=None,
-        description="Name of the target instance (e.g., 'ACME', 'TechCorp')"
+        description="Schema value - name of the target instance (e.g., 'ACME', 'TechCorp')"
     )
     field_values: Dict[str, str] = Field(
         default_factory=dict,

@@ -84,7 +84,7 @@ class SuggestionEngine:
                 if not result.command.target:
                     suggestions.append("Consider adding a target word (e.g., 'company', 'brand', 'metadata')")
         
-        # Suggest attributes if command looks complete but minimal
+        # Suggest field values if command looks complete but minimal
         if result.is_valid and result.command:
             if result.command.action and not result.command.field_values:
                 action_id = result.command.action.id

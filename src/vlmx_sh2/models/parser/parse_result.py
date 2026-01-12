@@ -17,7 +17,7 @@ class ParseResult(BaseModel):
     Complete parse result - clean, no redundancy.
     
     Contains only essential data from parsing. All command-specific data
-    (action, entity, attributes, etc.) is accessed through the command object.
+    (action, entity, field_values, etc.) is accessed through the command object.
     
     Fields:
         input_text: Original user input
@@ -122,8 +122,8 @@ class ParseResult(BaseModel):
     
     @property
     def attributes(self):
-        """Get attributes dictionary from command."""
-        return self.command.attributes if self.command else {}
+        """Deprecated: Get field_values dictionary from command."""
+        return self.command.field_values if self.command else {}
     
     
     @property

@@ -147,9 +147,9 @@ def validate_org_context(context: Context) -> Tuple[Optional[str], Optional[Erro
     return company_name, None
 
 
-def validate_attributes_present(parsed_command: ParsedCommand) -> Optional[ErrorResult]:
+def validate_field_values_present(parsed_command: ParsedCommand) -> Optional[ErrorResult]:
     """
-    Validate that parsed command has attributes (field values).
+    Validate that parsed command has field values.
     
     Returns:
         ErrorResult if validation fails, None if validation passes
