@@ -13,7 +13,7 @@ from .tokenizer import Tokenizer, TokenizerResult
 from .recognizer import WordRecognizer
 from .filter import FilterParser
 from .suggestions import SuggestionEngine
-from .utils import expand_macros
+from ..words.macros import expand_macros
 
 
 class VLMXParser:

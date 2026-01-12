@@ -13,7 +13,7 @@ The main entry point is VLMXParser, which coordinates all parsing steps.
 from .parser import VLMXParser
 from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
-from .utils import expand_macros
+from ..words.macros import expand_macros
 
 __all__ = [
     'VLMXParser',
