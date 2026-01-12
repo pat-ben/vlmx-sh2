@@ -5,7 +5,6 @@ Extracts filter expressions from token streams and builds structured
 FilterExpression trees for dynamic table filtering.
 """
 
-import warnings
 from typing import List, Optional, Tuple
 from ..models.parser import Token, RecognizedToken
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
@@ -66,119 +65,6 @@ class FilterParser:
         # Parse using existing recursive descent parser
         return self._parse_expression(simple_tokens)
     
-    def parse_filters_from_raw_input(self, raw_input: str) -> Optional[FilterExpression]:
-        """
-        DEPRECATED: Parse filter expressions from raw input text.
-        
-        This method re-tokenizes input which is inefficient.
-        Use parse_filters() with recognized tokens instead.
-        
-        Args:
-            raw_input: Original user input text
-            
-        Returns:
-            Parsed FilterExpression or None if no filters found
-            
-        Raises:
-            FilterParseError: If filter syntax is invalid
-        """
-        warnings.warn(
-            "parse_filters_from_raw_input is deprecated, use parse_filters() instead",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        # Expand macros first
-        from ..words.macros import expand_macros
-        expanded_input = expand_macros(raw_input)
-        
-        # Tokenize to get brackets
-        from ..parser.tokenizer import Tokenizer
-        raw_tokens_with_brackets = Tokenizer._extract_quoted_strings(expanded_input)
-        
-        # Find filter boundaries in raw tokens
-        filter_token_texts = self._extract_filter_token_texts(raw_tokens_with_brackets)
-        if not filter_token_texts:
-            return None
-        
-        # Convert to Token objects for parsing
-        filter_tokens = []
-        for i, text in enumerate(filter_token_texts):
-            # Parse operators within tokens
-            if self._contains_operator(text):
-                key, op, val = self._parse_attribute_token(text)
-                filter_tokens.append(Token(text=key, position=len(filter_tokens)))
-                filter_tokens.append(Token(text=op, position=len(filter_tokens)))
-                filter_tokens.append(Token(text=val, position=len(filter_tokens)))
-            else:
-                filter_tokens.append(Token(text=text, position=len(filter_tokens)))
-        
-        # Parse the filter tokens into an expression tree
-        return self._parse_expression(filter_tokens)
-    
-    def _reconstruct_raw_input(self, tokens: List[RecognizedToken]) -> str:
-        """Reconstruct approximate raw input from recognized tokens."""
-        # This is a simplified reconstruction - in practice we'd pass raw input
-        parts = []
-        for i, token in enumerate(tokens):
-            text = f'"{token.text}"' if token.was_quoted else token.text
-            if token.operator_after:
-                text += token.operator_after.value
-            parts.append(text)
-        return " ".join(parts)
-    
-    def _extract_filter_token_texts(self, raw_tokens: List[str]) -> List[str]:
-        """Extract filter content from raw token list with brackets."""
-        bracket_start = None
-        bracket_end = None
-        
-        # Find bracket positions
-        for i, token in enumerate(raw_tokens):
-            if token == "[":
-                if bracket_start is not None:
-                    raise FilterParseError("Nested [ brackets are not supported")
-                bracket_start = i
-            elif token == "]":
-                if bracket_start is None:
-                    raise FilterParseError("Found ] without matching [")
-                bracket_end = i
-                break
-        
-        # Validate bracket matching
-        if bracket_start is not None and bracket_end is None:
-            raise FilterParseError("Found [ without matching ]")
-        
-        if bracket_start is None:
-            return []  # No filters found
-        
-        # Extract tokens between brackets (exclusive)
-        return raw_tokens[bracket_start + 1:bracket_end]
-    
-    def _contains_operator(self, text: str) -> bool:
-        """Check if text contains a comparison operator."""
-        operators = [op.value for op in Operator]
-        return any(op in text for op in operators)
-    
-    def _parse_attribute_token(self, token: str) -> Tuple[str, str, str]:
-        """Parse field=value token into (field, operator, value)."""
-        # Check operators in order of precedence (longer operators first)
-        operators = [
-            Operator.GREATER_EQUAL.value,  # ">="
-            Operator.LESS_EQUAL.value,     # "<="
-            Operator.NOT_EQUAL.value,      # "!="
-            Operator.EQUAL.value,          # "="
-            Operator.GREATER.value,        # ">"
-            Operator.LESS.value,           # "<"
-        ]
-        
-        for operator in operators:
-            if operator in token:
-                parts = token.split(operator, 1)
-                if len(parts) == 2:
-                    key = parts[0].strip()
-                    value = parts[1].strip()
-                    return key, operator, value
-        
-        raise FilterParseError(f"No operator found in token: {token}")
     
     def _extract_filter_tokens(self, tokens: List[Token]) -> List[Token]:
         """

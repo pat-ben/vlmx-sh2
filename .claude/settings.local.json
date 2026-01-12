@@ -69,7 +69,8 @@
       "Bash(sed:*)",
       "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"class.*Brand.*Entity\" {} ;)",
       "Bash(tree:*)",
-      "Bash(PYTHONPATH=src rg \"from.*context.*import.*Context.*ContextLevel\" .)"
+      "Bash(PYTHONPATH=src rg \"from.*context.*import.*Context.*ContextLevel\" .)",
+      "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"parse_filters_from_raw_input\\|_extract_filter_token_texts\\|_reconstruct_raw_input\\|_contains_operator\\|_parse_attribute_token\" {} ;)"
     ],
     "deny": [],
     "ask": [],
