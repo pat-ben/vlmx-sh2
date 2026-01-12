@@ -9,10 +9,9 @@ parsing natural language commands into structured data.
 from typing import Any, List, Optional, Dict
 from ..models.parser import ParseResult, ParsedCommand, RecognizedToken
 from ..models.words import ActionWord, SchemaWord, EntityWord
-from .tokenizer import Tokenizer, TokenizerResult
+from .tokenizer import Tokenizer
 from .recognizer import WordRecognizer
 from .filter import FilterParser
-from ..support.suggestions import SuggestionEngine
 from ..words.macros import expand_macros
 
 
@@ -24,7 +23,6 @@ class VLMXParser:
         self.tokenizer = Tokenizer()
         self.word_recognizer = WordRecognizer()
         self.filter_parser = FilterParser()
-        self.suggestion_engine = SuggestionEngine()
     
     def parse(self, input_text: str) -> ParseResult:
         """
@@ -79,8 +77,6 @@ class VLMXParser:
                 result.errors.append(str(e))
                 result.is_valid = False
             
-            # Generate suggestions
-            result.suggestions = self.suggestion_engine.get_command_suggestions(result)
             
         except Exception as e:
             result.errors.append(f"Parse error: {str(e)}")

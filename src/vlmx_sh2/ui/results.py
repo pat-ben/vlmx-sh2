@@ -7,6 +7,7 @@ confirmations. Provides structured result objects and text formatting.
 """
 
 from typing import Optional, TYPE_CHECKING
+from ..support.suggestions import SuggestionEngine
 
 if TYPE_CHECKING:
     from ..models.parser import ParseResult
@@ -33,6 +34,17 @@ def format_command_result(result, parse_result: Optional["ParseResult"] = None) 
     # Main message
     if result.message:
         lines.append(result.message)
+    
+    # For errors, generate and display suggestions if parse_result is available
+    if not result.success and parse_result:
+        suggestion_engine = SuggestionEngine()
+        suggestions = suggestion_engine.get_command_suggestions(parse_result)
+        
+        if suggestions:
+            lines.append("")  # Empty line for spacing
+            lines.append("Suggestions:")
+            for suggestion in suggestions:
+                lines.append(f"  • {suggestion}")
     
     # Display data if available
     if result.data:
