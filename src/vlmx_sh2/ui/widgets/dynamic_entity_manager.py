@@ -336,6 +336,8 @@ class DynamicEntityManager(Widget):
         if event.data_table is self.data_table:
             try:
                 # Extract the actual value from RowKey object
+                if event.row_key.value is None:
+                    return
                 record_index = int(event.row_key.value)
                 if 0 <= record_index < len(self.filtered_records):
                     selected_record = self.filtered_records[record_index]

@@ -69,14 +69,20 @@ def _evaluate_expression(record: Dict[str, Any], expr: FilterExpression) -> bool
     """
     # Single condition
     if expr.is_single_condition:
+        if expr.condition is None:
+            raise FilterApplicationError("Single condition expression has no condition")
         return _evaluate_condition(record, expr.condition)
     
     # Grouped expression
     elif expr.is_grouped_expression:
+        if expr.grouped is None:
+            raise FilterApplicationError("Grouped expression has no grouped content")
         return _evaluate_expression(record, expr.grouped)
     
     # Logical expression (left operator right)
     elif expr.is_logical_expression:
+        if expr.left is None or expr.right is None:
+            raise FilterApplicationError("Logical expression missing left or right operand")
         left_result = _evaluate_expression(record, expr.left)
         right_result = _evaluate_expression(record, expr.right)
         
@@ -281,12 +287,16 @@ def get_filter_fields(filters: FilterExpression) -> List[str]:
     
     def _extract_fields(expr: FilterExpression):
         if expr.is_single_condition:
-            fields.add(expr.condition.field)
+            if expr.condition is not None:
+                fields.add(expr.condition.field)
         elif expr.is_grouped_expression:
-            _extract_fields(expr.grouped)
+            if expr.grouped is not None:
+                _extract_fields(expr.grouped)
         elif expr.is_logical_expression:
-            _extract_fields(expr.left)
-            _extract_fields(expr.right)
+            if expr.left is not None:
+                _extract_fields(expr.left)
+            if expr.right is not None:
+                _extract_fields(expr.right)
     
     _extract_fields(filters)
     return sorted(list(fields))

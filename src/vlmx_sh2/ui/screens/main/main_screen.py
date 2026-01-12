@@ -199,22 +199,29 @@ class MainScreen(Screen):
                 return
 
             # Get add action word
-            add_action = get_word("add")
-            if not add_action:
+            add_action_word = get_word("add")
+            if not add_action_word:
                 error_msg = "Add action not found"
+                self.call_after_refresh(self._show_delayed_output, error_msg, True)
+                return
+            
+            # Ensure it's an ActionWord
+            from ....models.words import ActionWord
+            if not isinstance(add_action_word, ActionWord):
+                error_msg = "Add word is not an ActionWord"
                 self.call_after_refresh(self._show_delayed_output, error_msg, True)
                 return
 
             # Build parsed command for add operation (wizard always uses add semantics)
             parsed_command = ParsedCommand(
-                action=add_action,
+                action=add_action_word,
                 target=entity_word,
                 target_name=wizard_request.entity_name,
-                attributes=fields,
+                field_values=fields,
                 field_words=[],
                 filters=None,
                 raw_input="",
-                tokens=[]
+                command_tokens=[]
             )
 
             # Call handler with new signature

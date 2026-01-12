@@ -16,13 +16,11 @@ from typing import Type, Optional, Dict, Any, List
 from pydantic import BaseModel
 
 from ..models.context import Context
-from ..enums.core import ContextLevel
 from ..models.responses import CommandResult, ErrorResult, HandlerResult
 from ..models.parser.parsed_command import ParsedCommand
 from ..models.words import SchemaWord, EntityWord, FieldWord
 from vlmx_sh2.enums import Cardinality
 from ..handlers.utils import (
-    get_company_name_from_context, 
     format_entity_data_for_display,
     get_entity_type_string,
     get_target_id, 
@@ -47,14 +45,15 @@ async def create_handler(parsed_command: ParsedCommand, context: Context) -> Han
         return error
     
     # Step 2: Extract & Translate
+    assert parsed_command.target is not None  # Validated above
     target_id = get_target_id(parsed_command.target)
     target_name = parsed_command.target_name
-    attributes = parsed_command.attributes
+    field_values = parsed_command.field_values
     
     # Step 3: Route by target type
     if isinstance(parsed_command.target, SchemaWord):
         # Create schema (database)
-        return await _create_schema(target_id, target_name, attributes, context)
+        return await _create_schema(target_id, target_name, field_values, context)
     
     elif isinstance(parsed_command.target, EntityWord):
         # Create entity (future)
@@ -83,6 +82,7 @@ async def drop_handler(parsed_command: ParsedCommand, context: Context) -> Handl
         return error
     
     # Step 2: Extract & Translate  
+    assert parsed_command.target is not None  # Validated above
     target_id = get_target_id(parsed_command.target)
     target_name = parsed_command.target_name
     
@@ -122,10 +122,12 @@ async def add_handler(parsed_command: ParsedCommand, context: Context) -> Handle
     company_name, error = validate_org_context(context)
     if error:
         return error
+    assert company_name is not None  # Validated above
     
     # Step 2: Extract & Translate
+    assert parsed_command.target_model is not None, "Target must provide a model"
     entity_type = get_entity_type_string(parsed_command.target_model)
-    fields = parsed_command.attributes
+    fields = parsed_command.field_values
     filters = parsed_command.filters
     
     # Step 3: Call operation function
@@ -146,8 +148,10 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
     company_name, error = validate_org_context(context)
     if error:
         return error
+    assert company_name is not None  # Validated above
     
     # Step 2: Extract & Translate
+    assert parsed_command.target_model is not None, "Target must provide a model"
     entity_type = get_entity_type_string(parsed_command.target_model)
     field_words = parsed_command.field_words
     filters = parsed_command.filters
@@ -165,7 +169,7 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
     
     elif filters:
         # Delete matching rows
-        cardinality = getattr(parsed_command.target_model, 'cardinality', Cardinality.SINGLE)
+        cardinality = getattr(parsed_command.target_model, 'cardinality', Cardinality.SINGLE) if parsed_command.target_model else Cardinality.SINGLE
         if cardinality == Cardinality.SINGLE:
             return ErrorResult(errors=["Cannot delete rows from single-record entity"])
         
@@ -192,8 +196,10 @@ async def reset_handler(parsed_command: ParsedCommand, context: Context) -> Hand
     company_name, error = validate_org_context(context)
     if error:
         return error
+    assert company_name is not None  # Validated above
     
     # Step 2: Extract & Translate
+    assert parsed_command.target_model is not None, "Target must provide a model"
     entity_type = get_entity_type_string(parsed_command.target_model)
     field_words = parsed_command.field_words
     filters = parsed_command.filters
@@ -201,6 +207,7 @@ async def reset_handler(parsed_command: ParsedCommand, context: Context) -> Hand
     # Step 3: Route based on what's specified
     if field_words:
         # Reset specific fields
+        assert parsed_command.target_model is not None  # Already validated above
         return await _reset_field_values(
             entity_type=entity_type,
             field_names=field_words,
@@ -211,6 +218,7 @@ async def reset_handler(parsed_command: ParsedCommand, context: Context) -> Hand
         )
     else:
         # Reset entire entity
+        assert parsed_command.target_model is not None  # Already validated above
         return await _reset_entity_content(
             entity_type=entity_type,
             company_name=company_name,
@@ -232,7 +240,9 @@ async def show_handler(parsed_command: ParsedCommand, context: Context) -> Handl
     company_name, error = validate_org_context(context)
     if error:
         return error
+    assert company_name is not None  # Validated above
     
+    assert parsed_command.target_model is not None, "Target must provide a model"
     entity_type = get_entity_type_string(parsed_command.target_model)
     field_names = parsed_command.field_words
     filters = parsed_command.filters
@@ -428,6 +438,11 @@ async def _add_field_values(
             
             # Validate and apply model defaults
             try:
+                if entity_model is None:
+                    return ErrorResult(
+                        errors=["Entity model is required for default creation"],
+                        suggestions=["Check entity model configuration"]
+                    )
                 entity_instance = entity_model(**default_entity_data)
                 default_data = entity_instance.model_dump()
             except Exception as e:

@@ -86,14 +86,16 @@ class RecordPicker(Widget):
     
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        if event.button.id == "add-new-btn":
+        button_id = event.button.id
+        
+        if button_id == "add-new-btn":
             self._handle_add_new()
-        elif event.button.id == "cancel-btn":
+        elif button_id == "cancel-btn":
             self._handle_cancel()
-        elif event.button.id.startswith("edit-btn-"):
+        elif button_id and button_id.startswith("edit-btn-"):
             # Extract record index from button ID
             try:
-                record_index = int(event.button.id.replace("edit-btn-", ""))
+                record_index = int(button_id.replace("edit-btn-", ""))
                 self._handle_record_edit(record_index)
             except (ValueError, IndexError):
                 # Invalid button ID, ignore

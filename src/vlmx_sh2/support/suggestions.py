@@ -79,19 +79,18 @@ class SuggestionEngine:
             if not action_tokens:
                 suggestions.append("Consider adding an action word (e.g., 'create', 'add', 'update', 'show', 'delete')")
             
-            # Action found but no entity (when required)
-            elif result.command and result.command.action and result.command.action.requires_entity:
-                entity_tokens = [t for t in result.tokens if t.is_entity_word]
-                if not entity_tokens:
-                    suggestions.append("Consider adding an entity word (e.g., 'company', 'brand', 'metadata')")
+            # Action found but no target (when required for non-standalone actions)
+            elif result.command and result.command.action and not result.command.action.standalone:
+                if not result.command.target:
+                    suggestions.append("Consider adding a target word (e.g., 'company', 'brand', 'metadata')")
         
         # Suggest attributes if command looks complete but minimal
         if result.is_valid and result.command:
-            if result.command.action and not result.command.attributes:
+            if result.command.action and not result.command.field_values:
                 action_id = result.command.action.id
                 if action_id in ['create', 'add']:
-                    suggestions.append("Consider adding attributes like entity=SA currency=EUR")
+                    suggestions.append("Consider adding field values like entity=SA currency=EUR")
                 elif action_id in ['update']:
-                    suggestions.append("Consider adding attributes like name=value or key=value")
+                    suggestions.append("Consider adding field values like name=value or key=value")
         
         return suggestions

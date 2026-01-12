@@ -154,7 +154,7 @@ def validate_attributes_present(parsed_command: ParsedCommand) -> Optional[Error
     Returns:
         ErrorResult if validation fails, None if validation passes
     """
-    if not parsed_command.attributes:
+    if not parsed_command.field_values:
         return ErrorResult(errors=["No fields specified"])
     return None
 
