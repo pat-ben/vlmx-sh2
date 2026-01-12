@@ -60,6 +60,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
         aliases=[],
         handler=navigate_handler,
         action_category=ActionCategory.NAVIGATION,
+        standalone=True,  # Special handling: relative navigation (.., ~) is standalone
     ),
     
     ActionWord(
@@ -95,3 +96,6 @@ ACTION_WORDS_LIST: List[ActionWord] = [
         crud_operation=CRUDOperation.UPDATE,
     ),
 ]
+
+# Note: CRUD commands (create, add, delete, drop, reset, show, fill) use default standalone=False
+# This means they require schema context when executed at SYS level

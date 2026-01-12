@@ -72,6 +72,7 @@ class ActionWord(BaseWord):
     crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")      
     destructive: bool = Field(default=False, description="Whether this action permanently destroys data (e.g., delete, drop)")
     warning: Optional[str] = Field(default=None, description="Warning message to display when using this word")
+    standalone: bool = Field(default=False, description="Whether this command works independently without schema context (e.g., help, exit, cd .., cd ~)")
     
     # requires_entity: bool = Field(default=True, description="Whether this action requires an entity to operate on")
     # database: bool = Field(default=False, description="Whether this action operates at the database level")

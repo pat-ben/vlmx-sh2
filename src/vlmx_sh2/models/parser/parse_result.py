@@ -87,6 +87,11 @@ class ParseResult(BaseModel):
         return [word for word in self.recognized_words if word.word_type == WordType.FIELD]
     
     @property
+    def schema_words(self) -> List[Word]:
+        """Get all SCHEMA type words from recognized words."""
+        return [word for word in self.recognized_words if word.word_type == WordType.SCHEMA]
+    
+    @property
     def modifier_words(self) -> List[Word]:
         """Get all MODIFIER type words from recognized words (currently unused)."""
         # Note: MODIFIER word type doesn't exist yet in WordType enum

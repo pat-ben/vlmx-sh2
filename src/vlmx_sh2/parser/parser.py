@@ -270,27 +270,53 @@ class VLMXParser:
         
         return field_words
     
-    def _validate_handler_requirements(self, result: ParseResult) -> bool:
+    def _validate_handler_requirements(self, result: ParseResult, context) -> bool:
         """
         Validate that the parse result has the minimum requirements for handler execution.
         
         Requirements:
         1. Must have an action word with handler
-        2. For most actions, must have an entity word (unless action doesn't require entity)
+        2. Must satisfy context requirements based on the specific command
         """
         if not result.action_handler:
             result.errors.append("No action handler found")
             return False
         
-        # Check if action requires entity
+        # Get the action word for validation
         action_words = result.action_words
-        if action_words:
-            from ..models.words import ActionWord
-            action_word = action_words[0]
-            if isinstance(action_word, ActionWord) and action_word.requires_entity:
-                if not result.entity_words:
-                    result.errors.append("Action requires an entity word")
-                    return False
+        if not action_words:
+            result.errors.append("No action word found")
+            return False
+            
+        from ..models.words import ActionWord
+        action_word = action_words[0]
+        if not isinstance(action_word, ActionWord):
+            result.errors.append("Invalid action word type")
+            return False
+        
+        # Validate context requirements using new command-level validation
+        from ..utils.context_helpers import validate_command_context_requirements
+        
+        # Get entity_value for navigation commands
+        entity_value = None
+        if result.command and hasattr(result.command, 'target') and result.command.target:
+            if hasattr(result.command.target, 'entity') and result.command.target.entity:
+                entity_value = result.command.target.entity.id
+        
+        # Check if command has schema (schema_word present)
+        has_schema = bool(result.schema_words)
+        
+        # Check if command has app (app parameter - we'd need to implement this)
+        has_app = False  # For now, we don't have app parameter detection
+        
+        # Validate command context requirements
+        is_valid, error_msg = validate_command_context_requirements(
+            action_word, context, entity_value, has_schema, has_app
+        )
+        
+        if not is_valid:
+            result.errors.append(error_msg)
+            return False
         
         return True
     
@@ -313,7 +339,7 @@ class VLMXParser:
             raise ValueError("No action handler available for execution")
         
         # Validate handler requirements
-        if not self._validate_handler_requirements(parse_result):
+        if not self._validate_handler_requirements(parse_result, context):
             raise ValueError(f"Handler requirements not met: {parse_result.errors}")
         
         # Call the handler with the new simplified signature

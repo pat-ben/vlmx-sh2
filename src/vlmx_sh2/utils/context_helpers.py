@@ -4,6 +4,17 @@ Context helper functions.
 Utility functions for working with Context instances. These functions
 were extracted from the Context class to separate data structure from
 business logic and provide a cleaner functional interface.
+
+The module provides two types of validation functions:
+
+1. **Context State Functions** (requires_schema, requires_app, etc.)
+   - Answer: "What does my current context lack?"
+   - Used for general context analysis
+   
+2. **Command Validation Functions** (command_requires_schema, validate_command_context_requirements, etc.)
+   - Answer: "What does this specific command need?"
+   - Consider command standalone flags and special cases
+   - Used for pre-execution validation
 """
 
 from typing import List, Optional, Tuple
@@ -167,3 +178,110 @@ def validate_command_requirements(context: Context, has_schema: bool = False, ha
             return False, f"At {get_level_name(context).upper()} level, you must specify the app: command ... [app_name]"
     else:  # both missing
         return False, f"At {get_level_name(context).upper()} level, you must specify both schema and app: command [company_name] ... [app_name]"
+
+
+# ==================== COMMAND-LEVEL VALIDATION ====================
+
+def command_requires_schema(action_word, context: Context, entity_value: Optional[str] = None) -> bool:
+    """
+    Check if a specific command requires schema context.
+    
+    This function considers both the command's standalone flag and the specific
+    parameters (like entity_value for navigation commands).
+    
+    Args:
+        action_word: The ActionWord being executed
+        context: The current context
+        entity_value: Optional entity value (for commands like 'cd company_name')
+        
+    Returns:
+        True if this command needs schema to be explicitly specified
+        False if this command can run without schema context
+    """
+    # Special case for navigation (cd command)
+    if action_word.id == "cd":
+        # Relative navigation is always standalone
+        if entity_value in ["..", "~", "root", None]:
+            return False
+        # Absolute navigation (cd company_name) requires schema validation at SYS level
+        return context.level == ContextLevel.SYS
+    
+    # If command is marked as standalone, it never needs schema
+    if action_word.standalone:
+        return False
+    
+    # Non-standalone commands need schema at SYS level
+    if context.level == ContextLevel.SYS:
+        return True
+    
+    # At ORG/APP level, schema is provided by context
+    return False
+
+
+def command_requires_app(action_word, context: Context) -> bool:
+    """
+    Check if a specific command requires app context.
+    
+    Args:
+        action_word: The ActionWord being executed  
+        context: The current context
+        
+    Returns:
+        True if this command needs app to be explicitly specified
+        False if this command can run without app context
+    """
+    # If command is marked as standalone, it never needs app
+    if action_word.standalone:
+        return False
+    
+    # Non-standalone commands need app at SYS/ORG levels
+    if context.level in (ContextLevel.SYS, ContextLevel.ORG):
+        return True
+    
+    # At APP level, app is provided by context
+    return False
+
+
+def validate_command_context_requirements(action_word, context: Context, entity_value: Optional[str] = None, has_schema: bool = False, has_app: bool = False) -> Tuple[bool, Optional[str]]:
+    """
+    Validate if a specific command has all required context for the current level.
+    
+    This is the main validation function that should be used by command handlers
+    to check if they can execute in the current context.
+    
+    Args:
+        action_word: The ActionWord being executed
+        context: The current context  
+        entity_value: Optional entity value (for navigation commands)
+        has_schema: Was schema/company provided in the command?
+        has_app: Was app provided in the command?
+        
+    Returns:
+        Tuple of (is_valid: bool, error_message: Optional[str])
+        Error messages are user-friendly and command-specific
+    """
+    missing = []
+    
+    if command_requires_schema(action_word, context, entity_value) and not has_schema:
+        missing.append("schema")
+        
+    if command_requires_app(action_word, context) and not has_app:
+        missing.append("app")
+        
+    if not missing:
+        return True, None
+        
+    # Generate command-specific error messages
+    command_name = action_word.id
+    level_name = get_level_name(context).upper()
+    
+    if len(missing) == 1:
+        if missing[0] == "schema":
+            if action_word.id == "cd":
+                return False, f"At {level_name} level, you must specify the company: cd [company_name]"
+            else:
+                return False, f"At {level_name} level, you must specify the schema: {command_name} [company_name] ..."
+        else:  # app
+            return False, f"At {level_name} level, you must specify the app: {command_name} ... [app_name]"
+    else:  # both missing
+        return False, f"At {level_name} level, you must specify both schema and app: {command_name} [company_name] ... [app_name]"
