@@ -4,6 +4,11 @@ SQL-inspired CRUD handlers with clean, simple routing.
 Refactored handlers using parsed command structure to eliminate all hardcoded
 entity-specific logic and complex nested conditionals. Uses SQL-inspired
 semantics with create/drop for structure and add/delete/reset for content.
+
+Terminology:
+- Schema: Organization database (e.g., company)
+- Entity: Business entity (e.g., brand, news)  
+- Field: Entity attribute (e.g., vision, mission)
 """
 
 from datetime import datetime
@@ -13,9 +18,18 @@ from pydantic import BaseModel
 from ..models.context import Context, ContextLevel
 from ..models.responses import CommandResult, ErrorResult, HandlerResult
 from ..models.parser.parsed_command import ParsedCommand
-from ..models.words import SchemaWord, EntityWord
+from ..models.words import SchemaWord, EntityWord, FieldWord
 from vlmx_sh2.enums import Cardinality
-from ..handlers.utils import get_company_name_from_context, format_entity_data_for_display
+from ..handlers.utils import (
+    get_company_name_from_context, 
+    format_entity_data_for_display,
+    get_entity_type_string,
+    get_target_id, 
+    validate_target_exists,
+    validate_org_context,
+    validate_attributes_present,
+    handle_storage_result
+)
 from ..storage.database import StorageInterface, entity_exists, find_company_by_name, load_all_entities
 from ..storage.filters import apply_filters
 
@@ -23,62 +37,74 @@ from ..storage.filters import apply_filters
 # ==================== STRUCTURE OPERATIONS ====================
 
 async def create_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
-    """
-    Create database or entity structure.
+    """Create schema or entity structure."""
     
-    Structure operations (create/drop) work on:
-    - Schema (database): create company "Valmetrics"
-    - Entity (table): create table brand [FUTURE - blocked by validation]
-    - Fields (columns): create field vision [FUTURE - blocked by validation]
-    """
+    # Step 1: Validate
+    error = validate_target_exists(parsed_command)
+    if error:
+        return error
     
-    # Validate
-    if not parsed_command.target:
-        return ErrorResult(errors=["No target specified"])
+    # Step 2: Extract & Translate
+    target_id = get_target_id(parsed_command.target)
+    target_name = parsed_command.target_name
+    attributes = parsed_command.attributes
     
-    # Route based on target type
+    # Step 3: Route by target type
     if isinstance(parsed_command.target, SchemaWord):
-        # Create database
-        return await _create_database(
-            schema_word=parsed_command.target,
-            name=parsed_command.target_name,
-            fields=parsed_command.attributes,
-            context=context
-        )
+        # Create schema (database)
+        return await _create_schema(target_id, target_name, attributes, context)
+    
     elif isinstance(parsed_command.target, EntityWord):
-        # Create table (future - validation layer will block for now)
-        return await _create_table(
-            entity_word=parsed_command.target,
-            context=context
+        # Create entity (future)
+        return ErrorResult(
+            errors=["Entity structure creation not yet supported"],
+            suggestions=["Entity structures are currently defined in code"]
         )
+    
+    elif isinstance(parsed_command.target, FieldWord):
+        # Create field (future)
+        return ErrorResult(
+            errors=["Field structure creation not yet supported"],
+            suggestions=["Field structures are currently defined in entity models"]
+        )
+    
     else:
-        return ErrorResult(errors=["Invalid target for create operation"])
+        return ErrorResult(errors=["Invalid target type for create operation"])
 
 
 async def drop_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
-    """
-    Drop database or table structure.
+    """Drop schema or entity structure."""
     
-    Structure operations work on:
-    - Schema (database): drop company "Valmetrics"
-    - Entity (table): drop table brand [FUTURE - blocked by validation]
-    - Fields (columns): drop field vision [FUTURE - blocked by validation]
-    """
+    # Step 1: Validate
+    error = validate_target_exists(parsed_command)
+    if error:
+        return error
     
+    # Step 2: Extract & Translate  
+    target_id = get_target_id(parsed_command.target)
+    target_name = parsed_command.target_name
+    
+    # Step 3: Route by target type
     if isinstance(parsed_command.target, SchemaWord):
-        # Drop database
-        return await _drop_database(
-            name=parsed_command.target_name,
-            context=context
-        )
+        # Drop schema (database)
+        return await _drop_schema(target_id, target_name, context)
+    
     elif isinstance(parsed_command.target, EntityWord):
-        # Drop table (future - validation layer will block for now)
-        return await _drop_table(
-            entity_word=parsed_command.target,
-            context=context
+        # Drop entity (future)
+        return ErrorResult(
+            errors=["Entity structure deletion not yet supported"],
+            suggestions=["Entity structures are currently defined in code"]
         )
+    
+    elif isinstance(parsed_command.target, FieldWord):
+        # Drop field (future)
+        return ErrorResult(
+            errors=["Field structure deletion not yet supported"],
+            suggestions=["Field structures are currently defined in entity models"]
+        )
+    
     else:
-        return ErrorResult(errors=["Invalid target for drop operation"])
+        return ErrorResult(errors=["Invalid target type for drop operation"])
 
 
 # ==================== CONTENT OPERATIONS ====================
@@ -86,136 +112,150 @@ async def drop_handler(parsed_command: ParsedCommand, context: Context) -> Handl
 async def add_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Add or set field values."""
     
-    if not parsed_command.attributes:
-        return ErrorResult(errors=["No fields specified"])
+    # Step 1: Validate
+    error = validate_attributes_present(parsed_command)
+    if error:
+        return error
     
-    # Get company name
-    company_name = get_company_name_from_context(context)
-    if not company_name:
-        return ErrorResult(errors=["Must be in organization context"])
+    company_name, error = validate_org_context(context)
+    if error:
+        return error
     
-    # Add/update field values
+    # Step 2: Extract & Translate
+    entity_type = get_entity_type_string(parsed_command.target_model)
+    fields = parsed_command.attributes
+    filters = parsed_command.filters
+    
+    # Step 3: Call operation function
     return await _add_field_values(
-        entity_model=parsed_command.target_model,
-        fields=parsed_command.attributes,
-        filters=parsed_command.filters,  # NEW: can filter which rows to update
+        entity_type=entity_type,
+        fields=fields,
+        filters=filters,
         company_name=company_name,
-        context=context
+        context=context,
+        entity_model=parsed_command.target_model  # Still needed for defaults
     )
 
 
 async def delete_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
-    """Delete data (not structure - use drop for that)."""
+    """Delete data (content, not structure)."""
     
-    company_name = get_company_name_from_context(context)
-    if not company_name:
-        return ErrorResult(errors=["Must be in organization context"])
+    # Step 1: Validate
+    company_name, error = validate_org_context(context)
+    if error:
+        return error
     
-    # Determine what to delete based on what was specified
-    if parsed_command.field_words:
-        # Delete specific fields: delete brand vision mission
-        # Can combine with filters: delete news date [category=product]
+    # Step 2: Extract & Translate
+    entity_type = get_entity_type_string(parsed_command.target_model)
+    field_words = parsed_command.field_words
+    filters = parsed_command.filters
+    
+    # Step 3: Determine operation type based on what's specified
+    if field_words:
+        # Delete specific fields
         return await _delete_field_values(
-            entity_model=parsed_command.target_model,
-            field_names=parsed_command.field_words,
-            filters=parsed_command.filters,
+            entity_type=entity_type,
+            field_names=field_words,
+            filters=filters,
             company_name=company_name,
             context=context
         )
     
-    elif parsed_command.filters:
-        # Delete matching rows: delete news [category=product]
+    elif filters:
+        # Delete matching rows
         cardinality = getattr(parsed_command.target_model, 'cardinality', Cardinality.SINGLE)
         if cardinality == Cardinality.SINGLE:
             return ErrorResult(errors=["Cannot delete rows from single-record entity"])
         
         return await _delete_rows(
-            entity_model=parsed_command.target_model,
-            filters=parsed_command.filters,
+            entity_type=entity_type,
+            filters=filters,
             company_name=company_name,
             context=context
         )
     
     else:
-        # Delete all entity content: delete brand
-        return await _reset_entity(
-            entity_model=parsed_command.target_model,
+        # Delete all entity content
+        return await _delete_entity_content(
+            entity_type=entity_type,
             company_name=company_name,
-            context=context,
-            to_defaults=False  # Delete all vs reset to defaults
+            context=context
         )
 
 
 async def reset_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Reset entity or fields to default values."""
     
-    company_name = get_company_name_from_context(context)
-    if not company_name:
-        return ErrorResult(errors=["Must be in organization context"])
+    # Step 1: Validate
+    company_name, error = validate_org_context(context)
+    if error:
+        return error
     
-    if parsed_command.field_words:
-        # Reset specific fields to defaults
+    # Step 2: Extract & Translate
+    entity_type = get_entity_type_string(parsed_command.target_model)
+    field_words = parsed_command.field_words
+    filters = parsed_command.filters
+    
+    # Step 3: Route based on what's specified
+    if field_words:
+        # Reset specific fields
         return await _reset_field_values(
-            entity_model=parsed_command.target_model,
-            field_names=parsed_command.field_words,
-            filters=parsed_command.filters,
-            company_name=company_name,
-            context=context
-        )
-    else:
-        # Reset entire entity to defaults
-        return await _reset_entity(
-            entity_model=parsed_command.target_model,
+            entity_type=entity_type,
+            field_names=field_words,
+            filters=filters,
             company_name=company_name,
             context=context,
-            to_defaults=True
+            entity_model=parsed_command.target_model  # Needed for defaults
+        )
+    else:
+        # Reset entire entity
+        return await _reset_entity_content(
+            entity_type=entity_type,
+            company_name=company_name,
+            context=context,
+            entity_model=parsed_command.target_model  # Needed for defaults
         )
 
 
 async def show_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
-    """
-    Display data with optional field selection and filtering.
+    """Display data with optional field selection and filtering."""
     
-    Can show both structure and content:
-    - show company "Valmetrics" → database info (structure)
-    - show brand → entity data (content)
-    - show brand vision → specific field (content)
-    - show news [category=product] → filtered rows (content)
-    """
-    
-    # Database structure info
+    # Schema structure info (if implemented)
     if isinstance(parsed_command.target, SchemaWord):
-        return await _show_database(
-            name=parsed_command.target_name,
-            context=context
-        )
+        target_id = get_target_id(parsed_command.target)
+        target_name = parsed_command.target_name
+        return await _show_schema_info(target_id, target_name, context)
     
     # Entity content
-    company_name = get_company_name_from_context(context)
-    if not company_name:
-        return ErrorResult(errors=["Must be in organization context"])
+    company_name, error = validate_org_context(context)
+    if error:
+        return error
     
-    # Show entity data with optional field selection and filtering
+    entity_type = get_entity_type_string(parsed_command.target_model)
+    field_names = parsed_command.field_words
+    filters = parsed_command.filters
+    
     return await _show_entity(
-        entity_model=parsed_command.target_model,
-        field_names=parsed_command.field_words,  # Empty = show all fields
-        filters=parsed_command.filters,  # None = show all rows
+        entity_type=entity_type,
+        field_names=field_names,
+        filters=filters,
         company_name=company_name,
-        context=context
+        context=context,
+        entity_model=parsed_command.target_model  # Pass for cardinality check
     )
 
 
-# ==================== DATABASE OPERATION HELPERS ====================
+# ==================== SCHEMA OPERATION HELPERS ====================
 
-async def _create_database(
-    schema_word: SchemaWord, 
+async def _create_schema(
+    target_id: str,
     name: Optional[str], 
     fields: Dict[str, Any], 
     context: Context
 ) -> HandlerResult:
-    """Create organization database."""
+    """Create schema (organization database)."""
     
-    entity_type = schema_word.id
+    entity_type = target_id
     
     try:
         # Prepare entity data with user-provided fields
@@ -226,57 +266,40 @@ async def _create_database(
         }
         entity_data.update(fields)
 
-        # Validate using the schema class (Pydantic validation applies defaults automatically)
-        try:
-            entity_instance = schema_word.schema_class(**entity_data)
-            validated_data = entity_instance.model_dump()
-        except Exception as e:
-            return ErrorResult(
-                errors=[f"Validation failed: {str(e)}"],
-                suggestions=["Check field names and value formats"]
-            )
-
-        # Use generic storage - works for ANY entity
+        # Use generic storage - simplified validation
         storage_result = StorageInterface.create_entity(
             entity_type=entity_type, 
-            data=validated_data, 
+            data=entity_data, 
             context=context
         )
 
-        if not storage_result.success:
-            return ErrorResult(
-                errors=[storage_result.error or f"Failed to create {entity_type}"],
-                suggestions=["Check database connection and permissions"]
-            )
-
         # Handle context switch for company creation (navigation behavior)
         if entity_type == "company":
-            result = CommandResult(
-                success=True,
-                message=storage_result.message or f"Created {entity_type} {validated_data['name']}",
-                data={
-                    "entity_type": entity_type,
-                    "entity_name": validated_data['name'],
-                    "fields": validated_data,
+            return handle_storage_result(
+                storage_result,
+                storage_result.message or f"Created {entity_type} {entity_data['name']}",
+                entity_type,
+                {
+                    "entity_name": entity_data['name'],
+                    "fields": entity_data,
                     "storage_result": storage_result.data,
                     "context_switch": {
                         "level": "ORG",
                         "org_id": 1,
-                        "org_name": validated_data["name"],
+                        "org_name": entity_data["name"],
                         "org_db_path": None
                     }
                 }
             )
-            return result
 
-        # Return generic success result
-        return CommandResult(
-            success=True,
-            message=storage_result.message or f"Created {entity_type} {validated_data['name']}",
-            data={
-                "entity_type": entity_type,
-                "entity_name": validated_data['name'],
-                "fields": validated_data,
+        # Return generic success result using utility
+        return handle_storage_result(
+            storage_result,
+            storage_result.message or f"Created {entity_type} {entity_data['name']}",
+            entity_type,
+            {
+                "entity_name": entity_data['name'],
+                "fields": entity_data,
                 "storage_result": storage_result.data
             }
         )
@@ -288,19 +311,19 @@ async def _create_database(
         )
 
 
-async def _drop_database(name: Optional[str], context: Context) -> HandlerResult:
-    """Drop organization database."""
+async def _drop_schema(target_id: str, name: Optional[str], context: Context) -> HandlerResult:
+    """Drop schema (organization database)."""
     
     if context.level != ContextLevel.SYS:
         return ErrorResult(
-            errors=["Can only drop databases from system level"],
+            errors=["Can only drop schemas from system level"],
             suggestions=["Use 'cd' to navigate to system level first"]
         )
     
     if not name:
         return ErrorResult(
-            errors=["Database name required for deletion"],
-            suggestions=["Specify database name: drop company 'CompanyName'"]
+            errors=["Schema name required for deletion"],
+            suggestions=["Specify schema name: drop company 'CompanyName'"]
         )
     
     # For company deletion, use intelligent name matching
@@ -312,32 +335,26 @@ async def _drop_database(name: Optional[str], context: Context) -> HandlerResult
         )
     
     # Delete the entire entity
-    delete_result = StorageInterface.delete_entity("company", actual_company_name, context)
+    delete_result = StorageInterface.delete_entity(target_id, actual_company_name, context)
     
-    if delete_result.success:
-        return CommandResult(
-            success=True,
-            message=f"Dropped database {actual_company_name}",
-            data={
-                "entity_type": "company",
-                "deleted_entity": actual_company_name,
-                "delete_message": delete_result.message or "Successfully deleted"
-            }
-        )
-    else:
-        return ErrorResult(
-            errors=[delete_result.error or f"Failed to drop database"],
-            suggestions=["Check if database exists and database permissions"]
-        )
+    return handle_storage_result(
+        delete_result,
+        f"Dropped schema {actual_company_name}",
+        target_id,
+        {
+            "deleted_entity": actual_company_name,
+            "delete_message": delete_result.message or "Successfully deleted"
+        }
+    )
 
 
-async def _show_database(name: Optional[str], context: Context) -> HandlerResult:
-    """Show database information."""
+async def _show_schema_info(target_id: str, name: Optional[str], context: Context) -> HandlerResult:
+    """Show schema information."""
     
     if not name:
         return ErrorResult(
-            errors=["Database name required"],
-            suggestions=["Specify database name: show company 'CompanyName'"]
+            errors=["Schema name required"],
+            suggestions=["Specify schema name: show company 'CompanyName'"]
         )
     
     # For company info, use intelligent name matching
@@ -348,38 +365,38 @@ async def _show_database(name: Optional[str], context: Context) -> HandlerResult
             suggestions=["Check company name spelling or list existing companies"]
         )
     
-    # Load company data
-    load_result = StorageInterface.load_entity("company", actual_company_name, context)
+    # Load schema data
+    load_result = StorageInterface.load_entity(target_id, actual_company_name, context)
     if not load_result.success or not load_result.data:
         return ErrorResult(
-            errors=[f"Failed to load company data"],
-            suggestions=["Check if company exists and database connection"]
+            errors=[f"Failed to load {target_id} data"],
+            suggestions=["Check if schema exists and database connection"]
         )
     
     return CommandResult(
         success=True,
-        message=f"Database information for {actual_company_name}",
+        message=f"Schema information for {actual_company_name}",
         data={
-            "entity_type": "company",
+            "entity_type": target_id,
             "entity_name": actual_company_name,
-            "database_info": load_result.data,
+            "schema_info": load_result.data,
             "formatted_data": format_entity_data_for_display(load_result.data)
         }
     )
 
 
-async def _create_table(entity_word: EntityWord, context: Context) -> HandlerResult:
-    """Create table (future implementation)."""
+async def _create_entity_structure(entity_word: EntityWord, context: Context) -> HandlerResult:
+    """Create entity structure (future implementation)."""
     return ErrorResult(
-        errors=["Table creation not yet supported"],
+        errors=["Entity structure creation not yet supported"],
         suggestions=["Use existing entity types or wait for future implementation"]
     )
 
 
-async def _drop_table(entity_word: EntityWord, context: Context) -> HandlerResult:
-    """Drop table (future implementation)."""
+async def _drop_entity_structure(entity_word: EntityWord, context: Context) -> HandlerResult:
+    """Drop entity structure (future implementation)."""
     return ErrorResult(
-        errors=["Table deletion not yet supported"],
+        errors=["Entity structure deletion not yet supported"],
         suggestions=["Use existing entity types or wait for future implementation"]
     )
 
@@ -387,16 +404,16 @@ async def _drop_table(entity_word: EntityWord, context: Context) -> HandlerResul
 # ==================== ENTITY CONTENT OPERATION HELPERS ====================
 
 async def _add_field_values(
-    entity_model: Type[BaseModel],
+    entity_type: str,
     fields: Dict[str, str],
     filters: Optional[Any],
     company_name: str,
-    context: Context
+    context: Context,
+    entity_model: Optional[Type[BaseModel]] = None
 ) -> HandlerResult:
     """Add/update field values, optionally filtered."""
     
     try:
-        entity_type = entity_model.__name__.replace("Entity", "").lower()
         
         # Create entity if it doesn't exist using Pydantic model defaults
         if not entity_exists(entity_type, company_name, context):
@@ -434,19 +451,12 @@ async def _add_field_values(
 
         # Save the updated entity
         save_result = StorageInterface.save_entity(entity_type, updated_data, company_name, context)
-        if not save_result.success:
-            return ErrorResult(
-                errors=[save_result.error or f"Failed to save {entity_type} data"],
-                suggestions=["Check database permissions and disk space"]
-            )
-
-        return CommandResult(
-            success=True,
-            message=f"Added fields to {entity_type}",
-            data={
-                "entity_type": entity_type,
-                "added_fields": fields
-            }
+        
+        return handle_storage_result(
+            save_result,
+            f"Added fields to {entity_type}",
+            entity_type,
+            {"added_fields": fields}
         )
 
     except Exception as e:
@@ -457,15 +467,13 @@ async def _add_field_values(
 
 
 async def _delete_field_values(
-    entity_model: Type[BaseModel],
+    entity_type: str,
     field_names: List[str],
     filters: Optional[Any],
     company_name: str,
     context: Context
 ) -> HandlerResult:
     """Delete specific field values, optionally filtered."""
-    
-    entity_type = entity_model.__name__.replace("Entity", "").lower()
     
     # Check if entity exists
     if not entity_exists(entity_type, company_name, context):
@@ -505,31 +513,22 @@ async def _delete_field_values(
     
     # Save the updated entity
     save_result = StorageInterface.save_entity(entity_type, updated_data, company_name, context)
-    if not save_result.success:
-        return ErrorResult(
-            errors=[save_result.error or f"Failed to save {entity_type} data"],
-            suggestions=["Check database permissions and disk space"]
-        )
     
-    return CommandResult(
-        success=True,
-        message=f"Deleted fields from {entity_type}",
-        data={
-            "entity_type": entity_type,
-            "removed_fields": removed_fields
-        }
+    return handle_storage_result(
+        save_result,
+        f"Deleted fields from {entity_type}",
+        entity_type,
+        {"removed_fields": removed_fields}
     )
 
 
 async def _delete_rows(
-    entity_model: Type[BaseModel],
+    entity_type: str,
     filters: Any,
     company_name: str,
     context: Context
 ) -> HandlerResult:
     """Delete rows matching filters."""
-    
-    entity_type = entity_model.__name__.replace("Entity", "").lower()
     
     # This would need to be implemented with proper filter support for multi-record entities
     return ErrorResult(
@@ -538,79 +537,68 @@ async def _delete_rows(
     )
 
 
-async def _reset_entity(
-    entity_model: Type[BaseModel],
-    company_name: str,
-    context: Context,
-    to_defaults: bool
-) -> HandlerResult:
-    """Reset entity to defaults or clear all data."""
-    
-    entity_type = entity_model.__name__.replace("Entity", "").lower()
-    
-    if to_defaults:
-        # Reset to model defaults
-        try:
-            default_entity_data = {
-                "name": f"default_{entity_type}",
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-            }
-            
-            entity_instance = entity_model(**default_entity_data)
-            default_data = entity_instance.model_dump()
-        except Exception as e:
-            return ErrorResult(
-                errors=[f"Failed to generate defaults: {str(e)}"],
-                suggestions=["Check entity model configuration"]
-            )
-        
-        # Save the default entity
-        save_result = StorageInterface.save_entity(entity_type, default_data, company_name, context)
-        if not save_result.success:
-            return ErrorResult(
-                errors=[save_result.error or f"Failed to reset {entity_type}"],
-                suggestions=["Check database permissions and disk space"]
-            )
-        
-        return CommandResult(
-            success=True,
-            message=f"Reset {entity_type} to defaults",
-            data={
-                "entity_type": entity_type,
-                "operation": "reset_to_defaults"
-            }
-        )
-    else:
-        # Delete all entity content
-        delete_result = StorageInterface.delete_entity(entity_type, company_name, context)
-        
-        if delete_result.success:
-            return CommandResult(
-                success=True,
-                message=f"Deleted all {entity_type} data",
-                data={
-                    "entity_type": entity_type,
-                    "operation": "delete_all"
-                }
-            )
-        else:
-            return ErrorResult(
-                errors=[delete_result.error or f"Failed to delete {entity_type}"],
-                suggestions=["Check database permissions"]
-            )
-
-
-async def _reset_field_values(
-    entity_model: Type[BaseModel],
-    field_names: List[str],
-    filters: Optional[Any],
+async def _delete_entity_content(
+    entity_type: str,
     company_name: str,
     context: Context
 ) -> HandlerResult:
-    """Reset specific fields to defaults."""
+    """Delete all entity content."""
     
-    entity_type = entity_model.__name__.replace("Entity", "").lower()
+    # Delete all entity content
+    delete_result = StorageInterface.delete_entity(entity_type, company_name, context)
+    
+    return handle_storage_result(
+        delete_result,
+        f"Deleted all {entity_type} data",
+        entity_type,
+        {"operation": "delete_all"}
+    )
+
+
+async def _reset_entity_content(
+    entity_type: str,
+    company_name: str,
+    context: Context,
+    entity_model: Type[BaseModel]
+) -> HandlerResult:
+    """Reset entity to defaults."""
+    
+    # Reset to model defaults
+    try:
+        default_entity_data = {
+            "name": f"default_{entity_type}",
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+        }
+        
+        entity_instance = entity_model(**default_entity_data)
+        default_data = entity_instance.model_dump()
+    except Exception as e:
+        return ErrorResult(
+            errors=[f"Failed to generate defaults: {str(e)}"],
+            suggestions=["Check entity model configuration"]
+        )
+    
+    # Save the default entity
+    save_result = StorageInterface.save_entity(entity_type, default_data, company_name, context)
+    
+    return handle_storage_result(
+        save_result,
+        f"Reset {entity_type} to defaults",
+        entity_type,
+        {"operation": "reset_to_defaults"}
+    )
+
+
+async def _reset_field_values(
+    entity_type: str,
+    field_names: List[str],
+    filters: Optional[Any],
+    company_name: str,
+    context: Context,
+    entity_model: Type[BaseModel]
+) -> HandlerResult:
+    """Reset specific fields to defaults."""
     
     # Get default values for the fields from the model
     try:
@@ -648,33 +636,26 @@ async def _reset_field_values(
     
     # Save the updated entity
     save_result = StorageInterface.save_entity(entity_type, updated_data, company_name, context)
-    if not save_result.success:
-        return ErrorResult(
-            errors=[save_result.error or f"Failed to save {entity_type} data"],
-            suggestions=["Check database permissions and disk space"]
-        )
     
-    return CommandResult(
-        success=True,
-        message=f"Reset fields in {entity_type} to defaults",
-        data={
-            "entity_type": entity_type,
-            "reset_fields": reset_fields
-        }
+    return handle_storage_result(
+        save_result,
+        f"Reset fields in {entity_type} to defaults",
+        entity_type,
+        {"reset_fields": reset_fields}
     )
 
 
 async def _show_entity(
-    entity_model: Type[BaseModel],
+    entity_type: str,
     field_names: Optional[List[str]],
     filters: Optional[Any],
     company_name: str,
-    context: Context
+    context: Context,
+    entity_model: Optional[Type[BaseModel]] = None
 ) -> HandlerResult:
     """Show entity data with optional field/row filtering."""
     
     try:
-        entity_type = entity_model.__name__.replace("Entity", "").lower()
 
         # Check if entity exists
         if not entity_exists(entity_type, company_name, context):
@@ -693,7 +674,7 @@ async def _show_entity(
             )
 
         # For multi-cardinality entities, we might want to show multiple records
-        cardinality = getattr(entity_model, 'cardinality', Cardinality.SINGLE)
+        cardinality = getattr(entity_model, 'cardinality', Cardinality.SINGLE) if entity_model else Cardinality.SINGLE
         if cardinality == Cardinality.MULTIPLE:
             # Load all records and apply filtering
             all_records = load_all_entities(entity_type, company_name, context)
