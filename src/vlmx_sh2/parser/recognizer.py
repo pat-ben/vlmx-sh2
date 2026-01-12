@@ -9,7 +9,7 @@ from typing import List, Optional, Tuple
 from ..words import get_all_words, get_word
 from ..models.words import WordType, Word
 from ..models.parser import Token, RecognizedToken, TokenType, ValueContext
-from .suggestions import SuggestionEngine
+from ..support.suggestions import SuggestionEngine
 
 
 class WordRecognizer:

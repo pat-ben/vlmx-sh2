@@ -12,7 +12,7 @@ from ..models.words import ActionWord, SchemaWord, EntityWord
 from .tokenizer import Tokenizer, TokenizerResult
 from .recognizer import WordRecognizer
 from .filter import FilterParser
-from .suggestions import SuggestionEngine
+from ..support.suggestions import SuggestionEngine
 from ..words.macros import expand_macros
 
 
