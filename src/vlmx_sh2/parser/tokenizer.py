@@ -50,10 +50,10 @@ class Tokenizer:
         # Stage 3a: Split into command and filter portions (NEW)
         command_full_list, filter_full_list = cls._split_command_and_filter(full_list)
         
-        # Stage 3b: Build command tokens (like old shortlist)
+        # Stage 3b: Build command tokens
         command_tokens = cls._build_command_tokens(command_full_list)
         
-        # Stage 3c: Build filter tokens (keep all tokens)
+        # Stage 3c: Build filter tokens
         filter_tokens = cls._build_filter_tokens(filter_full_list)
         
         return TokenizerResult(
@@ -248,9 +248,7 @@ class Tokenizer:
         full_list: List[Dict[str, Any]]
     ) -> List[Token]:
         """
-        Build command tokens from command full list.
-        
-        Identical to old _build_shortlist logic:
+        Build command tokens from command full list:
         - Exclude operators and keywords
         - Keep position, was_quoted, operator_after metadata
         """
