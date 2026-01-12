@@ -183,14 +183,7 @@ def _get_display_fields_for_entity(entity_type: str, entity_model) -> List[str]:
         return all_fields[:3] if all_fields else ['id']
 
 
-async def fill_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
-    fields: Dict[str, Any],
-    context: Context,
-    field_words: Optional[List[str]] = None,
-    parsed_command: Optional[ParsedCommand] = None
-) -> HandlerResult:
+async def fill_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """
     Handler for 'fill' command - initiates interactive form wizards for entity data collection.
     
@@ -207,12 +200,8 @@ async def fill_handler(
     5. Returns appropriate wizard request (FormWizardRequest or RecordPickerWizardRequest)
     
     Args:
-        entity_model: Pydantic model class for the entity type
-        entity_value: Optional entity name/identifier (used for record targeting)
-        fields: Dictionary of specific fields to include in form (optional)
+        parsed_command: Parsed command containing entity, target, and field specifications
         context: Current execution context (must be at ORG level)
-        field_words: Optional list of specific field names to include in wizard
-        parsed_command: Optional parsed command object with field specifications
         
     Returns:
         FormWizardRequest for single cardinality entities with pre-filled data,
@@ -223,6 +212,18 @@ async def fill_handler(
         Returns ErrorResult for context validation errors, missing entities, or storage failures
     """
     try:
+        # Extract parameters from parsed_command
+        entity_model = parsed_command.entity_model
+        entity_value = parsed_command.target.id if parsed_command.target else None
+        fields = parsed_command.field_values
+        field_words = parsed_command.field_words if parsed_command.field_words else None
+        
+        if not entity_model:
+            return ErrorResult(
+                errors=["No entity specified for fill command"],
+                suggestions=["Specify an entity to fill, e.g.: fill news"]
+            )
+        
         # Determine entity type and name
         entity_type = entity_model.__name__.replace("Entity", "").lower()
         

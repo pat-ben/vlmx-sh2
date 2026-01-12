@@ -328,14 +328,14 @@ class VLMXParser:
         # Check if command has app (app parameter - we'd need to implement this)
         has_app = False  # For now, we don't have app parameter detection
         
-        # Validate command context requirements
-        is_valid, error_msg = validate_command_context_requirements(
-            action_word, context, entity_value, has_schema, has_app
-        )
-        
-        if not is_valid:
-            result.errors.append(error_msg or "Unknown validation error")
-            return False
+        # Validate command context requirements - DISABLED FOR NOW
+        # is_valid, error_msg = validate_command_context_requirements(
+        #     action_word, context, entity_value, has_schema, has_app
+        # )
+        # 
+        # if not is_valid:
+        #     result.errors.append(error_msg or "Unknown validation error")
+        #     return False
         
         return True
     

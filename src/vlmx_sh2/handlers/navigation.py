@@ -5,8 +5,6 @@ Handles context navigation (cd command) between different levels
 of the application (SYS, ORG, APP).
 """
 
-from typing import Type, Optional, Dict, Any, List
-from pydantic import BaseModel
 
 from ..models.context import Context
 from ..models.responses import HandlerResult
@@ -18,14 +16,7 @@ ROOT_NAVIGATION_ALIASES = {"~", "root", None}
 UP_NAVIGATION_ALIASES = {".."}  # Go up one level in context hierarchy
 
 
-async def navigate_handler(
-    entity_model: Type[BaseModel],
-    entity_value: Optional[str],
-    fields: Dict[str, Any],
-    context: Context,
-    field_words: Optional[List[str]] = None,
-    parsed_command: Optional[ParsedCommand] = None
-) -> HandlerResult:
+async def navigate_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """
     Handler for 'cd' command - manages context navigation between system levels.
     
@@ -41,12 +32,8 @@ async def navigate_handler(
     - cd company    : Navigate to specific organization by name (with fuzzy matching)
     
     Args:
-        entity_model: Pydantic model class (not used for navigation, may be None)
-        entity_value: Navigation target (company name, ~, .., root, etc.)
-        fields: Additional navigation parameters (not currently used)
+        parsed_command: Parsed command containing navigation target and parameters
         context: Current execution context defining current position in hierarchy
-        field_words: List of field identifiers (not used for navigation)
-        parsed_command: Parsed command object (not used for navigation)
         
     Returns:
         CommandResult with navigation outcome and new context data, or ErrorResult on failure
@@ -60,6 +47,10 @@ async def navigate_handler(
     from ..storage.database import find_company_by_name
     
     try:
+        # Extract parameters from parsed_command
+        entity_model = parsed_command.entity_model
+        entity_value = parsed_command.target_name  # For navigation, this is the target (company name, etc.)
+        
         # Navigate up one level in context hierarchy
         if entity_value in UP_NAVIGATION_ALIASES:
             # If already at SYS level, can't go up further
