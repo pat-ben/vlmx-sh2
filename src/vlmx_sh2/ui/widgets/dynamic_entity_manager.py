@@ -6,6 +6,18 @@ Provides a split view with:
 - Right panel: Form for editing selected record or creating new record
 """
 
+from typing import Dict, Any, Optional
+from textual.widget import Widget
+from textual.app import ComposeResult
+from textual.widgets import Button, Static, DataTable, Input
+from textual.containers import Vertical, Horizontal
+from textual.message import Message
+from ...models.responses import PickerRequest
+from .form_wizard import FormWizard
+from ...models.responses import FormRequest
+from ...constants import SYSTEM_FIELDS
+
+
 CSS = """
 /* Main layout */
 #main-container {
@@ -145,16 +157,7 @@ DataTable > .datatable--cursor {
 }
 """
 
-from typing import Dict, List, Any, Optional
-from textual.widget import Widget
-from textual.app import ComposeResult
-from textual.widgets import Button, Label, Static, DataTable, Input
-from textual.containers import Vertical, Horizontal
-from textual.message import Message
-from ...models.responses import PickerRequest
-from .form_wizard import FormWizard
-from ...models.responses import FormRequest
-from ...constants import SYSTEM_FIELDS
+
 
 
 class DynamicEntityManager(Widget):
@@ -297,7 +300,7 @@ class DynamicEntityManager(Widget):
                 row_data.append(str(value))
             
             # Use record index as row key
-            record_id = record.get('id') or record.get('_id') or str(i)
+
             self.data_table.add_row(*row_data, key=str(i))
     
     def on_input_changed(self, event: Input.Changed) -> None:

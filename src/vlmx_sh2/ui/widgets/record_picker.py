@@ -5,10 +5,10 @@ Provides interactive record selection for multi-record entities.
 Displays existing records in a table format with "Add New" option.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, Any
 from textual.widget import Widget
 from textual.app import ComposeResult
-from textual.widgets import Button, Label, Static
+from textual.widgets import Button, Static
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
 from ...models.responses import PickerRequest
