@@ -10,12 +10,11 @@ managing file creation, updates, and retrieval operations.
 import json
 import os
 import shutil
-from datetime import datetime, date
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..models.context import Context
-from ..enums.core import ContextLevel
 from vlmx_sh2.enums import Cardinality
 from ..models.responses import StorageResult
 from .mappings import get_entity_json_filename, _entity_class_to_json_filename
@@ -475,7 +474,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                             entity_instance = entity_class(**default_instance_data)
                             default_data = entity_instance.model_dump()
                             
-                        except Exception as e:
+                        except Exception:
                             # Fallback to simple default structure if model creation fails
                             default_data = {
                                 "id": None,

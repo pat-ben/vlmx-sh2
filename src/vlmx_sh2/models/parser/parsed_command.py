@@ -65,7 +65,7 @@ class ParsedCommand(BaseModel):
         default=None,
         description="Name of the target instance (e.g., 'ACME', 'TechCorp')"
     )
-    attributes: Dict[str, str] = Field(
+    field_values: Dict[str, str] = Field(
         default_factory=dict,
         description="Field-value pairs for entity attributes"
     )
@@ -78,7 +78,7 @@ class ParsedCommand(BaseModel):
     raw_input: str = Field(
         description="Original user input text"
     )
-    tokens: List[RecognizedToken] = Field(
+    command_tokens: List[RecognizedToken] = Field(
         default_factory=list,
         description="All recognized tokens from parsing (command tokens)"
     )
@@ -153,9 +153,14 @@ class ParsedCommand(BaseModel):
         return self.has_target_name
     
     @property
+    def has_field_values(self) -> bool:
+        """True if any field values were provided."""
+        return len(self.field_values) > 0
+    
+    @property
     def has_attributes(self) -> bool:
-        """True if any attributes were provided."""
-        return len(self.attributes) > 0
+        """Deprecated: use has_field_values instead."""
+        return self.has_field_values
     
     @property
     def has_filters(self) -> bool:
@@ -175,8 +180,8 @@ class ParsedCommand(BaseModel):
         if self.has_target_name:
             data["name"] = self.target_name
         
-        # Add all attributes
-        data.update(self.attributes)
+        # Add all field values
+        data.update(self.field_values)
         
         # Add timestamps for creation
         if self.action.crud_operation.value == "create":

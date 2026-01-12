@@ -15,6 +15,7 @@ from .filter import FilterParser
 from ..words.macros import expand_macros
 
 
+
 class VLMXParser:
     """Main parser for VLMX commands."""
     
@@ -104,21 +105,21 @@ class VLMXParser:
         Raises:
             ValueError: If required components (action, entity) are missing
         """
-        # Extract action first to check if entity is required
+        # Extract action first
         action = self._extract_action(command_tokens)
         
-        # Extract target and target_name - navigation commands like cd don't have entity targets
+        # Extract target and schema_value - navigation commands like cd don't have entity targets
         target = None
-        target_name = None
+        schema_value = None
         
         if action.id == "cd":
-            # For navigation commands, extract target_name from UNKNOWN tokens
-            target_name = self._extract_navigation_target(command_tokens)
+            # For navigation commands, extract schema_value from UNKNOWN tokens
+            schema_value = self._extract_navigation_target(command_tokens)
         else:
             # For all other commands, try to extract target (entity/schema)
             try:
                 target = self._extract_target(command_tokens)
-                target_name = self._extract_target_name(command_tokens)
+                schema_value = self._extract_schema_value(command_tokens)
             except ValueError:
                 # No target found - this might be valid for some commands
                 pass
@@ -131,11 +132,11 @@ class VLMXParser:
         return ParsedCommand(
             action=action,
             target=target,
-            target_name=target_name,
-            attributes=self._extract_fields(command_tokens),
+            target_name=schema_value,
+            field_values=self._extract_fields(command_tokens),
             field_words=self._extract_field_words(command_tokens),
             raw_input=raw_input,
-            tokens=command_tokens,  # Main tokens are command tokens
+            command_tokens=command_tokens,  # Main tokens are command tokens
             filter_tokens=filter_tokens,
             filters=filters
         )
@@ -177,15 +178,15 @@ class VLMXParser:
             ValueError: If no target word found
         """
         for token in tokens:
-            if token.is_entity_word:
+            if token.is_entity_word or token.is_schema_word:
                 if token.word and (isinstance(token.word, SchemaWord) or isinstance(token.word, EntityWord)):
                     return token.word
         
         raise ValueError("No target word found in command")
     
-    def _extract_target_name(self, tokens: List[RecognizedToken]) -> Optional[str]:
+    def _extract_schema_value(self, tokens: List[RecognizedToken]) -> Optional[str]:
         """
-        Extract target name from tokens.
+        Extract schema value from tokens.
         
         Finds target values (company names, fund names, etc.) by looking
         for VALUE tokens with ENTITY context that follow target words.
@@ -194,15 +195,15 @@ class VLMXParser:
             tokens: List of recognized tokens
             
         Returns:
-            Target name if found, None otherwise
+            Schema value if found, None otherwise
         """
         for i in range(len(tokens) - 1):
             current = tokens[i]
             next_token = tokens[i + 1]
             
-            # Simple: ENTITY word followed by ENTITY value
+            # Simple: ENTITY/SCHEMA word followed by ENTITY value
             # Recognizer already classified these!
-            if current.is_entity_word and next_token.is_entity_value:
+            if (current.is_entity_word or current.is_schema_word) and next_token.is_entity_value:
                 return next_token.text
         
         # Also check for standalone entity values (when entity word is implied)
@@ -319,8 +320,7 @@ class VLMXParser:
         # Get entity_value for navigation commands
         entity_value = None
         if result.command and hasattr(result.command, 'target') and result.command.target:
-            if hasattr(result.command.target, 'entity') and result.command.target.entity:
-                entity_value = result.command.target.entity.id
+            entity_value = result.command.target.id
         
         # Check if command has schema (schema_word present)
         has_schema = bool(result.schema_words)
@@ -334,7 +334,7 @@ class VLMXParser:
         )
         
         if not is_valid:
-            result.errors.append(error_msg)
+            result.errors.append(error_msg or "Unknown validation error")
             return False
         
         return True
