@@ -5,6 +5,7 @@ Extracts filter expressions from token streams and builds structured
 FilterExpression trees for dynamic table filtering.
 """
 
+import warnings
 from typing import List, Optional, Tuple
 from ..models.parser import Token, RecognizedToken
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
@@ -32,28 +33,45 @@ class FilterParser:
     - All comparison operators: =, !=, <, >, <=, >=
     """
     
-    def parse_filters(self, tokens: List[RecognizedToken]) -> Optional[FilterExpression]:
+    def parse_filters(self, recognized_filter_tokens: List[RecognizedToken]) -> Optional[FilterExpression]:
         """
-        Parse filter expressions from recognized token list.
+        Parse filter expression from RECOGNIZED tokens.
+        
+        No need to re-tokenize! Tokens are already:
+        - Split into individual pieces
+        - Include operators, keywords, parentheses
+        - Recognized (field names classified)
         
         Args:
-            tokens: List of recognized tokens from the parser
+            recognized_filter_tokens: List of RecognizedToken from tokenizer
             
         Returns:
-            Parsed FilterExpression or None if no filters found
-            
-        Raises:
-            FilterParseError: If filter syntax is invalid
+            Parsed FilterExpression or None
         """
-        # For now, return None since we need the raw input to properly parse filters
-        # This is used by VLMXParser which passes raw input for filter parsing
-        return None
+        if not recognized_filter_tokens:
+            return None
+        
+        # Convert RecognizedToken to simple Token for parsing
+        # (FilterParser doesn't need the word classification)
+        simple_tokens = [
+            Token(
+                text=rt.text,
+                position=rt.position,
+                was_quoted=rt.was_quoted,
+                operator_after=rt.operator_after
+            )
+            for rt in recognized_filter_tokens
+        ]
+        
+        # Parse using existing recursive descent parser
+        return self._parse_expression(simple_tokens)
     
     def parse_filters_from_raw_input(self, raw_input: str) -> Optional[FilterExpression]:
         """
-        Parse filter expressions from raw input text.
+        DEPRECATED: Parse filter expressions from raw input text.
         
-        This method can properly handle brackets since it works with the original text.
+        This method re-tokenizes input which is inefficient.
+        Use parse_filters() with recognized tokens instead.
         
         Args:
             raw_input: Original user input text
@@ -64,6 +82,11 @@ class FilterParser:
         Raises:
             FilterParseError: If filter syntax is invalid
         """
+        warnings.warn(
+            "parse_filters_from_raw_input is deprecated, use parse_filters() instead",
+            DeprecationWarning,
+            stacklevel=2
+        )
         # Expand macros first
         from ..words.macros import expand_macros
         expanded_input = expand_macros(raw_input)

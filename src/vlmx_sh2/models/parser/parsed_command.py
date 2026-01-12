@@ -80,7 +80,13 @@ class ParsedCommand(BaseModel):
     )
     tokens: List[RecognizedToken] = Field(
         default_factory=list,
-        description="All recognized tokens from parsing"
+        description="All recognized tokens from parsing (command tokens)"
+    )
+    
+    # Filter tokens
+    filter_tokens: List[RecognizedToken] = Field(
+        default_factory=list,
+        description="Recognized tokens from filter expression"
     )
     
     # Filtering

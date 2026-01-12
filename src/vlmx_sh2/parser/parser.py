@@ -9,7 +9,7 @@ parsing natural language commands into structured data.
 from typing import Any, List, Optional, Dict
 from ..models.parser import ParseResult, ParsedCommand, RecognizedToken
 from ..models.words import ActionWord, SchemaWord, EntityWord
-from .tokenizer import Tokenizer
+from .tokenizer import Tokenizer, TokenizerResult
 from .recognizer import WordRecognizer
 from .filter import FilterParser
 from .suggestions import SuggestionEngine
@@ -44,17 +44,33 @@ class VLMXParser:
         result = ParseResult(input_text=input_text)
         
         try:
-            # Step 1: Tokenize (includes macro expansion)
+            # Step 1: Tokenize (produces TWO lists)
             expanded_input = expand_macros(input_text)
-            tokens = self.tokenizer.tokenize(expanded_input)
+            tokenizer_result = self.tokenizer.tokenize(expanded_input)
             
-            # Step 2: Recognize (classify tokens)
-            recognized_tokens = self.word_recognizer.process_tokens(tokens)
-            result.tokens = recognized_tokens
+            # Step 2: Recognize BOTH lists separately
+            recognized_command_tokens = self.word_recognizer.process_tokens(
+                tokenizer_result.command_tokens
+            )
             
-            # Step 3: Build command (inline command building - was previously in CommandBuilder)
+            recognized_filter_tokens = []
+            if tokenizer_result.has_filter:
+                recognized_filter_tokens = self.word_recognizer.process_tokens(
+                    tokenizer_result.filter_tokens
+                )
+            
+            # Store both in result
+            result.command_tokens = recognized_command_tokens
+            result.filter_tokens = recognized_filter_tokens
+            result.tokens = recognized_command_tokens  # Backward compatibility
+            
+            # Step 3: Build command using BOTH lists
             try:
-                command = self._build_command(recognized_tokens, input_text)
+                command = self._build_command(
+                    recognized_command_tokens,
+                    recognized_filter_tokens,
+                    input_text
+                )
                 result.command = command
                 result.is_valid = True
                 
@@ -72,14 +88,18 @@ class VLMXParser:
         
         return result
     
-    def _build_command(self, tokens: List[RecognizedToken], raw_input: str) -> ParsedCommand:
+    def _build_command(
+        self,
+        command_tokens: List[RecognizedToken],
+        filter_tokens: List[RecognizedToken],
+        raw_input: str
+    ) -> ParsedCommand:
         """
         Build a ParsedCommand from recognized tokens.
         
-        This consolidates the logic previously in CommandBuilder into the main parser.
-        
         Args:
-            tokens: List of recognized tokens from WordRecognizer
+            command_tokens: List of recognized command tokens from WordRecognizer
+            filter_tokens: List of recognized filter tokens from WordRecognizer
             raw_input: Original user input text
             
         Returns:
@@ -89,7 +109,7 @@ class VLMXParser:
             ValueError: If required components (action, entity) are missing
         """
         # Extract action first to check if entity is required
-        action = self._extract_action(tokens)
+        action = self._extract_action(command_tokens)
         
         # Extract target and target_name - navigation commands like cd don't have entity targets
         target = None
@@ -97,27 +117,30 @@ class VLMXParser:
         
         if action.id == "cd":
             # For navigation commands, extract target_name from UNKNOWN tokens
-            target_name = self._extract_navigation_target(tokens)
+            target_name = self._extract_navigation_target(command_tokens)
         else:
             # For all other commands, try to extract target (entity/schema)
             try:
-                target = self._extract_target(tokens)
-                target_name = self._extract_target_name(tokens)
+                target = self._extract_target(command_tokens)
+                target_name = self._extract_target_name(command_tokens)
             except ValueError:
                 # No target found - this might be valid for some commands
                 pass
         
-        # Extract filters if present (using raw input to access brackets)
-        filters = self.filter_parser.parse_filters_from_raw_input(raw_input)
+        # Parse filters from recognized filter tokens
+        filters = None
+        if filter_tokens:
+            filters = self.filter_parser.parse_filters(filter_tokens)
         
         return ParsedCommand(
             action=action,
             target=target,
             target_name=target_name,
-            attributes=self._extract_fields(tokens),
-            field_words=self._extract_field_words(tokens),
+            attributes=self._extract_fields(command_tokens),
+            field_words=self._extract_field_words(command_tokens),
             raw_input=raw_input,
-            tokens=tokens,
+            tokens=command_tokens,  # Main tokens are command tokens
+            filter_tokens=filter_tokens,
             filters=filters
         )
     

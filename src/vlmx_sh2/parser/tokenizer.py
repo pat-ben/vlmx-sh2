@@ -5,41 +5,62 @@ A three-stage tokenization system that extracts and organizes tokens with metada
 The tokenizer's sole responsibility is text processing - no semantic classification.
 """
 
-from typing import List, Dict, Any
-from ..models.parser import Token, Operator, QueryKeyword, Bracket
+from typing import List, Dict, Any, Tuple, NamedTuple
+from ..models.parser import Token
+from vlmx_sh2.enums import Operator, QueryKeyword, Bracket
+
+
+class TokenizerResult(NamedTuple):
+    """Output from tokenizer with separate token lists."""
+    command_tokens: List[Token]  # Tokens outside [ ]
+    filter_tokens: List[Token]   # Tokens inside [ ] (excluding brackets)
+    has_filter: bool             # Quick check if filter exists
+
+
+class TokenizerError(Exception):
+    """Raised when tokenization fails."""
+    pass
 
 
 class Tokenizer:
     """Clean three-stage tokenizer for input."""
     
     @classmethod
-    def tokenize(cls, text: str) -> List[Token]:
+    def tokenize(cls, text: str) -> TokenizerResult:
         """
-        Tokenize input text into organized tokens with metadata.
+        Tokenize input text into separate command and filter token lists.
         
         Three-stage process:
         1. Extract quoted strings
-        2. Build full ordered list
-        3. Build short-listed array (exclude operators/keywords)
+        2. Build full ordered list with metadata
+        3. Split into command and filter tokens
         
         Args:
             text: Input text to tokenize
             
         Returns:
-            List of Token objects with metadata
-            
-   
+            TokenizerResult with separate command and filter token lists
         """
-        # Stage 1: Extract quoted strings
+        # Stage 1: Extract quoted strings (unchanged)
         raw_tokens = cls._extract_quoted_strings(text)
         
-        # Stage 2: Build full ordered list with metadata
+        # Stage 2: Build full ordered list (unchanged)
         full_list = cls._build_full_list(raw_tokens)
         
-        # Stage 3: Build short-listed array
-        tokens = cls._build_shortlist(full_list)
+        # Stage 3a: Split into command and filter portions (NEW)
+        command_full_list, filter_full_list = cls._split_command_and_filter(full_list)
         
-        return tokens
+        # Stage 3b: Build command tokens (like old shortlist)
+        command_tokens = cls._build_command_tokens(command_full_list)
+        
+        # Stage 3c: Build filter tokens (keep all tokens)
+        filter_tokens = cls._build_filter_tokens(filter_full_list)
+        
+        return TokenizerResult(
+            command_tokens=command_tokens,
+            filter_tokens=filter_tokens,
+            has_filter=len(filter_tokens) > 0
+        )
     
     @classmethod
     def _extract_quoted_strings(cls, text: str) -> List[str]:
@@ -173,26 +194,67 @@ class Tokenizer:
         return full_list
     
     @classmethod
-    def _build_shortlist(cls, full_list: List[Dict[str, Any]]) -> List[Token]:
+    def _split_command_and_filter(
+        cls, 
+        full_list: List[Dict[str, Any]]
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
-        Build short-listed array excluding operators/keywords.
+        Split full_list into command and filter portions.
         
-        For each non-excluded token:
-        - Check if next token is an operator → set operator_after
-        - Assign 0-indexed position in short-list
-        - Create Token object
+        Command: Everything OUTSIDE [ ]
+        Filter: Everything INSIDE [ ] (excluding the [ ] brackets themselves)
         
-        Example:
-            Input: [
-                {"text": "vision", "was_quoted": False, "is_excluded": False},
-                {"text": "=", "was_quoted": False, "is_excluded": True},
-                {"text": "text", "was_quoted": True, "is_excluded": False},
-            ]
-            Output: [
-                Token(text="vision", position=0, operator_after=Operator.EQUAL),
-                Token(text="text", position=1, was_quoted=True),
-            ]
+        Returns:
+            Tuple of (command_full_list, filter_full_list)
         """
+        command_full_list = []
+        filter_full_list = []
+        
+        inside_filter = False
+        bracket_start = None
+        
+        for i, item in enumerate(full_list):
+            token_text = item["text"]
+            
+            if token_text == "[":
+                if bracket_start is not None:
+                    raise TokenizerError("Nested [ brackets are not supported")
+                bracket_start = i
+                inside_filter = True
+                # Don't include the [ itself
+                
+            elif token_text == "]":
+                if not inside_filter:
+                    raise TokenizerError("Found ] without matching [")
+                inside_filter = False
+                # Don't include the ] itself
+                
+            elif inside_filter:
+                # Inside filter - add to filter list
+                filter_full_list.append(item)
+                
+            else:
+                # Outside filter - add to command list
+                command_full_list.append(item)
+        
+        if inside_filter:
+            raise TokenizerError("Found [ without matching ]")
+        
+        return command_full_list, filter_full_list
+    
+    @classmethod
+    def _build_command_tokens(
+        cls, 
+        full_list: List[Dict[str, Any]]
+    ) -> List[Token]:
+        """
+        Build command tokens from command full list.
+        
+        Identical to old _build_shortlist logic:
+        - Exclude operators and keywords
+        - Keep position, was_quoted, operator_after metadata
+        """
+        # Keep existing _build_shortlist implementation exactly as is
         tokens = []
         position = 0
         
@@ -214,6 +276,37 @@ class Tokenizer:
                 position += 1
         
         return tokens
+    
+    @classmethod
+    def _build_filter_tokens(
+        cls, 
+        filter_full_list: List[Dict[str, Any]]
+    ) -> List[Token]:
+        """
+        Build filter tokens from filter full list.
+        
+        DIFFERENT from command tokens:
+        - KEEP operators (=, <, >, etc.) as separate tokens
+        - KEEP keywords (and, or) as separate tokens
+        - KEEP parentheses ( ) as separate tokens
+        - [ ] already excluded in split
+        - Keep ALL metadata: position, was_quoted
+        - operator_after not needed (operators are explicit)
+        """
+        tokens = []
+        position = 0
+        
+        for item in filter_full_list:
+            tokens.append(Token(
+                text=item["text"],
+                position=position,
+                was_quoted=item["was_quoted"],
+                operator_after=None  # Not needed - operators are explicit tokens
+            ))
+            position += 1
+        
+        return tokens
+
     
     @classmethod
     def _find_operator_in_token(cls, token: str) -> tuple[str, str, str] | None:

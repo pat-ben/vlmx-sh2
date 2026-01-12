@@ -35,7 +35,18 @@ class ParseResult(BaseModel):
     
     tokens: List[RecognizedToken] = Field(
         default_factory=list,
-        description="All recognized tokens from parsing"
+        description="All recognized tokens from parsing (command tokens for backward compatibility)"
+    )
+    
+    # New separate token lists
+    command_tokens: List[RecognizedToken] = Field(
+        default_factory=list,
+        description="Recognized tokens from command parsing (outside [ ])"
+    )
+    
+    filter_tokens: List[RecognizedToken] = Field(
+        default_factory=list,
+        description="Recognized tokens from filter parsing (inside [ ])"
     )
     
     # Structured command (single source of truth)
