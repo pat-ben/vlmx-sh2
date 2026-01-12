@@ -186,8 +186,9 @@ class MainScreen(Screen):
     async def _process_wizard_submission(self, wizard_request: FormRequest, fields: dict):
         """Process form wizard submission by updating entity fields."""
         try:
-            from ....handlers.crud import add_handler, update_handler
+            from ....handlers.crud import add_handler
             from ....dsl.words import get_word, WordType
+            from ....models.parser.parsed_command import ParsedCommand
             
             # Get the entity model for the entity type
             entity_word = get_word(wizard_request.entity_id)
@@ -195,30 +196,31 @@ class MainScreen(Screen):
                 error_msg = f"Unknown entity type: {wizard_request.entity_id}"
                 self.call_after_refresh(self._show_delayed_output, error_msg, True)
                 return
-            
-            # Determine if this is an update or add based on pre-filled values
-            is_update = bool(wizard_request.pre_filled_values)
-            
-            if is_update:
-                # Use update handler with correct signature
-                result = await update_handler(
-                    entity_model=entity_word.entity_model,
-                    entity_value=wizard_request.entity_name,
-                    fields=fields,
-                    context=self.context,
-                    field_words=None,
-                    parsed_command=None
-                )
-            else:
-                # Use add handler with correct signature
-                result = await add_handler(
-                    entity_model=entity_word.entity_model,
-                    entity_value=wizard_request.entity_name,
-                    fields=fields,
-                    context=self.context,
-                    field_words=None,
-                    parsed_command=None
-                )
+
+            # Get add action word
+            add_action = get_word("add")
+            if not add_action:
+                error_msg = "Add action not found"
+                self.call_after_refresh(self._show_delayed_output, error_msg, True)
+                return
+
+            # Build parsed command for add operation (wizard always uses add semantics)
+            parsed_command = ParsedCommand(
+                action=add_action,
+                target=entity_word,
+                target_name=wizard_request.entity_name,
+                attributes=fields,
+                field_words=[],
+                filters=None,
+                raw_input="",
+                tokens=[]
+            )
+
+            # Call handler with new signature
+            result = await add_handler(
+                parsed_command=parsed_command,
+                context=self.context
+            )
             
             # Display result using format_command_result - create ONE command block with all output
             self._create_new_command_block_with_result(result)

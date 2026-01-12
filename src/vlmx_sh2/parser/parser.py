@@ -91,15 +91,21 @@ class VLMXParser:
         # Extract action first to check if entity is required
         action = self._extract_action(tokens)
         
-        # Only extract target and target_name if the action requires it
+        # Extract target and target_name - navigation commands like cd don't have entity targets
         target = None
         target_name = None
-        if action.requires_entity:
-            target = self._extract_target(tokens)
-            target_name = self._extract_target_name(tokens)
-        else:
-            # For commands that don't require entity (like cd), extract target_name from UNKNOWN tokens
+        
+        if action.id == "cd":
+            # For navigation commands, extract target_name from UNKNOWN tokens
             target_name = self._extract_navigation_target(tokens)
+        else:
+            # For all other commands, try to extract target (entity/schema)
+            try:
+                target = self._extract_target(tokens)
+                target_name = self._extract_target_name(tokens)
+            except ValueError:
+                # No target found - this might be valid for some commands
+                pass
         
         # Extract filters if present (using raw input to access brackets)
         filters = self.filter_parser.parse_filters_from_raw_input(raw_input)
@@ -109,6 +115,7 @@ class VLMXParser:
             target=target,
             target_name=target_name,
             attributes=self._extract_fields(tokens),
+            field_words=self._extract_field_words(tokens),
             raw_input=raw_input,
             tokens=tokens,
             filters=filters
@@ -239,6 +246,30 @@ class VLMXParser:
         
         return fields
     
+    def _extract_field_words(self, tokens: List[RecognizedToken]) -> List[str]:
+        """
+        Extract field names without values (for field selection/deletion).
+        
+        Finds standalone FieldWord tokens that are not followed by field values.
+        These are used for commands like 'delete brand vision mission'.
+        
+        Args:
+            tokens: List of recognized tokens
+            
+        Returns:
+            List of field names
+        """
+        field_words = []
+        
+        for i, token in enumerate(tokens):
+            if token.is_field_word:
+                # Check if this field word is NOT followed by a field value
+                # If it's the last token or the next token is not a field value, include it
+                if i == len(tokens) - 1 or not tokens[i + 1].is_field_value:
+                    field_words.append(token.text)
+        
+        return field_words
+    
     def _validate_handler_requirements(self, result: ParseResult) -> bool:
         """
         Validate that the parse result has the minimum requirements for handler execution.
@@ -285,20 +316,11 @@ class VLMXParser:
         if not self._validate_handler_requirements(parse_result):
             raise ValueError(f"Handler requirements not met: {parse_result.errors}")
         
-        # Call the handler with the parsed data
-        target_name = parse_result.target_name
-        
-        # For delete operations, we need to pass the list of field words to delete
-        field_words_to_process = [w.id for w in parse_result.field_words]
-        
+        # Call the handler with the new simplified signature
         try:
-            return await parse_result.action_handler(  # Property access - works
-                target_model=parse_result.target_model,  # Property access - works
-                target_name=target_name,
-                fields=parse_result.attributes,  # Use correct parameter name
-                context=context,
-                field_words=field_words_to_process,
-                parsed_command=parse_result.command  # Pass parsed command for handlers that need it
+            return await parse_result.action_handler(
+                parsed_command=parse_result.command,
+                context=context
             )
         except Exception as e:
             raise RuntimeError(f"Handler execution failed: {str(e)}")

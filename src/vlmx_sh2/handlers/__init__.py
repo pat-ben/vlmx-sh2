@@ -8,10 +8,10 @@ combination without hardcoded entity-specific logic.
 from .crud import (
     create_handler,
     add_handler,
-    update_handler,
     show_handler,
-    list_handler,
-    delete_handler
+    delete_handler,
+    drop_handler,
+    reset_handler
 )
 from .navigation import navigate_handler
 from .wizard import fill_handler
@@ -19,10 +19,10 @@ from .wizard import fill_handler
 __all__ = [
     'create_handler',
     'add_handler', 
-    'update_handler',
     'show_handler',
-    'list_handler',
     'delete_handler',
+    'drop_handler',
+    'reset_handler',
     'navigate_handler',
     'fill_handler'
 ]

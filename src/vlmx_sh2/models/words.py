@@ -69,11 +69,12 @@ class ActionWord(BaseWord):
     execution_type: ExecutionType = Field(default=ExecutionType.STANDARD, description="Type of execution for this action")
     handler: Any = Field(description="Function to handle this action")
     action_category: ActionCategory = Field(default=ActionCategory.CRUD, description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)")
-    crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")
-    database: bool = Field(default=False, description="Whether this action operates at the database level")
-    requires_entity: bool = Field(default=True, description="Whether this action requires an entity to operate on")
+    crud_operation: CRUDOperation = Field(default=CRUDOperation.NONE, description="Specific CRUD operation type (only applicable if action_category=CRUD, otherwise use NONE)")      
     destructive: bool = Field(default=False, description="Whether this action permanently destroys data (e.g., delete, drop)")
     warning: Optional[str] = Field(default=None, description="Warning message to display when using this word")
+    
+    # requires_entity: bool = Field(default=True, description="Whether this action requires an entity to operate on")
+    # database: bool = Field(default=False, description="Whether this action operates at the database level")
 
 
 # ==================== SCHEMA WORD MODEL ====================
@@ -100,6 +101,7 @@ class EntityWord(BaseWord):
     word_type: Literal[WordType.ENTITY] = WordType.ENTITY
     context: ContextLevel = Field(default=ContextLevel.ORG, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
     entity_model: Type[BaseModel] = Field(description="Reference to the Pydantic model representing this entity")
+    
     # wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
 
 

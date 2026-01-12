@@ -14,10 +14,10 @@ from ...models.words import ActionWord, ActionCategory, CRUDOperation, Execution
 from ...handlers.crud import (
     create_handler,
     add_handler,
-    update_handler,
     show_handler,
-    list_handler,
-    delete_handler
+    delete_handler,
+    drop_handler,
+    reset_handler
 )
 from ...handlers.navigation import navigate_handler
 from ...handlers.wizard import fill_handler
@@ -32,18 +32,26 @@ ACTION_WORDS_LIST: List[ActionWord] = [
         aliases=["c","post"],
         handler=create_handler,
         crud_operation=CRUDOperation.CREATE,
-        database=True,
     ),
     
     ActionWord(
         id="delete",        
-        description="Delete an existing entity",
-        aliases=["d","remove","rm"],
+        description="Delete data (rows, fields, or all entity content)",
+        aliases=["d"],
         handler=delete_handler,
-        crud_operation=CRUDOperation.DELETE,
-        database=True,        
+        crud_operation=CRUDOperation.DELETE,        
         destructive=True,
-        warning="This action will permanently delete the entity"
+        warning="This action will permanently delete the data"
+    ),
+    
+    ActionWord(
+        id="drop",
+        description="Drop database or table structure",
+        aliases=["remove", "rm"],
+        handler=drop_handler,
+        crud_operation=CRUDOperation.DELETE,
+        destructive=True,
+        warning="This action will permanently remove the structure"
     ),
     
     ActionWord(
@@ -52,7 +60,6 @@ ACTION_WORDS_LIST: List[ActionWord] = [
         aliases=[],
         handler=navigate_handler,
         action_category=ActionCategory.NAVIGATION,
-        requires_entity=False
     ),
     
     ActionWord(
@@ -64,26 +71,18 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     ),
     
     ActionWord(
-        id="update",
-        description="Update existing field values for entities",
-        aliases=["u","put", "patch"],
-        handler=update_handler,
+        id="reset",
+        description="Reset entity or fields to default values",
+        aliases=["clear", "restore"],
+        handler=reset_handler,
         crud_operation=CRUDOperation.UPDATE,
     ),
     
     ActionWord(
         id="show",
-        description="Display entity data or specific fields",
-        aliases=["s","read","get"],
+        description="Display data with optional field selection and filtering",
+        aliases=["s","read","get","l","ls","list","find"],
         handler=show_handler,
-        crud_operation=CRUDOperation.READ,
-    ),
-    
-    ActionWord(
-        id="list",
-        description="List all records of entities with multiple cardinality, with optional filtering",
-        aliases=["l","ls","find"],
-        handler=list_handler,
         crud_operation=CRUDOperation.READ,
     ),
     
@@ -94,6 +93,5 @@ ACTION_WORDS_LIST: List[ActionWord] = [
         handler=fill_handler,
         execution_type=ExecutionType.WIZARD,
         crud_operation=CRUDOperation.UPDATE,
-        requires_entity=True
     ),
 ]
