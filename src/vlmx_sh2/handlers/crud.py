@@ -76,7 +76,7 @@ def _create_default_entity_data(entity_model: Type[BaseModel], entity_type: str)
     return complete_data
 
 
-def _not_yet_supported_error(feature: str, suggestion: str = None) -> ErrorResult:
+def _not_yet_supported_error(feature: str, suggestion: Optional[str] = None) -> ErrorResult:
     """Return standardized 'not yet supported' error."""
     return ErrorResult(
         errors=[f"{feature} not yet supported"],
@@ -400,6 +400,7 @@ async def _drop_schema(target_id: str, name: Optional[str], context: Context) ->
     if error:
         return error
     
+    assert actual_company_name is not None  # Guaranteed by _resolve_company_name success
     # Delete the entire entity
     delete_result = StorageInterface.delete_entity(target_id, actual_company_name, context)
     
@@ -421,6 +422,7 @@ async def _show_schema_info(target_id: str, name: Optional[str], context: Contex
     if error:
         return error
     
+    assert actual_company_name is not None  # Guaranteed by _resolve_company_name success
     # Load schema data
     load_result = StorageInterface.load_entity(target_id, actual_company_name, context)
     if not load_result.success or not load_result.data:
