@@ -34,100 +34,9 @@ from ..storage.database import StorageInterface, entity_exists, find_company_by_
 from ..storage.filters import apply_filters
 
 
-# ==================== HELPER FUNCTIONS ====================
-
-def _create_default_entity_data(entity_model: Type[BaseModel], entity_type: str) -> Dict[str, Any]:
-    """
-    Create default entity data from Pydantic model.
-    
-    Args:
-        entity_model: Pydantic model class
-        entity_type: Entity type string (for default name)
-        
-    Returns:
-        Dictionary with default entity data
-        
-    Raises:
-        Exception: If model instantiation fails
-    """
-    default_entity_data = {
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat(),
-    }
-    
-    # For entities with a "name" field, set a default name
-    if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
-        default_entity_data["name"] = f"default_{entity_type}"
-    
-    # Create instance with minimal required data
-    entity_instance = entity_model(**default_entity_data)
-    
-    # Get all model fields and create a complete data dict with explicit None for optional fields
-    complete_data = {}
-    for field_name, field_info in entity_model.model_fields.items():
-        if hasattr(entity_instance, field_name):
-            value = getattr(entity_instance, field_name)
-            complete_data[field_name] = value
-        else:
-            # For fields not in the instance, explicitly set to None if they're optional
-            if not field_info.is_required():
-                complete_data[field_name] = None
-    
-    return complete_data
-
-
-def _not_yet_supported_error(feature: str, suggestion: Optional[str] = None) -> ErrorResult:
-    """Return standardized 'not yet supported' error."""
-    return ErrorResult(
-        errors=[f"{feature} not yet supported"],
-        suggestions=[suggestion or f"{feature} may be available in future implementation"]
-    )
-
-
-def _entity_not_found_error(entity_type: str, company_name: str) -> ErrorResult:
-    """Return standardized entity not found error."""
-    return ErrorResult(
-        errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
-        suggestions=[f"Create the {entity_type} first or check the entity name"]
-    )
-
-
-def _validate_entity_exists(entity_type: str, company_name: str, context: Context) -> Optional[ErrorResult]:
-    """
-    Validate entity exists, return error if not.
-    
-    Returns:
-        ErrorResult if entity doesn't exist, None if valid
-    """
-    if not entity_exists(entity_type, company_name, context):
-        return _entity_not_found_error(entity_type, company_name)
-    return None
-
-
-def _resolve_company_name(name: Optional[str], context: Context) -> tuple[Optional[str], Optional[ErrorResult]]:
-    """
-    Resolve company name with intelligent matching.
-    
-    Returns:
-        Tuple of (actual_company_name, error). If error is not None, operation failed.
-    """
-    if not name:
-        return None, ErrorResult(
-            errors=["Company name required"],
-            suggestions=["Specify company name"]
-        )
-    
-    actual_name = find_company_by_name(name, context)
-    if not actual_name:
-        return None, ErrorResult(
-            errors=[f"Company '{name}' not found"],
-            suggestions=["Check company name spelling or list existing companies"]
-        )
-    
-    return actual_name, None
-
-
-# ==================== STRUCTURE OPERATIONS ====================
+# =============================================================================
+# 1. Public Handler API (Main CRUD Entry Points)
+# =============================================================================
 
 async def create_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Create schema or entity structure."""
@@ -189,8 +98,6 @@ async def drop_handler(parsed_command: ParsedCommand, context: Context) -> Handl
     else:
         return ErrorResult(errors=["Invalid target type for drop operation"])
 
-
-# ==================== CONTENT OPERATIONS ====================
 
 async def add_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Add or set field values."""
@@ -321,7 +228,104 @@ async def show_handler(parsed_command: ParsedCommand, context: Context) -> Handl
     )
 
 
-# ==================== SCHEMA OPERATION HELPERS ====================
+# =============================================================================
+# 2. Validation & Utilities (Common Helper Functions)
+# =============================================================================
+
+def _create_default_entity_data(entity_model: Type[BaseModel], entity_type: str) -> Dict[str, Any]:
+    """
+    Create default entity data from Pydantic model.
+    
+    Args:
+        entity_model: Pydantic model class
+        entity_type: Entity type string (for default name)
+        
+    Returns:
+        Dictionary with default entity data
+        
+    Raises:
+        Exception: If model instantiation fails
+    """
+    default_entity_data = {
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+    }
+    
+    # For entities with a "name" field, set a default name
+    if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
+        default_entity_data["name"] = f"default_{entity_type}"
+    
+    # Create instance with minimal required data
+    entity_instance = entity_model(**default_entity_data)
+    
+    # Get all model fields and create a complete data dict with explicit None for optional fields
+    complete_data = {}
+    for field_name, field_info in entity_model.model_fields.items():
+        if hasattr(entity_instance, field_name):
+            value = getattr(entity_instance, field_name)
+            complete_data[field_name] = value
+        else:
+            # For fields not in the instance, explicitly set to None if they're optional
+            if not field_info.is_required():
+                complete_data[field_name] = None
+    
+    return complete_data
+
+
+def _not_yet_supported_error(feature: str, suggestion: Optional[str] = None) -> ErrorResult:
+    """Return standardized 'not yet supported' error."""
+    return ErrorResult(
+        errors=[f"{feature} not yet supported"],
+        suggestions=[suggestion or f"{feature} may be available in future implementation"]
+    )
+
+
+def _entity_not_found_error(entity_type: str, company_name: str) -> ErrorResult:
+    """Return standardized entity not found error."""
+    return ErrorResult(
+        errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
+        suggestions=[f"Create the {entity_type} first or check the entity name"]
+    )
+
+
+def _validate_entity_exists(entity_type: str, company_name: str, context: Context) -> Optional[ErrorResult]:
+    """
+    Validate entity exists, return error if not.
+    
+    Returns:
+        ErrorResult if entity doesn't exist, None if valid
+    """
+    if not entity_exists(entity_type, company_name, context):
+        return _entity_not_found_error(entity_type, company_name)
+    return None
+
+
+def _resolve_company_name(name: Optional[str], context: Context) -> tuple[Optional[str], Optional[ErrorResult]]:
+    """
+    Resolve company name with intelligent matching.
+    
+    Returns:
+        Tuple of (actual_company_name, error). If error is not None, operation failed.
+    """
+    if not name:
+        return None, ErrorResult(
+            errors=["Company name required"],
+            suggestions=["Specify company name"]
+        )
+    
+    actual_name = find_company_by_name(name, context)
+    if not actual_name:
+        return None, ErrorResult(
+            errors=[f"Company '{name}' not found"],
+            suggestions=["Check company name spelling or list existing companies"]
+        )
+    
+    return actual_name, None
+
+
+# =============================================================================
+# 3. Schema Operations (Structure-Level Operations)
+# =============================================================================
 
 async def _create_schema(
     target_id: str,
@@ -459,7 +463,11 @@ async def _drop_entity_structure(entity_word: EntityWord, context: Context) -> H
     )
 
 
-# ==================== ENTITY CONTENT OPERATION HELPERS ====================
+# =============================================================================
+# 4. Entity Content Operations (Data-Level Operations)
+# =============================================================================
+
+# --- Add/Update Operations ---
 
 async def _add_field_values(
     entity_type: str,
@@ -516,6 +524,7 @@ async def _add_field_values(
             suggestions=["Check input format and system status"]
         )
 
+# --- Delete Operations ---
 
 async def _delete_field_values(
     entity_type: str,
@@ -598,6 +607,7 @@ async def _delete_entity_content(
         {"operation": "delete_all"}
     )
 
+# --- Reset Operations ---
 
 async def _reset_entity_content(
     entity_type: str,
@@ -675,6 +685,7 @@ async def _reset_field_values(
         {"reset_fields": reset_fields}
     )
 
+# --- Show Operations ---
 
 async def _show_entity(
     entity_type: str,

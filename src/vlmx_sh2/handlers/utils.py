@@ -15,7 +15,9 @@ from ..models.parser.parsed_command import ParsedCommand
 from ..models.words import SchemaWord, EntityWord, FieldWord
 
 
-# ==================== CONTEXT UTILITIES ====================
+# =============================================================================
+# 1. Context & Data Utilities (Basic Context & Data Processing)
+# =============================================================================
 
 def get_company_name_from_context(context: Context) -> Optional[str]:
     """Get the current company name from context."""
@@ -41,7 +43,9 @@ def format_entity_data_for_display(entity_data: Dict[str, Any],
     return "\n".join(lines) if lines else "No fields to display"
 
 
-# ==================== TYPE CONVERSION UTILITIES ====================
+# =============================================================================
+# 2. Type Conversion Utilities (Type & Identifier Conversion)
+# =============================================================================
 
 def get_entity_type_string(target_model: Type[BaseModel]) -> str:
     """Convert entity model to storage string identifier."""
@@ -53,12 +57,18 @@ def get_target_id(target: Union[SchemaWord, EntityWord, FieldWord]) -> str:
     return target.id
 
 
-# ==================== VALIDATION UTILITIES ====================
+# =============================================================================
+# 3. Common Error Helpers (Shared Error Creation Functions)
+# =============================================================================
 
 def _validation_error(message: str, suggestions: Optional[List[str]] = None) -> ErrorResult:
     """Create standardized validation error."""
     return ErrorResult(errors=[message], suggestions=suggestions or [])
 
+
+# =============================================================================
+# 4. Validation Utilities (Input Validation & Error Checking)
+# =============================================================================
 
 def validate_target_exists(parsed_command: ParsedCommand) -> Optional[ErrorResult]:
     """Validate that parsed command has a target."""
@@ -76,7 +86,9 @@ def validate_field_values_present(parsed_command: ParsedCommand) -> Optional[Err
     return _validation_error("No fields specified") if not parsed_command.field_values else None
 
 
-# ==================== RESULT HANDLING UTILITIES ====================
+# =============================================================================
+# 5. Result Handling Utilities (Result Processing & Conversion)
+# =============================================================================
 
 def handle_storage_result(storage_result: StorageResult, success_message: str, 
                          entity_type: str, operation_data: Optional[Dict[str, Any]] = None) -> HandlerResult:

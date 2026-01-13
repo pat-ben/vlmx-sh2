@@ -17,81 +17,9 @@ from ..constants import SYSTEM_FIELDS
 from ..storage.database import StorageInterface, entity_exists, load_all_entities
 
 
-# ==================== HELPER FUNCTIONS ====================
-
-def _get_entity_type(entity_model: Type[BaseModel]) -> str:
-    """Extract entity type from model class name."""
-    return entity_model.__name__.replace("Entity", "").lower()
-
-
-def _get_display_fields(entity_type: str, entity_model: Type[BaseModel]) -> List[str]:
-    """Get display fields for entity picker based on type."""
-    all_fields = [f for f in entity_model.model_fields.keys() if f not in SYSTEM_FIELDS]
-    
-    # Entity-specific priorities
-    priorities = {
-        ('offering', 'target', 'values'): ['id', 'key', 'value'],
-        ('metadata',): ['id', 'stage', 'sector', 'model']
-    }
-    
-    for entities, fields in priorities.items():
-        if entity_type in entities:
-            display_fields = [f for f in fields if f in all_fields]
-            # Add remaining fields up to 4 total
-            display_fields.extend([f for f in all_fields if f not in display_fields][:4-len(display_fields)])
-            return display_fields or all_fields[:3]
-    
-    return all_fields[:3] or ['id']
-
-
-def _get_requested_fields(entity_model: Type[BaseModel], parsed_command: ParsedCommand) -> List[str]:
-    """Determine which fields to include in the form."""
-    # Priority: field_values > field_words > all model fields
-    if parsed_command.field_values:
-        return list(parsed_command.field_values.keys())
-    if parsed_command.field_words:
-        return parsed_command.field_words
-    
-    return [f for f in entity_model.model_fields.keys() if f not in SYSTEM_FIELDS]
-
-
-def _create_picker_request(entity_type: str, entity_value: Optional[str], company_name: str, 
-                         entity_model: Type[BaseModel], context: Context) -> PickerRequest:
-    """Create picker request for multiple cardinality entities."""
-    records = load_all_entities(entity_type, company_name, context)
-    display_fields = _get_display_fields(entity_type, entity_model)
-    
-    return PickerRequest(
-        entity_id=entity_type,
-        entity_name=entity_value or company_name,
-        records=records,
-        display_fields=display_fields,
-        show_add_new_option=True,
-        title=f"Select {entity_type.title()} Record"
-    )
-
-
-def _create_form_request(entity_type: str, entity_value: Optional[str], company_name: str,
-                        requested_fields: List[str], entity_data: Dict[str, Any]) -> FormRequest:
-    """Create form request with pre-filled values."""
-    pre_filled = {f: str(v) for f, v in entity_data.items() 
-                 if f in requested_fields and v is not None}
-    
-    return FormRequest(
-        entity_id=entity_type,
-        entity_name=entity_value or company_name,
-        fields=requested_fields,
-        pre_filled_values=pre_filled,
-        title=f"Fill {entity_type.title()} Information"
-    )
-
-
-def _validation_error(message: str, suggestions: List[str]) -> ErrorResult:
-    """Create standardized validation error."""
-    return ErrorResult(errors=[message], suggestions=suggestions)
-
-
-# ==================== MAIN HANDLER ====================
+# =============================================================================
+# 1. Public Handler API
+# =============================================================================
 
 async def fill_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """
@@ -160,3 +88,87 @@ async def fill_handler(parsed_command: ParsedCommand, context: Context) -> Handl
             f"Failed to create wizard: {str(e)}",
             ["Check entity model and field configuration"]
         )
+
+
+# =============================================================================
+# 2. Field & Data Extraction (Entity Data Processing)
+# =============================================================================
+
+def _get_entity_type(entity_model: Type[BaseModel]) -> str:
+    """Extract entity type from model class name."""
+    return entity_model.__name__.replace("Entity", "").lower()
+
+
+def _get_display_fields(entity_type: str, entity_model: Type[BaseModel]) -> List[str]:
+    """Get display fields for entity picker based on type."""
+    all_fields = [f for f in entity_model.model_fields.keys() if f not in SYSTEM_FIELDS]
+    
+    # Entity-specific priorities
+    priorities = {
+        ('offering', 'target', 'values'): ['id', 'key', 'value'],
+        ('metadata',): ['id', 'stage', 'sector', 'model']
+    }
+    
+    for entities, fields in priorities.items():
+        if entity_type in entities:
+            display_fields = [f for f in fields if f in all_fields]
+            # Add remaining fields up to 4 total
+            display_fields.extend([f for f in all_fields if f not in display_fields][:4-len(display_fields)])
+            return display_fields or all_fields[:3]
+    
+    return all_fields[:3] or ['id']
+
+
+def _get_requested_fields(entity_model: Type[BaseModel], parsed_command: ParsedCommand) -> List[str]:
+    """Determine which fields to include in the form."""
+    # Priority: field_values > field_words > all model fields
+    if parsed_command.field_values:
+        return list(parsed_command.field_values.keys())
+    if parsed_command.field_words:
+        return parsed_command.field_words
+    
+    return [f for f in entity_model.model_fields.keys() if f not in SYSTEM_FIELDS]
+
+
+# =============================================================================
+# 3. UI Request Creation (Form & Picker Generation)
+# =============================================================================
+
+def _create_picker_request(entity_type: str, entity_value: Optional[str], company_name: str, 
+                         entity_model: Type[BaseModel], context: Context) -> PickerRequest:
+    """Create picker request for multiple cardinality entities."""
+    records = load_all_entities(entity_type, company_name, context)
+    display_fields = _get_display_fields(entity_type, entity_model)
+    
+    return PickerRequest(
+        entity_id=entity_type,
+        entity_name=entity_value or company_name,
+        records=records,
+        display_fields=display_fields,
+        show_add_new_option=True,
+        title=f"Select {entity_type.title()} Record"
+    )
+
+
+def _create_form_request(entity_type: str, entity_value: Optional[str], company_name: str,
+                        requested_fields: List[str], entity_data: Dict[str, Any]) -> FormRequest:
+    """Create form request with pre-filled values."""
+    pre_filled = {f: str(v) for f, v in entity_data.items() 
+                 if f in requested_fields and v is not None}
+    
+    return FormRequest(
+        entity_id=entity_type,
+        entity_name=entity_value or company_name,
+        fields=requested_fields,
+        pre_filled_values=pre_filled,
+        title=f"Fill {entity_type.title()} Information"
+    )
+
+
+# =============================================================================
+# 4. Validation & Utilities (Error Handling & Helpers)
+# =============================================================================
+
+def _validation_error(message: str, suggestions: List[str]) -> ErrorResult:
+    """Create standardized validation error."""
+    return ErrorResult(errors=[message], suggestions=suggestions)

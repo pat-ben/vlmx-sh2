@@ -14,75 +14,55 @@ from ..enums.core import ContextLevel
 from ..storage.database import find_company_by_name
 from ..utils.context_helpers import is_sys, is_org, get_level_name
 
+
+# =============================================================================
+# 1. Constants & Configuration
+# =============================================================================
+
 # Navigation command aliases
 ROOT_NAVIGATION_ALIASES = {"~", "root", None}
 UP_NAVIGATION_ALIASES = {".."}  # Go up one level in context hierarchy
 
 
-# ==================== HELPER FUNCTIONS ====================
+# =============================================================================
+# 2. Public Handler API
+# =============================================================================
 
-def _create_context(level: ContextLevel, org_name: Optional[str] = None, org_id: Optional[int] = None) -> NewContext:
+async def navigate_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """
-    Create a new navigation context.
+    Handler for 'cd' command - manages context navigation.
     
-    Args:
-        level: Context level (SYS, ORG, or APP)
-        org_name: Organization name (for ORG/APP levels)
-        org_id: Organization ID (for ORG/APP levels)
+    Supports:
+    - cd ~, cd root  : Navigate to system level
+    - cd ..          : Navigate up one level
+    - cd <org_name>  : Navigate to organization
+    - cd             : Show current location
+    """
+    try:
+        entity_value = parsed_command.target_name
         
-    Returns:
-        New Context object
-    """
-    return NewContext(
-        level=level,
-        org_id=org_id,
-        org_name=org_name,
-        org_db_path=None
-    )
-
-
-def _create_nav_result(
-    new_context: NewContext,
-    message: str,
-    from_context: Optional[str] = None,
-    **extra_data
-) -> CommandResult:
-    """
-    Create navigation result with context switch data.
-    
-    Args:
-        new_context: The new context being navigated to
-        message: Success message
-        from_context: Optional "from" description (e.g., "Organization: ACME")
-        **extra_data: Additional data fields to include
+        if entity_value in UP_NAVIGATION_ALIASES:
+            return _navigate_up(context)
         
-    Returns:
-        CommandResult with standardized navigation data
-    """
-    # Convert level to string representation for context_switch
-    level_str = "SYS"
-    if new_context.level == ContextLevel.ORG:
-        level_str = "ORG"
-    elif new_context.level == ContextLevel.APP:
-        level_str = "APP"
+        elif entity_value in ROOT_NAVIGATION_ALIASES:
+            return _navigate_to_root()
+        
+        elif entity_value:
+            return _navigate_to_org(entity_value, parsed_command.entity_model, context)
+        
+        else:
+            return _show_current_location(context)
     
-    data = {
-        "level": get_level_name(new_context).upper(),
-        "context_switch": {
-            "level": level_str,
-            "org_id": new_context.org_id,
-            "org_name": new_context.org_name,
-            "org_db_path": new_context.org_db_path
-        }
-    }
-    
-    if from_context:
-        data["from"] = from_context
-    
-    data.update(extra_data)
-    
-    return CommandResult(success=True, message=message, data=data)
+    except Exception as e:
+        return ErrorResult(
+            errors=[f"Navigation failed: {str(e)}"],
+            suggestions=["Check command format and system status"]
+        )
 
+
+# =============================================================================
+# 3. Navigation Operations (Different Types of Navigation)
+# =============================================================================
 
 def _navigate_up(context: Context) -> HandlerResult:
     """
@@ -199,35 +179,68 @@ def _show_current_location(context: Context) -> CommandResult:
     )
 
 
-# ==================== MAIN HANDLER ====================
+# =============================================================================
+# 4. Utilities (Helper Functions)
+# =============================================================================
 
-async def navigate_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
+def _create_context(level: ContextLevel, org_name: Optional[str] = None, org_id: Optional[int] = None) -> NewContext:
     """
-    Handler for 'cd' command - manages context navigation.
+    Create a new navigation context.
     
-    Supports:
-    - cd ~, cd root  : Navigate to system level
-    - cd ..          : Navigate up one level
-    - cd <org_name>  : Navigate to organization
-    - cd             : Show current location
+    Args:
+        level: Context level (SYS, ORG, or APP)
+        org_name: Organization name (for ORG/APP levels)
+        org_id: Organization ID (for ORG/APP levels)
+        
+    Returns:
+        New Context object
     """
-    try:
-        entity_value = parsed_command.target_name
-        
-        if entity_value in UP_NAVIGATION_ALIASES:
-            return _navigate_up(context)
-        
-        elif entity_value in ROOT_NAVIGATION_ALIASES:
-            return _navigate_to_root()
-        
-        elif entity_value:
-            return _navigate_to_org(entity_value, parsed_command.entity_model, context)
-        
-        else:
-            return _show_current_location(context)
+    return NewContext(
+        level=level,
+        org_id=org_id,
+        org_name=org_name,
+        org_db_path=None
+    )
+
+
+def _create_nav_result(
+    new_context: NewContext,
+    message: str,
+    from_context: Optional[str] = None,
+    **extra_data
+) -> CommandResult:
+    """
+    Create navigation result with context switch data.
     
-    except Exception as e:
-        return ErrorResult(
-            errors=[f"Navigation failed: {str(e)}"],
-            suggestions=["Check command format and system status"]
-        )
+    Args:
+        new_context: The new context being navigated to
+        message: Success message
+        from_context: Optional "from" description (e.g., "Organization: ACME")
+        **extra_data: Additional data fields to include
+        
+    Returns:
+        CommandResult with standardized navigation data
+    """
+    # Convert level to string representation for context_switch
+    level_str = "SYS"
+    if new_context.level == ContextLevel.ORG:
+        level_str = "ORG"
+    elif new_context.level == ContextLevel.APP:
+        level_str = "APP"
+    
+    data = {
+        "level": get_level_name(new_context).upper(),
+        "context_switch": {
+            "level": level_str,
+            "org_id": new_context.org_id,
+            "org_name": new_context.org_name,
+            "org_db_path": new_context.org_db_path
+        }
+    }
+    
+    if from_context:
+        data["from"] = from_context
+    
+    data.update(extra_data)
+    
+    return CommandResult(success=True, message=message, data=data)
