@@ -29,30 +29,15 @@ class Tokenizer:
     _OPERATOR_VALUES = {op.value for op in Operator}
     _QUERY_KEYWORD_VALUES = {kw.value for kw in QueryKeyword}
     _BRACKET_VALUES = {bracket.value for bracket in Bracket}
-    _QUOTE_CHARS = {'"', "'"}
+    _QUOTE_CHARS = {'\"', "'"}
     
     # Pre-sorted operators by length (longest first) for efficient detection
     _OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)
-    
-    @classmethod
-    def _strip_quotes(cls, text: str) -> Tuple[str, bool]:
-        """
-        Strip quotes from text and return whether it was quoted.
-        
-        Args:
-            text: Input text that may have quotes
-            
-        Returns:
-            Tuple of (stripped_text, was_quoted)
-        """
-        if not text:
-            return text, False
-            
-        if ((text.startswith('"') and text.endswith('"')) or 
-            (text.startswith("'") and text.endswith("'"))):
-            return text[1:-1], True
-        return text, False
-    
+
+    # =============================================================================
+    # 1. Public API (The Entry Point)
+    # =============================================================================
+
     @classmethod
     def tokenize(cls, text: str) -> TokenizerResult:
         """
@@ -63,7 +48,7 @@ class Tokenizer:
         2. Build full ordered list with metadata  
         3. Split into command and filter tokens
         """
-        raw_tokens = cls._extract_quoted_strings(text)
+        raw_tokens = cls._extract_token_blocks(text)
         full_list = cls._build_full_list(raw_tokens)
         command_full_list, filter_full_list = cls._split_command_and_filter(full_list)
         command_tokens = cls._build_command_tokens(command_full_list)
@@ -74,10 +59,14 @@ class Tokenizer:
             filter_tokens=filter_tokens,
             has_filter=len(filter_tokens) > 0
         )
+
+    # =============================================================================
+    # 2. Stage 1: Block Extraction (Lexing)
+    # =============================================================================
     
     @classmethod
-    def _extract_quoted_strings(cls, text: str) -> List[str]:
-        """Extract tokens from text, treating quoted strings as single tokens."""
+    def _extract_token_blocks(cls, text: str) -> List[str]:
+        """Extract token blocks from text, treating quoted strings as single tokens."""
         tokens = []
         i = 0
         current_token = ""
@@ -115,24 +104,30 @@ class Tokenizer:
             tokens.append(current_token.strip())
         
         return tokens
-    
+
     @classmethod
-    def _add_operator_tokens(cls, full_list: List[Dict[str, Any]], key: str, operator: str, value: str) -> None:
+    def _strip_quotes(cls, text: str) -> Tuple[str, bool]:
         """
-        Add key, operator, and value as separate tokens to full_list.
-        
+        Strip quotes from a text and return whether it was quoted.
+
         Args:
-            full_list: List to append tokens to
-            key: The key part before operator
-            operator: The operator (=, >, <, etc.)
-            value: The value part after operator (quotes will be stripped)
+            text: Input text that may have quotes
+
+        Returns:
+            Tuple of (stripped_text, was_quoted)
         """
-        full_list.append({"text": key, "was_quoted": False, "is_excluded": False})
-        full_list.append({"text": operator, "was_quoted": False, "is_excluded": True})
-        
-        value_text, was_quoted = cls._strip_quotes(value)
-        full_list.append({"text": value_text, "was_quoted": was_quoted, "is_excluded": False})
-    
+        if not text:
+            return text, False
+
+        if ((text.startswith('"') and text.endswith('"')) or
+                (text.startswith("'") and text.endswith("'"))):
+            return text[1:-1], True
+        return text, False
+
+    # =============================================================================
+    # 3. Stage 2: List Building & Triplet Handling
+    # =============================================================================
+
     @classmethod
     def _build_full_list(cls, raw_tokens: List[str]) -> List[Dict[str, Any]]:
         """
@@ -147,7 +142,7 @@ class Tokenizer:
             
             if operator_match:
                 key, operator, value = operator_match
-                cls._add_operator_tokens(full_list, key, operator, value)
+                cls._add_operator_triplet(full_list, key, operator, value)
             else:
                 text, was_quoted = cls._strip_quotes(token)
                 full_list.append({
@@ -157,7 +152,61 @@ class Tokenizer:
                 })
         
         return full_list
-    
+
+    @classmethod
+    def _find_operator_in_token(cls, token: str) -> tuple[str, str, str] | None:
+        """
+        Find operator in token and split into key, operator, value.
+
+        Returns:
+            Tuple of (key, operator, value) or None if no operator found
+        """
+        for operator in cls._OPERATORS_BY_LENGTH:
+            if operator in token:
+                parts = token.split(operator, 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    return key, operator, value
+
+        return None
+
+    @classmethod
+    def _add_operator_triplet(cls, full_list: List[Dict[str, Any]], key: str, operator: str, value: str) -> None:
+        """
+        Add key, operator, and value as separate tokens to full_list.
+
+        Args:
+            full_list: List to append tokens to
+            key: The key part before operator
+            operator: The operator (=, >, <, etc.)
+            value: The value part after operator (quotes will be stripped)
+        """
+        full_list.append({"text": key, "was_quoted": False, "is_excluded": False})
+        full_list.append({"text": operator, "was_quoted": False, "is_excluded": True})
+
+        value_text, was_quoted = cls._strip_quotes(value)
+        full_list.append({"text": value_text, "was_quoted": was_quoted, "is_excluded": False})
+
+    @classmethod
+    def _is_excluded(cls, text: str) -> bool:
+        """
+        Check if a token should be excluded from short-list.
+
+        Excluded:
+        - Operators, Query keywords (case-insensitive), Brackets
+        """
+        if not text:
+            return False
+
+        return (text in cls._OPERATOR_VALUES or
+                text.lower() in cls._QUERY_KEYWORD_VALUES or
+                text in cls._BRACKET_VALUES)
+
+    # =============================================================================
+    # 4. Stage 3: Categorization & Filtering
+    # =============================================================================
+
     @classmethod
     def _split_command_and_filter(
         cls, 
@@ -195,7 +244,7 @@ class Tokenizer:
             filter_full_list = []
         
         return command_full_list, filter_full_list
-    
+
     @classmethod
     def _build_tokens_from_list(
         cls, 
@@ -223,47 +272,13 @@ class Tokenizer:
                 position += 1
         
         return tokens
-    
+
     @classmethod
     def _build_command_tokens(cls, full_list: List[Dict[str, Any]]) -> List[Token]:
         """Build command tokens - exclude operators and keywords."""
         return cls._build_tokens_from_list(full_list, include_excluded=False)
-    
+
     @classmethod
     def _build_filter_tokens(cls, full_list: List[Dict[str, Any]]) -> List[Token]:
         """Build filter tokens - include all tokens."""
         return cls._build_tokens_from_list(full_list, include_excluded=True)
-
-    
-    @classmethod
-    def _find_operator_in_token(cls, token: str) -> tuple[str, str, str] | None:
-        """
-        Find operator in token and split into key, operator, value.
-        
-        Returns:
-            Tuple of (key, operator, value) or None if no operator found
-        """
-        for operator in cls._OPERATORS_BY_LENGTH:
-            if operator in token:
-                parts = token.split(operator, 1)
-                if len(parts) == 2:
-                    key = parts[0].strip()
-                    value = parts[1].strip()
-                    return key, operator, value
-        
-        return None
-    
-    @classmethod
-    def _is_excluded(cls, text: str) -> bool:
-        """
-        Check if a token should be excluded from short-list.
-        
-        Excluded:
-        - Operators, Query keywords (case-insensitive), Brackets
-        """
-        if not text:
-            return False
-        
-        return (text in cls._OPERATOR_VALUES or 
-                text.lower() in cls._QUERY_KEYWORD_VALUES or 
-                text in cls._BRACKET_VALUES)
