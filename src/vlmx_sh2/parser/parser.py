@@ -6,7 +6,7 @@ value extraction, and command validation. Provides the primary interface for
 parsing natural language commands into structured data.
 """
 
-from typing import Any, List, Optional, Dict, Union, cast
+from typing import Any, List, Optional, Dict
 from ..models.parser import ParseResult, ParsedCommand, RecognizedToken
 from ..models.words import ActionWord, SchemaWord, EntityWord
 from .tokenizer import Tokenizer
@@ -152,7 +152,7 @@ class VLMXParser:
         """
         for token in tokens:
             if token.is_action_word and token.word:
-                return cast(ActionWord, token.word)
+                return token.word  # Type is guaranteed by is_action_word
         
         raise ValueError("No action word found in command")
     
@@ -173,7 +173,7 @@ class VLMXParser:
         """
         for token in tokens:
             if (token.is_entity_word or token.is_schema_word) and token.word:
-                return cast(Union[SchemaWord, EntityWord], token.word)
+                return token.word  # Type is guaranteed by properties
         
         raise ValueError("No target word found in command")
     

@@ -34,39 +34,126 @@ from ..storage.database import StorageInterface, entity_exists, find_company_by_
 from ..storage.filters import apply_filters
 
 
+# ==================== HELPER FUNCTIONS ====================
+
+def _create_default_entity_data(entity_model: Type[BaseModel], entity_type: str) -> Dict[str, Any]:
+    """
+    Create default entity data from Pydantic model.
+    
+    Args:
+        entity_model: Pydantic model class
+        entity_type: Entity type string (for default name)
+        
+    Returns:
+        Dictionary with default entity data
+        
+    Raises:
+        Exception: If model instantiation fails
+    """
+    default_entity_data = {
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+    }
+    
+    # For entities with a "name" field, set a default name
+    if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
+        default_entity_data["name"] = f"default_{entity_type}"
+    
+    # Create instance with minimal required data
+    entity_instance = entity_model(**default_entity_data)
+    
+    # Get all model fields and create a complete data dict with explicit None for optional fields
+    complete_data = {}
+    for field_name, field_info in entity_model.model_fields.items():
+        if hasattr(entity_instance, field_name):
+            value = getattr(entity_instance, field_name)
+            complete_data[field_name] = value
+        else:
+            # For fields not in the instance, explicitly set to None if they're optional
+            if not field_info.is_required():
+                complete_data[field_name] = None
+    
+    return complete_data
+
+
+def _not_yet_supported_error(feature: str, suggestion: str = None) -> ErrorResult:
+    """Return standardized 'not yet supported' error."""
+    return ErrorResult(
+        errors=[f"{feature} not yet supported"],
+        suggestions=[suggestion or f"{feature} may be available in future implementation"]
+    )
+
+
+def _entity_not_found_error(entity_type: str, company_name: str) -> ErrorResult:
+    """Return standardized entity not found error."""
+    return ErrorResult(
+        errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
+        suggestions=[f"Create the {entity_type} first or check the entity name"]
+    )
+
+
+def _validate_entity_exists(entity_type: str, company_name: str, context: Context) -> Optional[ErrorResult]:
+    """
+    Validate entity exists, return error if not.
+    
+    Returns:
+        ErrorResult if entity doesn't exist, None if valid
+    """
+    if not entity_exists(entity_type, company_name, context):
+        return _entity_not_found_error(entity_type, company_name)
+    return None
+
+
+def _resolve_company_name(name: Optional[str], context: Context) -> tuple[Optional[str], Optional[ErrorResult]]:
+    """
+    Resolve company name with intelligent matching.
+    
+    Returns:
+        Tuple of (actual_company_name, error). If error is not None, operation failed.
+    """
+    if not name:
+        return None, ErrorResult(
+            errors=["Company name required"],
+            suggestions=["Specify company name"]
+        )
+    
+    actual_name = find_company_by_name(name, context)
+    if not actual_name:
+        return None, ErrorResult(
+            errors=[f"Company '{name}' not found"],
+            suggestions=["Check company name spelling or list existing companies"]
+        )
+    
+    return actual_name, None
+
+
 # ==================== STRUCTURE OPERATIONS ====================
 
 async def create_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Create schema or entity structure."""
     
-    # Step 1: Validate
     error = validate_target_exists(parsed_command)
     if error:
         return error
     
-    # Step 2: Extract & Translate
-    assert parsed_command.target is not None  # Validated above
+    assert parsed_command.target is not None  # Validated by validate_target_exists
     target_id = get_target_id(parsed_command.target)
     target_name = parsed_command.target_name
     field_values = parsed_command.field_values
     
-    # Step 3: Route by target type
     if isinstance(parsed_command.target, SchemaWord):
-        # Create schema (database)
         return await _create_schema(target_id, target_name, field_values, context)
     
     elif isinstance(parsed_command.target, EntityWord):
-        # Create entity (future)
-        return ErrorResult(
-            errors=["Entity structure creation not yet supported"],
-            suggestions=["Entity structures are currently defined in code"]
+        return _not_yet_supported_error(
+            "Entity structure creation", 
+            "Entity structures are currently defined in code"
         )
     
     elif isinstance(parsed_command.target, FieldWord):
-        # Create field (future)
-        return ErrorResult(
-            errors=["Field structure creation not yet supported"],
-            suggestions=["Field structures are currently defined in entity models"]
+        return _not_yet_supported_error(
+            "Field structure creation",
+            "Field structures are currently defined in entity models"
         )
     
     else:
@@ -76,33 +163,27 @@ async def create_handler(parsed_command: ParsedCommand, context: Context) -> Han
 async def drop_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Drop schema or entity structure."""
     
-    # Step 1: Validate
     error = validate_target_exists(parsed_command)
     if error:
         return error
     
-    # Step 2: Extract & Translate  
-    assert parsed_command.target is not None  # Validated above
+    assert parsed_command.target is not None  # Validated by validate_target_exists
     target_id = get_target_id(parsed_command.target)
     target_name = parsed_command.target_name
     
-    # Step 3: Route by target type
     if isinstance(parsed_command.target, SchemaWord):
-        # Drop schema (database)
         return await _drop_schema(target_id, target_name, context)
     
     elif isinstance(parsed_command.target, EntityWord):
-        # Drop entity (future)
-        return ErrorResult(
-            errors=["Entity structure deletion not yet supported"],
-            suggestions=["Entity structures are currently defined in code"]
+        return _not_yet_supported_error(
+            "Entity structure deletion",
+            "Entity structures are currently defined in code"
         )
     
     elif isinstance(parsed_command.target, FieldWord):
-        # Drop field (future)
-        return ErrorResult(
-            errors=["Field structure deletion not yet supported"],
-            suggestions=["Field structures are currently defined in entity models"]
+        return _not_yet_supported_error(
+            "Field structure deletion", 
+            "Field structures are currently defined in entity models"
         )
     
     else:
@@ -114,7 +195,6 @@ async def drop_handler(parsed_command: ParsedCommand, context: Context) -> Handl
 async def add_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Add or set field values."""
     
-    # Step 1: Validate
     error = validate_field_values_present(parsed_command)
     if error:
         return error
@@ -122,43 +202,37 @@ async def add_handler(parsed_command: ParsedCommand, context: Context) -> Handle
     company_name, error = validate_org_context(context)
     if error:
         return error
-    assert company_name is not None  # Validated above
     
-    # Step 2: Extract & Translate
-    assert parsed_command.target_model is not None, "Target must provide a model"
+    assert company_name is not None  # Validated by validate_org_context
+    assert parsed_command.target_model is not None  # Required for add operations
     entity_type = get_entity_type_string(parsed_command.target_model)
     fields = parsed_command.field_values
     filters = parsed_command.filters
     
-    # Step 3: Call operation function
     return await _add_field_values(
         entity_type=entity_type,
         fields=fields,
         filters=filters,
         company_name=company_name,
         context=context,
-        entity_model=parsed_command.target_model  # Still needed for defaults
+        entity_model=parsed_command.target_model
     )
 
 
 async def delete_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Delete data (content, not structure)."""
     
-    # Step 1: Validate
     company_name, error = validate_org_context(context)
     if error:
         return error
-    assert company_name is not None  # Validated above
     
-    # Step 2: Extract & Translate
-    assert parsed_command.target_model is not None, "Target must provide a model"
+    assert company_name is not None  # Validated by validate_org_context
+    assert parsed_command.target_model is not None  # Required for delete operations
     entity_type = get_entity_type_string(parsed_command.target_model)
     field_words = parsed_command.field_words
     filters = parsed_command.filters
     
-    # Step 3: Determine operation type based on what's specified
     if field_words:
-        # Delete specific fields
         return await _delete_field_values(
             entity_type=entity_type,
             field_names=field_words,
@@ -168,7 +242,6 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
         )
     
     elif filters:
-        # Delete matching rows
         cardinality = getattr(parsed_command.target_model, 'cardinality', Cardinality.SINGLE) if parsed_command.target_model else Cardinality.SINGLE
         if cardinality == Cardinality.SINGLE:
             return ErrorResult(errors=["Cannot delete rows from single-record entity"])
@@ -181,7 +254,6 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
         )
     
     else:
-        # Delete all entity content
         return await _delete_entity_content(
             entity_type=entity_type,
             company_name=company_name,
@@ -192,57 +264,49 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
 async def reset_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Reset entity or fields to default values."""
     
-    # Step 1: Validate
     company_name, error = validate_org_context(context)
     if error:
         return error
-    assert company_name is not None  # Validated above
     
-    # Step 2: Extract & Translate
-    assert parsed_command.target_model is not None, "Target must provide a model"
+    assert company_name is not None  # Validated by validate_org_context
+    assert parsed_command.target_model is not None  # Required for reset operations
     entity_type = get_entity_type_string(parsed_command.target_model)
     field_words = parsed_command.field_words
     filters = parsed_command.filters
     
-    # Step 3: Route based on what's specified
     if field_words:
-        # Reset specific fields
-        assert parsed_command.target_model is not None  # Already validated above
         return await _reset_field_values(
             entity_type=entity_type,
             field_names=field_words,
             filters=filters,
             company_name=company_name,
             context=context,
-            entity_model=parsed_command.target_model  # Needed for defaults
+            entity_model=parsed_command.target_model
         )
     else:
-        # Reset entire entity
-        assert parsed_command.target_model is not None  # Already validated above
         return await _reset_entity_content(
             entity_type=entity_type,
             company_name=company_name,
             context=context,
-            entity_model=parsed_command.target_model  # Needed for defaults
+            entity_model=parsed_command.target_model
         )
 
 
 async def show_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Display data with optional field selection and filtering."""
     
-    # Schema structure info (if implemented)
     if isinstance(parsed_command.target, SchemaWord):
+        assert parsed_command.target is not None  # Checked by isinstance
         target_id = get_target_id(parsed_command.target)
         target_name = parsed_command.target_name
         return await _show_schema_info(target_id, target_name, context)
     
-    # Entity content
     company_name, error = validate_org_context(context)
     if error:
         return error
-    assert company_name is not None  # Validated above
     
-    assert parsed_command.target_model is not None, "Target must provide a model"
+    assert company_name is not None  # Validated by validate_org_context
+    assert parsed_command.target_model is not None  # Required for show operations
     entity_type = get_entity_type_string(parsed_command.target_model)
     field_names = parsed_command.field_words
     filters = parsed_command.filters
@@ -253,7 +317,7 @@ async def show_handler(parsed_command: ParsedCommand, context: Context) -> Handl
         filters=filters,
         company_name=company_name,
         context=context,
-        entity_model=parsed_command.target_model  # Pass for cardinality check
+        entity_model=parsed_command.target_model
     )
 
 
@@ -332,19 +396,9 @@ async def _drop_schema(target_id: str, name: Optional[str], context: Context) ->
             suggestions=["Use 'cd' to navigate to system level first"]
         )
     
-    if not name:
-        return ErrorResult(
-            errors=["Schema name required for deletion"],
-            suggestions=["Specify schema name: drop company 'CompanyName'"]
-        )
-    
-    # For company deletion, use intelligent name matching
-    actual_company_name = find_company_by_name(name, context)
-    if not actual_company_name:
-        return ErrorResult(
-            errors=[f"Company '{name}' not found"],
-            suggestions=["Check company name spelling or list existing companies"]
-        )
+    actual_company_name, error = _resolve_company_name(name, context)
+    if error:
+        return error
     
     # Delete the entire entity
     delete_result = StorageInterface.delete_entity(target_id, actual_company_name, context)
@@ -363,19 +417,9 @@ async def _drop_schema(target_id: str, name: Optional[str], context: Context) ->
 async def _show_schema_info(target_id: str, name: Optional[str], context: Context) -> HandlerResult:
     """Show schema information."""
     
-    if not name:
-        return ErrorResult(
-            errors=["Schema name required"],
-            suggestions=["Specify schema name: show company 'CompanyName'"]
-        )
-    
-    # For company info, use intelligent name matching
-    actual_company_name = find_company_by_name(name, context)
-    if not actual_company_name:
-        return ErrorResult(
-            errors=[f"Company '{name}' not found"],
-            suggestions=["Check company name spelling or list existing companies"]
-        )
+    actual_company_name, error = _resolve_company_name(name, context)
+    if error:
+        return error
     
     # Load schema data
     load_result = StorageInterface.load_entity(target_id, actual_company_name, context)
@@ -399,17 +443,17 @@ async def _show_schema_info(target_id: str, name: Optional[str], context: Contex
 
 async def _create_entity_structure(entity_word: EntityWord, context: Context) -> HandlerResult:
     """Create entity structure (future implementation)."""
-    return ErrorResult(
-        errors=["Entity structure creation not yet supported"],
-        suggestions=["Use existing entity types or wait for future implementation"]
+    return _not_yet_supported_error(
+        "Entity structure creation", 
+        "Use existing entity types or wait for future implementation"
     )
 
 
 async def _drop_entity_structure(entity_word: EntityWord, context: Context) -> HandlerResult:
     """Drop entity structure (future implementation)."""
-    return ErrorResult(
-        errors=["Entity structure deletion not yet supported"],
-        suggestions=["Use existing entity types or wait for future implementation"]
+    return _not_yet_supported_error(
+        "Entity structure deletion",
+        "Use existing entity types or wait for future implementation"
     )
 
 
@@ -429,17 +473,6 @@ async def _add_field_values(
         
         # Create entity if it doesn't exist using Pydantic model defaults
         if not entity_exists(entity_type, company_name, context):
-            # Create default entity data using the entity model's Pydantic defaults
-            default_entity_data = {
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-            }
-            
-            # For entities with a "name" field, set a default name
-            if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
-                default_entity_data["name"] = f"default_{entity_type}"
-            
-            # Validate and apply model defaults including None values for optional fields
             try:
                 if entity_model is None:
                     return ErrorResult(
@@ -447,21 +480,7 @@ async def _add_field_values(
                         suggestions=["Check entity model configuration"]
                     )
                 
-                # Create instance with minimal required data
-                entity_instance = entity_model(**default_entity_data)
-                
-                # Get all model fields and create a complete data dict with explicit None for optional fields
-                complete_data = {}
-                for field_name, field_info in entity_model.model_fields.items():
-                    if hasattr(entity_instance, field_name):
-                        value = getattr(entity_instance, field_name)
-                        complete_data[field_name] = value
-                    else:
-                        # For fields not in the instance, explicitly set to None if they're optional
-                        if not field_info.is_required():
-                            complete_data[field_name] = None
-                
-                default_data = complete_data
+                default_data = _create_default_entity_data(entity_model, entity_type)
             except Exception as e:
                 return ErrorResult(
                     errors=[f"Failed to create default entity: {str(e)}"],
@@ -472,11 +491,7 @@ async def _add_field_values(
 
         # Load current entity data
         load_result = StorageInterface.load_entity(entity_type, company_name, context)
-        current_data = load_result.data if load_result.success else {}
-        
-        # Ensure current_data is not None
-        if current_data is None:
-            current_data = {}
+        current_data = load_result.data if (load_result.success and load_result.data) else {}
 
         # Create updated data with new fields
         updated_data = current_data.copy()
@@ -509,17 +524,14 @@ async def _delete_field_values(
 ) -> HandlerResult:
     """Delete specific field values, optionally filtered."""
     
-    # Check if entity exists
-    if not entity_exists(entity_type, company_name, context):
-        return ErrorResult(
-            errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
-            suggestions=[f"Create the {entity_type} first or check the entity name"]
-        )
+    error = _validate_entity_exists(entity_type, company_name, context)
+    if error:
+        return error
     
     # Load current entity data
     load_result = StorageInterface.load_entity(entity_type, company_name, context)
-    current_data = load_result.data if load_result.success else None
-    if current_data is None:
+    current_data = load_result.data if (load_result.success and load_result.data) else {}
+    if not current_data:
         return ErrorResult(
             errors=[f"No data found for {entity_type}"],
             suggestions=["Check entity exists and database connection"]
@@ -527,19 +539,16 @@ async def _delete_field_values(
     
     # Remove the specified fields
     updated_data = current_data.copy()
-    removed_fields = []
-    
-    for field_name in field_names:
-        if field_name in updated_data:
-            # Set to null (rather than deleting the key entirely)
-            updated_data[field_name] = None
-            removed_fields.append(field_name)
+    removed_fields = [field for field in field_names if field in updated_data]
     
     if not removed_fields:
         return ErrorResult(
             errors=[f"None of the specified fields exist in {entity_type}: {', '.join(field_names)}"],
             suggestions=["Check field names or show the entity to see available fields"]
         )
+    
+    for field_name in removed_fields:
+        updated_data[field_name] = None
     
     # Update timestamp
     if "updated_at" in updated_data:
@@ -564,10 +573,9 @@ async def _delete_rows(
 ) -> HandlerResult:
     """Delete rows matching filters."""
     
-    # This would need to be implemented with proper filter support for multi-record entities
-    return ErrorResult(
-        errors=["Row deletion with filters not yet implemented"],
-        suggestions=["Use field deletion or reset entity for now"]
+    return _not_yet_supported_error(
+        "Row deletion with filters",
+        "Use field deletion or reset entity for now"
     )
 
 
@@ -597,32 +605,8 @@ async def _reset_entity_content(
 ) -> HandlerResult:
     """Reset entity to defaults."""
     
-    # Reset to model defaults
     try:
-        default_entity_data = {
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-        }
-        
-        # For entities with a "name" field, set a default name
-        if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
-            default_entity_data["name"] = f"default_{entity_type}"
-        
-        # Create instance with minimal required data
-        entity_instance = entity_model(**default_entity_data)
-        
-        # Get all model fields and create a complete data dict with explicit None for optional fields
-        complete_data = {}
-        for field_name, field_info in entity_model.model_fields.items():
-            if hasattr(entity_instance, field_name):
-                value = getattr(entity_instance, field_name)
-                complete_data[field_name] = value
-            else:
-                # For fields not in the instance, explicitly set to None if they're optional
-                if not field_info.is_required():
-                    complete_data[field_name] = None
-        
-        default_data = complete_data
+        default_data = _create_default_entity_data(entity_model, entity_type)
     except Exception as e:
         return ErrorResult(
             errors=[f"Failed to generate defaults: {str(e)}"],
@@ -662,24 +646,19 @@ async def _reset_field_values(
     
     # Load current entity data
     load_result = StorageInterface.load_entity(entity_type, company_name, context)
-    current_data = load_result.data if load_result.success else {}
-    if current_data is None:
-        current_data = {}
+    current_data = load_result.data if (load_result.success and load_result.data) else {}
     
     # Reset specified fields to defaults
     updated_data = current_data.copy()
-    reset_fields = []
-    
-    for field_name in field_names:
-        if field_name in default_data:
-            updated_data[field_name] = default_data[field_name]
-            reset_fields.append(field_name)
+    reset_fields = [field for field in field_names if field in default_data]
     
     if not reset_fields:
         return ErrorResult(
             errors=[f"None of the specified fields have default values: {', '.join(field_names)}"],
             suggestions=["Check field names or use delete to clear fields"]
         )
+    
+    updated_data.update({field: default_data[field] for field in reset_fields})
     
     # Update timestamp
     updated_data["updated_at"] = datetime.now().isoformat()
@@ -707,12 +686,9 @@ async def _show_entity(
     
     try:
 
-        # Check if entity exists
-        if not entity_exists(entity_type, company_name, context):
-            return ErrorResult(
-                errors=[f"Entity '{entity_type}' does not exist for company '{company_name}'"],
-                suggestions=[f"Create the {entity_type} first or check the entity name"]
-            )
+        error = _validate_entity_exists(entity_type, company_name, context)
+        if error:
+            return error
 
         # Load entity data
         load_result = StorageInterface.load_entity(entity_type, company_name, context)
