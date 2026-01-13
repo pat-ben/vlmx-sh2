@@ -1,9 +1,4 @@
-"""
-Filter application functions for dynamic table filtering.
-
-Provides functionality to apply FilterExpression trees to lists of records,
-enabling complex filtering of entities with cardinality.MULTIPLE.
-"""
+"""Filter application for dynamic table filtering."""
 
 from typing import List, Dict, Any, Union
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
@@ -16,34 +11,7 @@ class FilterApplicationError(Exception):
 
 
 def apply_filters(records: List[Dict[str, Any]], filters: FilterExpression) -> List[Dict[str, Any]]:
-    """
-    Apply filter expression to list of records.
-    
-    Recursively evaluates the FilterExpression tree and returns records
-    that match the filter conditions.
-    
-    Args:
-        records: List of records to filter (each record is a dict)
-        filters: FilterExpression tree to apply
-        
-    Returns:
-        Filtered list of records that match the filter conditions
-        
-    Raises:
-        FilterApplicationError: If filter application fails
-        
-    Examples:
-        >>> records = [
-        ...     {"name": "ACME", "category": "product", "size": "large"},
-        ...     {"name": "TechCorp", "category": "team", "size": "small"},
-        ...     {"name": "StartUp", "category": "product", "size": "small"}
-        ... ]
-        >>> # Filter: category=product
-        >>> condition = FilterCondition(field="category", operator=Operator.EQUAL, value="product")
-        >>> expr = FilterExpression(condition=condition)
-        >>> filtered = apply_filters(records, expr)
-        >>> # Result: [{"name": "ACME", ...}, {"name": "StartUp", ...}]
-    """
+    """Apply filter expression to list of records."""
     if not records:
         return []
     
@@ -54,152 +22,87 @@ def apply_filters(records: List[Dict[str, Any]], filters: FilterExpression) -> L
 
 
 def _evaluate_expression(record: Dict[str, Any], expr: FilterExpression) -> bool:
-    """
-    Evaluate a filter expression against a single record.
-    
-    Args:
-        record: Record to evaluate (dict of field-value pairs)
-        expr: FilterExpression to evaluate
-        
-    Returns:
-        True if record matches the expression, False otherwise
-        
-    Raises:
-        FilterApplicationError: If expression structure is invalid
-    """
-    # Single condition
+    """Evaluate a filter expression against a single record."""
     if expr.is_single_condition:
-        if expr.condition is None:
+        if not expr.condition:
             raise FilterApplicationError("Single condition expression has no condition")
         return _evaluate_condition(record, expr.condition)
     
-    # Grouped expression
-    elif expr.is_grouped_expression:
-        if expr.grouped is None:
+    if expr.is_grouped_expression:
+        if not expr.grouped:
             raise FilterApplicationError("Grouped expression has no grouped content")
         return _evaluate_expression(record, expr.grouped)
     
-    # Logical expression (left operator right)
-    elif expr.is_logical_expression:
-        if expr.left is None or expr.right is None:
-            raise FilterApplicationError("Logical expression missing left or right operand")
+    if expr.is_logical_expression:
+        if not expr.left or not expr.right:
+            raise FilterApplicationError("Logical expression missing operands")
+        
         left_result = _evaluate_expression(record, expr.left)
         right_result = _evaluate_expression(record, expr.right)
         
-        if expr.operator == LogicalOperator.AND:
-            return left_result and right_result
-        elif expr.operator == LogicalOperator.OR:
-            return left_result or right_result
-        else:
-            raise FilterApplicationError(f"Unknown logical operator: {expr.operator}")
+        return (left_result and right_result) if expr.operator == LogicalOperator.AND else (left_result or right_result)
     
-    else:
-        raise FilterApplicationError(f"Invalid expression structure: {expr}")
+    raise FilterApplicationError(f"Invalid expression structure: {expr}")
 
 
 def _evaluate_condition(record: Dict[str, Any], condition: FilterCondition) -> bool:
-    """
-    Evaluate a single filter condition against a record.
+    """Evaluate a single filter condition against a record."""
+    record_value = record.get(condition.field)
     
-    Args:
-        record: Record to evaluate
-        condition: FilterCondition to evaluate
-        
-    Returns:
-        True if record matches the condition, False otherwise
-        
-    Raises:
-        FilterApplicationError: If field doesn't exist or comparison fails
-    """
-    # Get field value from record
-    if condition.field not in record:
-        # Field doesn't exist - treat as None for comparison
-        record_value = None
-    else:
-        record_value = record[condition.field]
-    
-    # Get filter value
-    filter_value = condition.value
-    
-    # Apply operator comparison
     try:
-        return _apply_operator(record_value, condition.operator, filter_value)
+        return _apply_operator(record_value, condition.operator, condition.value)
     except Exception as e:
         raise FilterApplicationError(f"Condition evaluation failed for {condition.field}: {str(e)}")
 
 
 def _apply_operator(record_value: Any, operator: Operator, filter_value: Any) -> bool:
-    """
-    Apply operator comparison between record value and filter value.
-    
-    Handles type coercion and comparison logic for different data types.
-    
-    Args:
-        record_value: Value from the record
-        operator: Comparison operator
-        filter_value: Value from the filter
-        
-    Returns:
-        Boolean result of the comparison
-    """
+    """Apply operator comparison between record value and filter value."""
     # Handle None values
     if record_value is None:
-        if operator == Operator.EQUAL:
-            return filter_value is None or filter_value == "" or filter_value == "null"
-        elif operator == Operator.NOT_EQUAL:
-            return not (filter_value is None or filter_value == "" or filter_value == "null")
-        else:
-            return False  # Can't do range comparisons with None
+        null_values = {None, "", "null"}
+        return (filter_value in null_values) == (operator == Operator.EQUAL)
     
-    # Convert values to comparable types
+    # Normalize values for comparison
     record_val, filter_val = _normalize_values(record_value, filter_value)
     
-    # Apply comparison
-    if operator == Operator.EQUAL:
-        return record_val == filter_val
-    elif operator == Operator.NOT_EQUAL:
-        return record_val != filter_val
-    elif operator == Operator.GREATER:
-        return record_val > filter_val
-    elif operator == Operator.LESS:
-        return record_val < filter_val
-    elif operator == Operator.GREATER_EQUAL:
-        return record_val >= filter_val
-    elif operator == Operator.LESS_EQUAL:
-        return record_val <= filter_val
-    else:
+    # Apply comparison using operator mapping
+    ops = {
+        Operator.EQUAL: lambda r, f: r == f,
+        Operator.NOT_EQUAL: lambda r, f: r != f,
+        Operator.GREATER: lambda r, f: r > f,
+        Operator.LESS: lambda r, f: r < f,
+        Operator.GREATER_EQUAL: lambda r, f: r >= f,
+        Operator.LESS_EQUAL: lambda r, f: r <= f,
+    }
+    
+    if operator not in ops:
         raise FilterApplicationError(f"Unknown operator: {operator}")
+    
+    return ops[operator](record_val, filter_val)
 
 
 def _normalize_values(record_value: Any, filter_value: Any) -> tuple[Any, Any]:
-    """
-    Normalize values for comparison by attempting type coercion.
-    
-    Attempts to convert both values to compatible types for comparison.
-    Priority: number > string
-    
-    Args:
-        record_value: Value from record
-        filter_value: Value from filter
-        
-    Returns:
-        Tuple of normalized (record_val, filter_val)
-    """
-    # Convert to strings for initial processing
+    """Normalize values for comparison by attempting type coercion."""
     record_str = str(record_value) if record_value is not None else ""
     filter_str = str(filter_value) if filter_value is not None else ""
     
-    # Try to convert both to numbers (int or float)
-    record_num = _try_parse_number(record_str)
-    filter_num = _try_parse_number(filter_str)
-    
-    if record_num is not None and filter_num is not None:
-        # Both are numbers
-        return record_num, filter_num
+    # Try numeric conversion
+    for val_str in [record_str, filter_str]:
+        if not val_str:
+            continue
+        try:
+            record_num = int(record_str) if '.' not in record_str else float(record_str)
+            filter_num = int(filter_str) if '.' not in filter_str else float(filter_str)
+            return record_num, filter_num
+        except ValueError:
+            continue
     
     # Try boolean conversion
-    record_bool = _try_parse_boolean(record_str)
-    filter_bool = _try_parse_boolean(filter_str)
+    bool_map = {'true': True, 'yes': True, '1': True, 'on': True,
+                'false': False, 'no': False, '0': False, 'off': False}
+    
+    record_bool = bool_map.get(record_str.lower())
+    filter_bool = bool_map.get(filter_str.lower())
     
     if record_bool is not None and filter_bool is not None:
         return record_bool, filter_bool
@@ -208,95 +111,20 @@ def _normalize_values(record_value: Any, filter_value: Any) -> tuple[Any, Any]:
     return record_str.lower(), filter_str.lower()
 
 
-def _try_parse_number(value: str) -> Union[int, float, None]:
-    """
-    Try to parse string as number (int or float).
-    
-    Returns:
-        Parsed number or None if not a number
-    """
-    if not value:
-        return None
-    
-    try:
-        # Try int first
-        if '.' not in value and 'e' not in value.lower():
-            return int(value)
-        else:
-            return float(value)
-    except ValueError:
-        return None
-
-
-def _try_parse_boolean(value: str) -> Union[bool, None]:
-    """
-    Try to parse string as boolean.
-    
-    Returns:
-        Parsed boolean or None if not a boolean
-    """
-    if not value:
-        return None
-    
-    value_lower = value.lower()
-    if value_lower in ['true', 'yes', '1', 'on']:
-        return True
-    elif value_lower in ['false', 'no', '0', 'off']:
-        return False
-    else:
-        return None
-
-
-def count_matching_records(records: List[Dict[str, Any]], filters: FilterExpression) -> int:
-    """
-    Count records that match filter expression without loading them all.
-    
-    Useful for pagination and performance optimization.
-    
-    Args:
-        records: List of records to count
-        filters: FilterExpression to apply
-        
-    Returns:
-        Count of matching records
-    """
-    count = 0
-    for record in records:
-        try:
-            if _evaluate_expression(record, filters):
-                count += 1
-        except FilterApplicationError:
-            # Skip records that can't be evaluated
-            continue
-    return count
-
-
 def get_filter_fields(filters: FilterExpression) -> List[str]:
-    """
-    Extract all field names referenced in a filter expression.
-    
-    Useful for validating field existence and optimizing queries.
-    
-    Args:
-        filters: FilterExpression to analyze
-        
-    Returns:
-        List of unique field names used in the filter
-    """
+    """Extract all field names referenced in a filter expression."""
     fields = set()
     
-    def _extract_fields(expr: FilterExpression):
-        if expr.is_single_condition:
-            if expr.condition is not None:
-                fields.add(expr.condition.field)
-        elif expr.is_grouped_expression:
-            if expr.grouped is not None:
-                _extract_fields(expr.grouped)
+    def extract(expr: FilterExpression):
+        if expr.is_single_condition and expr.condition:
+            fields.add(expr.condition.field)
+        elif expr.is_grouped_expression and expr.grouped:
+            extract(expr.grouped)
         elif expr.is_logical_expression:
-            if expr.left is not None:
-                _extract_fields(expr.left)
-            if expr.right is not None:
-                _extract_fields(expr.right)
+            if expr.left:
+                extract(expr.left)
+            if expr.right:
+                extract(expr.right)
     
-    _extract_fields(filters)
-    return sorted(list(fields))
+    extract(filters)
+    return sorted(fields)

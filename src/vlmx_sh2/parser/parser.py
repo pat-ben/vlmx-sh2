@@ -6,7 +6,7 @@ value extraction, and command validation. Provides the primary interface for
 parsing natural language commands into structured data.
 """
 
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict, Union
 from ..models.parser import ParseResult, ParsedCommand, RecognizedToken
 from ..models.words import ActionWord, SchemaWord, EntityWord
 from .tokenizer import Tokenizer
@@ -106,7 +106,7 @@ class VLMXParser:
             ValueError: If required components (action, entity) are missing
         """
         action = self._extract_action(command_tokens)
-        target = None
+        target: Optional[Union[SchemaWord, EntityWord]] = None
         schema_name = None
         
         if action.id == "cd":
@@ -151,12 +151,12 @@ class VLMXParser:
             ValueError: If no action word found
         """
         for token in tokens:
-            if token.is_action_word and token.word:
-                return token.word  # Type is guaranteed by is_action_word
+            if token.is_action_word and token.word and isinstance(token.word, ActionWord):
+                return token.word
         
         raise ValueError("No action word found in command")
     
-    def _extract_target(self, tokens: List[RecognizedToken]):
+    def _extract_target(self, tokens: List[RecognizedToken]) -> Union[SchemaWord, EntityWord]:
         """
         Extract the target word from tokens.
         
@@ -172,8 +172,10 @@ class VLMXParser:
             ValueError: If no target word found
         """
         for token in tokens:
-            if (token.is_entity_word or token.is_schema_word) and token.word:
-                return token.word  # Type is guaranteed by properties
+            if token.is_entity_word and token.word and isinstance(token.word, EntityWord):
+                return token.word
+            elif token.is_schema_word and token.word and isinstance(token.word, SchemaWord):
+                return token.word
         
         raise ValueError("No target word found in command")
     

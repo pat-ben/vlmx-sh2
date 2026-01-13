@@ -2,11 +2,10 @@
 Utility functions for generic command handlers.
 
 Provides common functionality for extracting entities, fields, and context
-information from parse results. Used by generic field handlers to work
-with any entity-field combination dynamically.
+information from parse results.
 """
 
-from typing import Dict, Any, Optional, Type, Union, Tuple
+from typing import Dict, Any, Optional, Type, Union, Tuple, List
 from pydantic import BaseModel
 
 from ..models.context import Context
@@ -15,51 +14,26 @@ from ..models.responses import ErrorResult, CommandResult, HandlerResult, Storag
 from ..models.parser.parsed_command import ParsedCommand
 from ..models.words import SchemaWord, EntityWord, FieldWord
 
+
+# ==================== CONTEXT UTILITIES ====================
+
 def get_company_name_from_context(context: Context) -> Optional[str]:
-    """
-    Get the current company name from context.
-    
-    Args:
-        context: The execution context
-        
-    Returns:
-        Company name if in ORG context, None if in SYS context
-    """
-    if context.level >= ContextLevel.ORG and context.org_name:
-        return context.org_name
-    return None
+    """Get the current company name from context."""
+    return context.org_name if context.level >= ContextLevel.ORG else None
+
 
 def format_entity_data_for_display(entity_data: Dict[str, Any], 
-                                 specific_fields: list[str] | None = None) -> str:
-    """
-    Format entity data for user display.
-    
-    Args:
-        entity_data: The entity data dictionary
-        specific_fields: Specific fields to show, or None for all
-        
-    Returns:
-        Formatted string for display
-    """
+                                 specific_fields: Optional[List[str]] = None) -> str:
+    """Format entity data for user display."""
     if not entity_data:
         return "No data found"
     
+    data_to_show = {f: entity_data.get(f) for f in specific_fields} if specific_fields else entity_data
+    
     lines = []
-    
-    # Filter to specific fields if requested
-    if specific_fields:
-        data_to_show = {field: entity_data.get(field) for field in specific_fields}
-    else:
-        data_to_show = entity_data
-    
-    # Format each field
     for key, value in data_to_show.items():
         if value is not None:
-            if isinstance(value, str) and len(value) > 50:
-                # Truncate long values
-                formatted_value = value[:50] + "..."
-            else:
-                formatted_value = str(value)
+            formatted_value = f"{str(value)[:50]}..." if isinstance(value, str) and len(value) > 50 else str(value)
             lines.append(f"{key}: {formatted_value}")
         else:
             lines.append(f"{key}: (not set)")
@@ -70,130 +44,51 @@ def format_entity_data_for_display(entity_data: Dict[str, Any],
 # ==================== TYPE CONVERSION UTILITIES ====================
 
 def get_entity_type_string(target_model: Type[BaseModel]) -> str:
-    """
-    Convert entity model to storage string identifier.
-    
-    Extracts entity type string from model class name by removing 'Entity' suffix.
-    This is the ONLY place this conversion should happen.
-    
-    Args:
-        target_model: Entity model class (e.g., BrandEntity, OrganizationEntity)
-    
-    Returns:
-        Storage identifier string (e.g., "brand", "organization")
-    
-    Examples:
-        >>> get_entity_type_string(BrandEntity)
-        "brand"
-        >>> get_entity_type_string(OrganizationEntity)
-        "organization"
-    """
+    """Convert entity model to storage string identifier."""
     return target_model.__name__.replace("Entity", "").lower()
 
 
 def get_target_id(target: Union[SchemaWord, EntityWord, FieldWord]) -> str:
-    """
-    Get storage identifier from any target word.
-    
-    Uses direct property access to word.id (all word types have this property).
-    
-    Args:
-        target: Any word type (SchemaWord, EntityWord, FieldWord)
-    
-    Returns:
-        Storage identifier string from word.id
-    
-    Examples:
-        >>> get_target_id(SchemaWord(id="company", ...))
-        "company"
-        >>> get_target_id(EntityWord(id="brand", ...))
-        "brand"
-    """
+    """Get storage identifier from any target word."""
     return target.id
 
 
 # ==================== VALIDATION UTILITIES ====================
 
+def _validation_error(message: str, suggestions: Optional[List[str]] = None) -> ErrorResult:
+    """Create standardized validation error."""
+    return ErrorResult(errors=[message], suggestions=suggestions or [])
+
+
 def validate_target_exists(parsed_command: ParsedCommand) -> Optional[ErrorResult]:
-    """
-    Validate that parsed command has a target.
-    
-    Returns:
-        ErrorResult if validation fails, None if validation passes
-    """
-    if not parsed_command.target:
-        return ErrorResult(errors=["No target specified"])
-    return None
+    """Validate that parsed command has a target."""
+    return _validation_error("No target specified") if not parsed_command.target else None
 
 
 def validate_org_context(context: Context) -> Tuple[Optional[str], Optional[ErrorResult]]:
-    """
-    Validate that we're in organization context and get company name.
-    
-    Returns:
-        Tuple of (company_name, error_result)
-        - If valid: (company_name, None)
-        - If invalid: (None, ErrorResult)
-    
-    Usage:
-        company_name, error = validate_org_context(context)
-        if error:
-            return error
-        # Continue with company_name
-    """
+    """Validate organization context and get company name."""
     company_name = get_company_name_from_context(context)
-    if not company_name:
-        return None, ErrorResult(errors=["Must be in organization context"])
-    return company_name, None
+    return (company_name, None) if company_name else (None, _validation_error("Must be in organization context"))
 
 
 def validate_field_values_present(parsed_command: ParsedCommand) -> Optional[ErrorResult]:
-    """
-    Validate that parsed command has field values.
-    
-    Returns:
-        ErrorResult if validation fails, None if validation passes
-    """
-    if not parsed_command.field_values:
-        return ErrorResult(errors=["No fields specified"])
-    return None
+    """Validate that parsed command has field values."""
+    return _validation_error("No fields specified") if not parsed_command.field_values else None
 
 
 # ==================== RESULT HANDLING UTILITIES ====================
 
-def handle_storage_result(
-    storage_result: StorageResult,
-    success_message: str,
-    entity_type: str,
-    operation_data: Optional[Dict[str, Any]] = None
-) -> HandlerResult:
-    """
-    Convert StorageResult to HandlerResult.
-    
-    Centralizes the pattern of checking storage result and building appropriate response.
-    
-    Args:
-        storage_result: Result from storage operation
-        success_message: Message to return on success
-        entity_type: Entity type string for error messages
-        operation_data: Additional data to include in success response
-    
-    Returns:
-        CommandResult on success, ErrorResult on failure
-    """
+def handle_storage_result(storage_result: StorageResult, success_message: str, 
+                         entity_type: str, operation_data: Optional[Dict[str, Any]] = None) -> HandlerResult:
+    """Convert StorageResult to HandlerResult."""
     if storage_result.success:
-        data = {
-            "entity_type": entity_type,
-            **(operation_data or {})
-        }
         return CommandResult(
             success=True,
             message=success_message,
-            data=data
+            data={"entity_type": entity_type, **(operation_data or {})}
         )
     else:
-        return ErrorResult(
-            errors=[storage_result.error or f"Operation failed for {entity_type}"],
-            suggestions=["Check database permissions and system status"]
+        return _validation_error(
+            storage_result.error or f"Operation failed for {entity_type}",
+            ["Check database permissions and system status"]
         )
-
