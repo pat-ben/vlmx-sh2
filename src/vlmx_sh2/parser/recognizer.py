@@ -5,9 +5,9 @@ Handles word recognition and value classification. Converts Token objects
 from the tokenizer into RecognizedToken objects with full classification.
 """
 
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from ..words import get_all_words, get_word
-from ..models.words import WordType, Word
+from ..models.words import WordType, Word, ActionWord
 from ..models.parser import Token, RecognizedToken, TokenType, ValueContext
 from ..support.suggestions import SuggestionEngine
 
@@ -22,27 +22,58 @@ class WordRecognizer:
     3. Providing suggestions for unrecognized tokens (UNKNOWN tokens)
     """
     
+    # this may be used for future enhancements (fuzzy matching and suggestions)
+    _CONFIDENCE_EXACT_MATCH = 100.0
+    _CONFIDENCE_VALUE = 50.0
+    _CONFIDENCE_UNKNOWN = 0.0
+    
     def __init__(self):
         """Initialize word recognizer with registry and alias mappings."""
         self.word_registry = get_all_words()
         self.suggestion_engine = SuggestionEngine()
-        
-        # Build alias mapping for fast lookup
-        self.alias_to_word = {}
-        self.words_by_type = {wt: [] for wt in WordType}
-        
+        self.alias_to_word = self._build_alias_map()
+        self.words_by_type = self._group_words_by_type()
+    
+    def _build_alias_map(self) -> Dict[str, str]:
+        """Build mapping from lowercase aliases to word IDs."""
+        alias_map = {}
         for word_id, word in self.word_registry.items():
-            # Add the word ID itself
-            self.alias_to_word[word_id.lower()] = word_id
+            alias_map[word_id.lower()] = word_id
             
-            # Add all aliases (only ActionWord has aliases)
-            from ..models.words import ActionWord
             if isinstance(word, ActionWord):
                 for alias in word.aliases:
-                    self.alias_to_word[alias.lower()] = word_id
-            
-            # Group words by type
-            self.words_by_type[word.word_type].append(word)
+                    alias_map[alias.lower()] = word_id
+        
+        return alias_map
+    
+    def _group_words_by_type(self) -> Dict[WordType, List[Word]]:
+        """Group words by their type for quick access."""
+        groups = {wt: [] for wt in WordType}
+        for word in self.word_registry.values():
+            groups[word.word_type].append(word)
+        return groups
+    
+    @staticmethod
+    def _create_recognized_token(
+        token: Token,
+        token_type: TokenType,
+        word: Optional[Word] = None,
+        value_context: Optional[ValueContext] = None,
+        confidence: float = 0.0,
+        suggestions: Optional[List[str]] = None
+    ) -> RecognizedToken:
+        """Create RecognizedToken from Token with recognition data."""
+        return RecognizedToken(
+            text=token.text,
+            position=token.position,
+            was_quoted=token.was_quoted,
+            operator_after=token.operator_after,
+            token_type=token_type,
+            word=word,
+            value_context=value_context,
+            confidence=confidence,
+            suggestions=suggestions or []
+        )
     
     def get_words_by_type(self, word_type: WordType) -> List[Word]:
         """Get all words of a specific type."""
@@ -67,92 +98,58 @@ class WordRecognizer:
         if token_lower in self.alias_to_word:
             word_id = self.alias_to_word[token_lower]
             word = get_word(word_id)
-            return word, 100.0, []
+            return word, self._CONFIDENCE_EXACT_MATCH, []
         
         # No match - provide suggestions
         suggestions = self.suggestion_engine.get_token_suggestions(token_text)
-        return None, 0.0, suggestions
+        return None, self._CONFIDENCE_UNKNOWN, suggestions
     
+    
+    def _classify_token(
+        self, 
+        token: Token, 
+        recognized_tokens: List[RecognizedToken], 
+        position: int
+    ) -> RecognizedToken:
+        """
+        Classify a single token into WORD, VALUE, or UNKNOWN.
+
+        Returns:
+            RecognizedToken with appropriate classification
+        """
+        value_context = self._determine_value_context(token, recognized_tokens, position)
+        
+        if value_context:
+            return self._create_recognized_token(
+                token, TokenType.VALUE, value_context=value_context, 
+                confidence=self._CONFIDENCE_VALUE
+            )
+        else:
+            word, confidence, suggestions = self.recognize_word(token.text)
+            if word:
+                return self._create_recognized_token(
+                    token, TokenType.WORD, word=word, confidence=confidence
+                )
+            else:
+                return self._create_recognized_token(
+                    token, TokenType.UNKNOWN, confidence=confidence, suggestions=suggestions
+                )
     
     def process_tokens(self, tokens: List[Token]) -> List[RecognizedToken]:
         """
         Process tokens to recognize words and classify values.
         
-        Converts List[Token] from tokenizer to List[RecognizedToken].
-        
         Classification logic:
         1. Try to match against word registry → WORD
         2. If not matched, check if it's a value:
-           a. Quoted token after schema word → VALUE (SCHEMA context)
-           b. Quoted token after action word → VALUE (SCHEMA context)
-           c. Token after operator → VALUE (FIELD context, with or without quotes)
+           a. Quoted token after schema/action word → VALUE (SCHEMA context)
+           b. Token after operator → VALUE (FIELD context)
         3. Otherwise → UNKNOWN
-        
-        Args:
-            tokens: List of Token objects from tokenizer
-            
-        Returns:
-            List of RecognizedToken objects with classification
         """
         recognized_tokens = []
         
         for i, token in enumerate(tokens):
-            # Step 1: Check if this token should be a VALUE (higher priority than word matching)
-            value_context = self._determine_value_context(token, recognized_tokens, i)
-            
-            if value_context:
-                # It's a VALUE!
-                recognized_token = RecognizedToken(
-                    # Copy Token fields
-                    text=token.text,
-                    position=token.position,
-                    was_quoted=token.was_quoted,
-                    operator_after=token.operator_after,
-                    
-                    # Set recognition fields
-                    token_type=TokenType.VALUE,
-                    word=None,
-                    value_context=value_context,
-                    confidence=50.0,  # Medium confidence for values
-                    suggestions=[]
-                )
-            else:
-                # Step 2: Try to recognize as a word
-                word, confidence, suggestions = self.recognize_word(token.text)
-                
-                if word:
-                    # It's a WORD!
-                    recognized_token = RecognizedToken(
-                        # Copy Token fields
-                        text=token.text,
-                        position=token.position,
-                        was_quoted=token.was_quoted,
-                        operator_after=token.operator_after,
-                        
-                        # Set recognition fields
-                        token_type=TokenType.WORD,
-                        word=word,
-                        value_context=None,
-                        confidence=confidence,
-                        suggestions=[]
-                    )
-                else:
-                    # It's UNKNOWN
-                    recognized_token = RecognizedToken(
-                        # Copy Token fields
-                        text=token.text,
-                        position=token.position,
-                        was_quoted=token.was_quoted,
-                        operator_after=token.operator_after,
-                        
-                        # Set recognition fields
-                        token_type=TokenType.UNKNOWN,
-                        word=None,
-                        value_context=None,
-                        confidence=0.0,
-                        suggestions=suggestions
-                    )
-            
+            recognized_token = self._classify_token(token, recognized_tokens, i)
             recognized_tokens.append(recognized_token)
         
         return recognized_tokens
@@ -167,43 +164,21 @@ class WordRecognizer:
         Determine if a token is a value and what context it has.
         
         Rules:
-        1. Schema value (pattern 1): Quoted token immediately after a schema word
-           Example: company "ACME" → "ACME" is SCHEMA value
-        
-        2. Schema value (pattern 2): Quoted token immediately after an action word
-           Example: delete "ACME" → "ACME" is SCHEMA value (schema word implied)
-        
-        3. Field value: Token immediately after any token with operator
-           Example: currency=EUR → "EUR" is FIELD value (with or without quotes)
-           Example: vision="Our vision" → "Our vision" is FIELD value
-        
-        Note: EntityWords (organization, metadata, etc.) don't have direct quoted values.
-        They're used for table operations: show organization, list news, etc.
-        Field words don't take direct values - values only come after operators.
-        
-        Args:
-            token: Current token being classified
-            recognized_tokens: Previously recognized tokens
-            current_position: Index of current token
-            
-        Returns:
-            ValueContext.SCHEMA, ValueContext.FIELD, or None
+        1. Schema value: Quoted token after schema/action word
+           Examples: company "ACME", delete "ACME"
+        2. Field value: Token after operator (quoted or not)
+           Examples: currency=EUR, vision="Our vision"
         """
-        # Need at least one previous token for context
         if current_position == 0:
             return None
         
         prev_token = recognized_tokens[current_position - 1]
         
-        # Rule 1: Schema value (quoted token after schema word)
-        if (prev_token.is_schema_word and token.was_quoted):
+        # Schema value: Quoted token after schema or action word
+        if token.was_quoted and (prev_token.is_schema_word or prev_token.is_action_word):
             return ValueContext.SCHEMA
         
-        # Rule 2: Schema value (quoted token after action word)
-        if (prev_token.is_action_word and token.was_quoted):
-            return ValueContext.SCHEMA
-        
-        # Rule 3: Field value (token after operator, with or without quotes)
+        # Field value: Token after operator
         if prev_token.operator_after is not None:
             return ValueContext.FIELD
         
