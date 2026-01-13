@@ -25,6 +25,33 @@ class TokenizerError(Exception):
 class Tokenizer:
     """Clean three-stage tokenizer for input."""
     
+    # Class-level constants for excluded values
+    _OPERATOR_VALUES = {op.value for op in Operator}
+    _QUERY_KEYWORD_VALUES = {kw.value for kw in QueryKeyword}
+    _BRACKET_VALUES = {bracket.value for bracket in Bracket}
+    
+    # Pre-sorted operators by length (longest first) for efficient detection
+    _OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)
+    
+    @classmethod
+    def _strip_quotes(cls, text: str) -> Tuple[str, bool]:
+        """
+        Strip quotes from text and return whether it was quoted.
+        
+        Args:
+            text: Input text that may have quotes
+            
+        Returns:
+            Tuple of (stripped_text, was_quoted)
+        """
+        if not text:
+            return text, False
+            
+        if ((text.startswith('"') and text.endswith('"')) or 
+            (text.startswith("'") and text.endswith("'"))):
+            return text[1:-1], True
+        return text, False
+    
     @classmethod
     def tokenize(cls, text: str) -> TokenizerResult:
         """
@@ -32,28 +59,13 @@ class Tokenizer:
         
         Three-stage process:
         1. Extract quoted strings
-        2. Build full ordered list with metadata
+        2. Build full ordered list with metadata  
         3. Split into command and filter tokens
-        
-        Args:
-            text: Input text to tokenize
-            
-        Returns:
-            TokenizerResult with separate command and filter token lists
         """
-        # Stage 1: Extract quoted strings (unchanged)
         raw_tokens = cls._extract_quoted_strings(text)
-        
-        # Stage 2: Build full ordered list (unchanged)
         full_list = cls._build_full_list(raw_tokens)
-        
-        # Stage 3a: Split into command and filter portions (NEW)
         command_full_list, filter_full_list = cls._split_command_and_filter(full_list)
-        
-        # Stage 3b: Build command tokens
         command_tokens = cls._build_command_tokens(command_full_list)
-        
-        # Stage 3c: Build filter tokens
         filter_tokens = cls._build_filter_tokens(filter_full_list)
         
         return TokenizerResult(
@@ -64,17 +76,7 @@ class Tokenizer:
     
     @classmethod
     def _extract_quoted_strings(cls, text: str) -> List[str]:
-        """
-        Extract tokens from text, treating quoted strings as single tokens.
-        
-        Handles both single and double quotes.
-        Multi-word quoted strings are kept as one token.
-        Key=value pairs with quoted values are kept as single tokens.
-        
-        Example:
-            Input: 'create "ACME INTL" vision="Our vision"'
-            Output: ['create', '"ACME INTL"', 'vision="Our vision"']
-        """
+        """Extract tokens from text, treating quoted strings as single tokens."""
         tokens = []
         i = 0
         current_token = ""
@@ -86,17 +88,14 @@ class Tokenizer:
             
             if not in_quotes:
                 if char in '"\'':
-                    # Starting a quoted string - don't break current token
                     in_quotes = True
                     quote_char = char
                     current_token += char
                 elif char.isspace():
-                    # End of regular token
                     if current_token.strip():
                         tokens.append(current_token.strip())
                         current_token = ""
-                elif char in [bracket.value for bracket in Bracket]:
-                    # Handle brackets as separate tokens using Bracket enum
+                elif char in cls._BRACKET_VALUES:
                     if current_token.strip():
                         tokens.append(current_token.strip())
                         current_token = ""
@@ -104,87 +103,44 @@ class Tokenizer:
                 else:
                     current_token += char
             else:
-                # Inside quotes
                 current_token += char
                 if char == quote_char:
-                    # End of quoted string
                     in_quotes = False
                     quote_char = None
             
             i += 1
         
-        # Add final token if exists
         if current_token.strip():
             tokens.append(current_token.strip())
         
         return tokens
     
     @classmethod
+    def _add_operator_tokens(cls, full_list: List[Dict[str, Any]], key: str, operator: str, value: str) -> None:
+        """Helper to add key, operator, value tokens to full list."""
+        full_list.append({"text": key, "was_quoted": False, "is_excluded": False})
+        full_list.append({"text": operator, "was_quoted": False, "is_excluded": True})
+        
+        value_text, was_quoted = cls._strip_quotes(value)
+        full_list.append({"text": value_text, "was_quoted": was_quoted, "is_excluded": False})
+    
+    @classmethod
     def _build_full_list(cls, raw_tokens: List[str]) -> List[Dict[str, Any]]:
         """
         Build full ordered list with ALL elements and metadata.
         
-        For each token:
-        - Strip quotes if present (mark as was_quoted=True)
-        - Identify if it's an excluded element (operator, keyword, bracket)
-        - Separate key=value into ["key", "=", "value"]
-        
-        Example:
-            Input: ['create', '"ACME"', 'vision="text"']
-            Output: [
-                {"text": "create", "was_quoted": False, "is_excluded": False},
-                {"text": "ACME", "was_quoted": True, "is_excluded": False},
-                {"text": "vision", "was_quoted": False, "is_excluded": False},
-                {"text": "=", "was_quoted": False, "is_excluded": True},
-                {"text": "text", "was_quoted": True, "is_excluded": False},
-            ]
+        Separates key=value into ["key", "=", "value"] and handles quotes.
         """
         full_list = []
         
         for token in raw_tokens:
-            # Check if this is a key=value token (contains operator)
             operator_match = cls._find_operator_in_token(token)
             
             if operator_match:
                 key, operator, value = operator_match
-                
-                # Add key
-                full_list.append({
-                    "text": key,
-                    "was_quoted": False,
-                    "is_excluded": False
-                })
-                
-                # Add operator
-                full_list.append({
-                    "text": operator,
-                    "was_quoted": False,
-                    "is_excluded": True
-                })
-                
-                # Add value (handle quotes)
-                was_quoted = False
-                if value and ((value.startswith('"') and value.endswith('"')) or 
-                             (value.startswith("'") and value.endswith("'"))):
-                    was_quoted = True
-                    value = value[1:-1]  # Strip quotes
-                
-                full_list.append({
-                    "text": value,
-                    "was_quoted": was_quoted,
-                    "is_excluded": False
-                })
+                cls._add_operator_tokens(full_list, key, operator, value)
             else:
-                # Regular token (not key=value)
-                text = token
-                was_quoted = False
-                
-                # Handle quotes
-                if text and ((text.startswith('"') and text.endswith('"')) or 
-                           (text.startswith("'") and text.endswith("'"))):
-                    was_quoted = True
-                    text = text[1:-1]  # Strip quotes
-                
+                text, was_quoted = cls._strip_quotes(token)
                 full_list.append({
                     "text": text,
                     "was_quoted": was_quoted,
@@ -198,15 +154,7 @@ class Tokenizer:
         cls, 
         full_list: List[Dict[str, Any]]
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """
-        Split full_list into command and filter portions.
-        
-        Command: Everything OUTSIDE [ ]
-        Filter: Everything INSIDE [ ] (excluding the [ ] brackets themselves)
-        
-        Returns:
-            Tuple of (command_full_list, filter_full_list)
-        """
+        """Split full_list into command and filter portions."""
         command_full_list = []
         filter_full_list = []
         
@@ -221,20 +169,16 @@ class Tokenizer:
                     raise TokenizerError("Nested [ brackets are not supported")
                 bracket_start = i
                 inside_filter = True
-                # Don't include the [ itself
                 
             elif token_text == "]":
                 if not inside_filter:
                     raise TokenizerError("Found ] without matching [")
                 inside_filter = False
-                # Don't include the ] itself
                 
             elif inside_filter:
-                # Inside filter - add to filter list
                 filter_full_list.append(item)
                 
             else:
-                # Outside filter - add to command list
                 command_full_list.append(item)
         
         if inside_filter:
@@ -243,26 +187,21 @@ class Tokenizer:
         return command_full_list, filter_full_list
     
     @classmethod
-    def _build_command_tokens(
+    def _build_tokens_from_list(
         cls, 
-        full_list: List[Dict[str, Any]]
+        full_list: List[Dict[str, Any]], 
+        include_excluded: bool
     ) -> List[Token]:
-        """
-        Build command tokens from command full list:
-        - Exclude operators and keywords
-        - Keep position, was_quoted, operator_after metadata
-        """
-        # Keep existing _build_shortlist implementation exactly as is
+        """Build tokens from full list with unified logic."""
         tokens = []
         position = 0
         
         for i, item in enumerate(full_list):
-            if not item["is_excluded"]:
-                # Check if next item is an operator
+            if include_excluded or not item["is_excluded"]:
                 operator_after = None
-                if i + 1 < len(full_list):
+                if not include_excluded and i + 1 < len(full_list):
                     next_item = full_list[i + 1]
-                    if next_item["is_excluded"] and next_item["text"] in [op.value for op in Operator]:
+                    if next_item["is_excluded"] and next_item["text"] in cls._OPERATOR_VALUES:
                         operator_after = Operator(next_item["text"])
                 
                 tokens.append(Token(
@@ -276,34 +215,14 @@ class Tokenizer:
         return tokens
     
     @classmethod
-    def _build_filter_tokens(
-        cls, 
-        filter_full_list: List[Dict[str, Any]]
-    ) -> List[Token]:
-        """
-        Build filter tokens from filter full list.
-        
-        DIFFERENT from command tokens:
-        - KEEP operators (=, <, >, etc.) as separate tokens
-        - KEEP keywords (and, or) as separate tokens
-        - KEEP parentheses ( ) as separate tokens
-        - [ ] already excluded in split
-        - Keep ALL metadata: position, was_quoted
-        - operator_after not needed (operators are explicit)
-        """
-        tokens = []
-        position = 0
-        
-        for item in filter_full_list:
-            tokens.append(Token(
-                text=item["text"],
-                position=position,
-                was_quoted=item["was_quoted"],
-                operator_after=None  # Not needed - operators are explicit tokens
-            ))
-            position += 1
-        
-        return tokens
+    def _build_command_tokens(cls, full_list: List[Dict[str, Any]]) -> List[Token]:
+        """Build command tokens - exclude operators and keywords."""
+        return cls._build_tokens_from_list(full_list, include_excluded=False)
+    
+    @classmethod
+    def _build_filter_tokens(cls, full_list: List[Dict[str, Any]]) -> List[Token]:
+        """Build filter tokens - include all tokens."""
+        return cls._build_tokens_from_list(full_list, include_excluded=True)
 
     
     @classmethod
@@ -314,18 +233,7 @@ class Tokenizer:
         Returns:
             Tuple of (key, operator, value) or None if no operator found
         """
-        # Check operators in order of precedence (longer operators first)
-        # Use Operator enum values to ensure consistency
-        operators = [
-            Operator.GREATER_EQUAL.value,  # ">="
-            Operator.LESS_EQUAL.value,     # "<="
-            Operator.NOT_EQUAL.value,      # "!="
-            Operator.EQUAL.value,          # "="
-            Operator.GREATER.value,        # ">"
-            Operator.LESS.value,           # "<"
-        ]
-        
-        for operator in operators:
+        for operator in cls._OPERATORS_BY_LENGTH:
             if operator in token:
                 parts = token.split(operator, 1)
                 if len(parts) == 2:
@@ -341,26 +249,11 @@ class Tokenizer:
         Check if a token should be excluded from short-list.
         
         Excluded:
-        - Operators: Uses Operator enum values (=, >, <, >=, <=, !=)
-        - Query keywords: Uses QueryKeyword enum values (where, and, or) - case-insensitive
-        - Brackets: Uses Bracket enum values ((, ), [, ])
+        - Operators, Query keywords (case-insensitive), Brackets
         """
         if not text:
             return False
         
-        # Operators - use Operator enum values
-        operator_values = [op.value for op in Operator]
-        if text in operator_values:
-            return True
-        
-        # Query keywords (case-insensitive) - use QueryKeyword enum values
-        query_keyword_values = [kw.value for kw in QueryKeyword]
-        if text.lower() in query_keyword_values:
-            return True
-        
-        # Brackets - use Bracket enum values
-        bracket_values = [bracket.value for bracket in Bracket]
-        if text in bracket_values:
-            return True
-        
-        return False
+        return (text in cls._OPERATOR_VALUES or 
+                text.lower() in cls._QUERY_KEYWORD_VALUES or 
+                text in cls._BRACKET_VALUES)
