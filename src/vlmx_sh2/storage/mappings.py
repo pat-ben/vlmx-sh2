@@ -18,7 +18,7 @@ def _get_mappings() -> Dict[str, str]:
 def _generate_mappings() -> Dict[str, str]:
     """Generate entity-to-file mappings from CompanyDatabase.tables."""
     try:
-        from ..models.entities.company import CompanyDatabase
+        from ..models.schemas.company import CompanyDatabase
         
         mappings = {}
         for entity_class in CompanyDatabase.tables:

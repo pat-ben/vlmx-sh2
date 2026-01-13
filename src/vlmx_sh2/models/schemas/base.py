@@ -2,7 +2,7 @@
 Base classes for database schemas and models.
 
 Defines common base classes that all database schemas and entity models inherit from.
-Provides shared functionality for table naming, configuration, and entities organization.
+Provides shared functionality for table naming, configuration, and schemas organization.
 """
 
 import re

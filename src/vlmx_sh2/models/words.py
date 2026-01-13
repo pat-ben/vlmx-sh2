@@ -1,7 +1,7 @@
 """
 Word models.
 
-Defines pydantic models for word types (actions, entities, fields) used in
+Defines pydantic models for word types (actions, schemas, fields) used in
 the DSL vocabulary foundation. These models represent the structure and behavior
 of different word categories in natural language command parsing.
 """
@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Type, Optional, Literal, List, Any, Sequence
 from ..enums.core import ContextLevel
 from ..enums.forms import TypeOrg
-from .entities.base import SchemaModel
+from .schemas.base import SchemaModel
 
 
 # ==================== BASE WORD MODEL====================
@@ -96,7 +96,7 @@ class SchemaWord(BaseWord):
 
 class EntityWord(BaseWord):
     """
-    Entity word - represents business entities like company, milestone.
+    Entity word - represents business schemas like company, milestone.
     """
     
     word_type: Literal[WordType.ENTITY] = WordType.ENTITY
@@ -112,7 +112,7 @@ class FieldWord(BaseWord):
     """
     Field word - represents entity fields like name, currency, revenue.
     
-    Can belong to multiple entities (e.g., 'name' exists on both Company and Milestone).
+    Can belong to multiple schemas (e.g., 'name' exists on both Company and Milestone).
     """
     
     word_type: Literal[WordType.FIELD] = WordType.FIELD

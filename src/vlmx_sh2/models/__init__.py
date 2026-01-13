@@ -1,6 +1,6 @@
 """
 Data models.
 
-Contains Pydantic models that represent database entities and
+Contains Pydantic models that represent database schemas and
 business objects.
 """

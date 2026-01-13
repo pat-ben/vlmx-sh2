@@ -162,7 +162,7 @@ DataTable > .datatable--cursor {
 
 class DynamicEntityManager(Widget):
     """
-    Split-screen dynamic entity manager for multi-record entities.
+    Split-screen dynamic entity manager for multi-record schemas.
     """
     
     class RecordSelected(Message):

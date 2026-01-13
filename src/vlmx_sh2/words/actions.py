@@ -65,7 +65,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     
     ActionWord(
         id="add",
-        description="Add or set field values to entities",
+        description="Add or set field values to schemas",
         aliases=["a","set"],
         handler=add_handler,
         crud_operation=CRUDOperation.CREATE,

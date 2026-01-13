@@ -1,7 +1,7 @@
 """
 Word registry and models.
 
-Auto-generates EntityWord and FieldWord objects from database entities definitions
+Auto-generates EntityWord and FieldWord objects from database schemas definitions
 while maintaining manual ActionWord definitions. This eliminates duplication
 between database models and DSL word registrations.
 """
@@ -11,7 +11,7 @@ from typing import Dict
 from ..models.words import WordType, Word
 from .generator import generate_schema_words, generate_entity_words, generate_field_words
 from .actions import ACTION_WORDS_LIST
-from ..models.entities.company import CompanyDatabase
+from ..models.schemas.company import CompanyDatabase
 
 
 # ==================== AUTO-GENERATED WORD REGISTRY ====================

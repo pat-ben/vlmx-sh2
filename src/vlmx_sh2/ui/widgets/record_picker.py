@@ -1,7 +1,7 @@
 """
 Record picker widget.
 
-Provides interactive record selection for multi-record entities.
+Provides interactive record selection for multi-record schemas.
 Displays existing records in a table format with "Add New" option.
 """
 

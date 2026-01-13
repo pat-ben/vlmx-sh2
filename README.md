@@ -44,7 +44,7 @@ delete brand vision
 # Open wizard for filling entity data interactively
 fill brand
 
-# List records with filtering for multi-cardinality entities
+# List records with filtering for multi-cardinality schemas
 list offering key="Premium Service"
 
 # Navigate one level up
@@ -147,7 +147,7 @@ EntityWord(
 FieldWord(
     id="currency", 
     description="Operating currency",
-    entity_models=[CompanyEntity]  # Can belong to multiple entities
+    entity_models=[CompanyEntity]  # Can belong to multiple schemas
 )
 ```
 
@@ -346,7 +346,7 @@ show metadata                # Shows all metadata
 fill brand                   # Opens form wizard for brand entity
 fill offering               # Opens split-screen manager for offerings
 
-# List multi-cardinality entities with filtering
+# List multi-cardinality schemas with filtering
 list offering               # Shows all offerings
 list target key=Primary     # Filter targets by key
 list news category=FUNDING  # Filter news by category

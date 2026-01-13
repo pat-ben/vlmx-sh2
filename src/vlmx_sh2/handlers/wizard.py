@@ -25,8 +25,8 @@ async def fill_handler(parsed_command: ParsedCommand, context: Context) -> Handl
     """
     Handler for 'fill' command - initiates interactive form wizards.
     
-    Creates form wizards for single cardinality entities or record pickers
-    for multiple cardinality entities.
+    Creates form wizards for single cardinality schemas or record pickers
+    for multiple cardinality schemas.
     """
     try:
         entity_model = parsed_command.entity_model
@@ -55,7 +55,7 @@ async def fill_handler(parsed_command: ParsedCommand, context: Context) -> Handl
                 return _validation_error(
                     f"{entity_type.title()} does not exist for company '{company_name}'",
                     [f"Create the {entity_type} first: create {entity_type}",
-                     f"Or check available entities: show {entity_type}"]
+                     f"Or check available schemas: show {entity_type}"]
                 )
             
             # Load existing data
@@ -136,7 +136,7 @@ def _get_requested_fields(entity_model: Type[BaseModel], parsed_command: ParsedC
 
 def _create_picker_request(entity_type: str, entity_value: Optional[str], company_name: str, 
                          entity_model: Type[BaseModel], context: Context) -> PickerRequest:
-    """Create picker request for multiple cardinality entities."""
+    """Create picker request for multiple cardinality schemas."""
     records = load_all_entities(entity_type, company_name, context)
     display_fields = _get_display_fields(entity_type, entity_model)
     

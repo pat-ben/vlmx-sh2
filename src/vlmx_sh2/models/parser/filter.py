@@ -2,11 +2,11 @@
 Filter models for dynamic table filtering.
 
 Contains data structures for representing filter expressions that can be
-applied to list and show commands for entities with cardinality.MULTIPLE.
+applied to list and show commands for schemas with cardinality.MULTIPLE.
 """
 
 from enum import Enum
-from typing import Optional, Any, Union
+from typing import Optional, Any
 from pydantic import BaseModel, Field
 
 from vlmx_sh2.enums import Operator

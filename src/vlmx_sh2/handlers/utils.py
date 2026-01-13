@@ -1,7 +1,7 @@
 """
 Utility functions for generic command handlers.
 
-Provides common functionality for extracting entities, fields, and context
+Provides common functionality for extracting schemas, fields, and context
 information from parse results.
 """
 

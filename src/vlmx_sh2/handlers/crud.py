@@ -251,7 +251,7 @@ def _create_default_entity_data(entity_model: Type[BaseModel], entity_type: str)
         "updated_at": datetime.now().isoformat(),
     }
     
-    # For entities with a "name" field, set a default name
+    # For schemas with a "name" field, set a default name
     if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
         default_entity_data["name"] = f"default_{entity_type}"
     
@@ -712,7 +712,7 @@ async def _show_entity(
                 suggestions=["Check entity exists and database connection"]
             )
 
-        # For multi-cardinality entities, we might want to show multiple records
+        # For multi-cardinality schemas, we might want to show multiple records
         cardinality = getattr(entity_model, 'cardinality', Cardinality.SINGLE) if entity_model else Cardinality.SINGLE
         if cardinality == Cardinality.MULTIPLE:
             # Load all records and apply filtering

@@ -22,7 +22,7 @@ class FormRequest(BaseModel):
 
 
 class PickerRequest(BaseModel):
-    """Request to display a record picker for multi-record entities."""
+    """Request to display a record picker for multi-record schemas."""
     type: Literal['record_picker'] = 'record_picker'
     entity_id: str
     entity_name: Optional[str] = None

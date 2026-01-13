@@ -2,7 +2,7 @@
 """
 Data persistence layer.
 
-Handles JSON file-based storage for entities with context-aware paths.
+Handles JSON file-based storage for schemas with context-aware paths.
 """
 
 import json
@@ -144,7 +144,7 @@ class StorageInterface:
     
     @staticmethod
     def list_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
-        """List entities with standardized error handling."""
+        """List schemas with standardized error handling."""
         try:
             if entity_type == 'company':
                 result = list_companies(context)
@@ -159,8 +159,8 @@ class StorageInterface:
             if isinstance(result, list):
                 return StorageResult(
                     success=True,
-                    data={"entities": result, "count": len(result)},
-                    message=f"Successfully listed {len(result)} {entity_type} entities"
+                    data={"schemas": result, "count": len(result)},
+                    message=f"Successfully listed {len(result)} {entity_type} schemas"
                 )
             
             if not isinstance(result, dict):
@@ -170,7 +170,7 @@ class StorageInterface:
                 return StorageResult(
                     success=True,
                     data=result,
-                    message=result.get("message", f"Successfully listed {entity_type} entities")
+                    message=result.get("message", f"Successfully listed {entity_type} schemas")
                 )
             else:
                 return StorageResult(
@@ -240,7 +240,7 @@ def _create_default_entity_data(entity_class) -> Dict[str, Any]:
 
 def _create_company_entities(company_folder: Path) -> List[str]:
     """Create all entity files for a new company."""
-    from ..models.entities.company import CompanyDatabase
+    from ..models.schemas.company import CompanyDatabase
     
     created_files = []
     
@@ -285,7 +285,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                     pass
             
             # Create organization data with defaults
-            from ..models.entities.company import OrganizationEntity
+            from ..models.schemas.company import OrganizationEntity
             
             base_data = {
                 "id": None,
@@ -316,9 +316,9 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                 folder_path=str(company_folder)
             )
         else:
-            # For other entities, need company context
+            # For other schemas, need company context
             if is_sys(context) or not context.org_name:
-                return _error_result("Must be in organization context to create non-company entities")
+                return _error_result("Must be in organization context to create non-company schemas")
             
             return save_entity_json(entity_type, data, context.org_name, context)
             
@@ -507,7 +507,7 @@ def update_dynamic_entity_record(entity_type: str, record_id: str, updated_field
 
 def save_entity_array(entity_type: str, entity_array: List[Dict[str, Any]], 
                      company_name: str, context: Context) -> Dict[str, Any]:
-    """Save an array of entities for multi-record entity types."""
+    """Save an array of schemas for multi-record entity types."""
     try:
         json_filename = get_entity_json_filename(entity_type)
         if not json_filename:

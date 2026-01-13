@@ -1,7 +1,7 @@
 """
 Dynamic entity screen with split layout.
 
-Provides a split-screen interface for managing multi-record dynamic entities.
+Provides a split-screen interface for managing multi-record dynamic schemas.
 """
 
 from textual.screen import ModalScreen

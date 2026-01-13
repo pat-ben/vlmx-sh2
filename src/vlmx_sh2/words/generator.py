@@ -2,14 +2,14 @@
 Automatic word generation from database schemas.
 
 This module implements the auto-generation of EntityWord and FieldWord objects
-from database entities definitions at runtime, eliminating manual duplication
+from database schemas definitions at runtime, eliminating manual duplication
 between database models and DSL word registrations.
 """
 
 from collections import defaultdict
 from typing import Dict, List, Type
 
-from ..models.entities.base import SchemaModel, EntityModel
+from ..models.schemas.base import SchemaModel, EntityModel
 from ..models.words import SchemaWord, EntityWord, FieldWord 
 from ..enums.forms import TypeOrg
 
@@ -28,7 +28,7 @@ def generate_schema_words() -> Dict[str, SchemaWord]:
     
     # For now, we only support CompanyDatabase
     # In the future, each TypeOrg will have its own specific DatabaseModel
-    from ..models.entities.company import CompanyDatabase
+    from ..models.schemas.company import CompanyDatabase
     
     type_org = TypeOrg.COMPANY
     schema_class = CompanyDatabase
@@ -50,10 +50,10 @@ def generate_schema_words() -> Dict[str, SchemaWord]:
 
 def generate_entity_words(schema: Type[SchemaModel]) -> Dict[str, EntityWord]:
     """
-    Generate EntityWord objects from entities.
+    Generate EntityWord objects from schemas.
 
     Args:
-        schema: Database entities containing entity definitions
+        schema: Database schemas containing entity definitions
 
     Returns:
         Dictionary mapping entity word IDs to EntityWord objects
@@ -82,19 +82,19 @@ def generate_field_words(schema: Type[SchemaModel]) -> Dict[str, FieldWord]:
     """
     Generate FieldWord objects from entity fields.
 
-    Aggregates fields by name across all entities, creating one FieldWord
-    per unique field name that references all entities containing that field.
+    Aggregates fields by name across all schemas, creating one FieldWord
+    per unique field name that references all schemas containing that field.
     
-    For fields appearing in multiple entities, uses a generic description
-    to indicate the field is shared across entities.
+    For fields appearing in multiple schemas, uses a generic description
+    to indicate the field is shared across schemas.
 
     Args:
-        schema: Database entities containing entity definitions
+        schema: Database schemas containing entity definitions
 
     Returns:
         Dictionary mapping field word IDs to FieldWord objects
     """
-    # Group entities by field name
+    # Group schemas by field name
     field_to_entities: Dict[str, List[Type[EntityModel]]] = defaultdict(list)
     field_to_descriptions: Dict[str, str] = {}
 
@@ -125,9 +125,9 @@ def generate_field_words(schema: Type[SchemaModel]) -> Dict[str, FieldWord]:
     field_words = {}
 
     for field_name, entities in field_to_entities.items():
-        # If field appears in multiple entities, use generic description
+        # If field appears in multiple schemas, use generic description
         if len(entities) > 1:
-            description = f"{field_name.capitalize()} (common to multiple entities)"
+            description = f"{field_name.capitalize()} (common to multiple schemas)"
         else:
             description = field_to_descriptions[field_name]
 
