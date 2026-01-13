@@ -6,7 +6,7 @@ value extraction, and command validation. Provides the primary interface for
 parsing natural language commands into structured data.
 """
 
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict, Union, cast
 from ..models.parser import ParseResult, ParsedCommand, RecognizedToken
 from ..models.words import ActionWord, SchemaWord, EntityWord
 from .tokenizer import Tokenizer
@@ -61,7 +61,7 @@ class VLMXParser:
             # Store both in result
             result.command_tokens = recognized_command_tokens
             result.filter_tokens = recognized_filter_tokens
-            result.tokens = recognized_command_tokens  # Backward compatibility
+            result.tokens = recognized_command_tokens  # TODO: Remove backward compatibility
             
             # Step 3: Build command using BOTH lists
             try:
@@ -105,10 +105,7 @@ class VLMXParser:
         Raises:
             ValueError: If required components (action, entity) are missing
         """
-        # Extract action first
         action = self._extract_action(command_tokens)
-        
-        # Extract target and schema_value - navigation commands like cd don't have entity targets
         target = None
         schema_value = None
         
@@ -124,7 +121,6 @@ class VLMXParser:
                 # No target found - this might be valid for some commands
                 pass
         
-        # Parse filters from recognized filter tokens
         filters = None
         if filter_tokens:
             filters = self.filter_parser.parse_filters(filter_tokens)
@@ -155,9 +151,8 @@ class VLMXParser:
             ValueError: If no action word found
         """
         for token in tokens:
-            if token.is_action_word:
-                if token.word and isinstance(token.word, ActionWord):
-                    return token.word
+            if token.is_action_word and token.word:
+                return cast(ActionWord, token.word)
         
         raise ValueError("No action word found in command")
     
@@ -166,7 +161,6 @@ class VLMXParser:
         Extract the target word from tokens.
         
         This can be either a SchemaWord (for database operations) or EntityWord (for table operations).
-        SchemaWords have higher priority in the word registry, so they'll be recognized first.
         
         Args:
             tokens: List of recognized tokens
@@ -178,9 +172,8 @@ class VLMXParser:
             ValueError: If no target word found
         """
         for token in tokens:
-            if token.is_entity_word or token.is_schema_word:
-                if token.word and (isinstance(token.word, SchemaWord) or isinstance(token.word, EntityWord)):
-                    return token.word
+            if (token.is_entity_word or token.is_schema_word) and token.word:
+                return cast(Union[SchemaWord, EntityWord], token.word)
         
         raise ValueError("No target word found in command")
     
@@ -191,20 +184,12 @@ class VLMXParser:
         Finds target values (company names, fund names, etc.) by looking
         for VALUE tokens with ENTITY context that follow target words.
         
-        Args:
-            tokens: List of recognized tokens
-            
         Returns:
             Schema value if found, None otherwise
         """
         for i in range(len(tokens) - 1):
-            current = tokens[i]
-            next_token = tokens[i + 1]
-            
-            # Simple: ENTITY/SCHEMA word followed by SCHEMA value
-            # Recognizer already classified these!
-            if (current.is_entity_word or current.is_schema_word) and next_token.is_schema_value:
-                return next_token.text
+            if (tokens[i].is_entity_word or tokens[i].is_schema_word) and tokens[i + 1].is_schema_value:
+                return tokens[i + 1].text
         
         # Also check for standalone entity values (when entity word is implied)
         for token in tokens:
@@ -226,43 +211,21 @@ class VLMXParser:
         Returns:
             Navigation target if found, None otherwise
         """
-        # Look for UNKNOWN tokens (navigation targets)
-        unknown_tokens = []
-        for token in tokens:
-            if hasattr(token, 'token_type') and hasattr(token.token_type, 'name'):
-                if token.token_type.name == "UNKNOWN":
-                    unknown_tokens.append(token.text)
-        
-        if unknown_tokens:
-            # Join multiple unknown tokens with spaces (for unquoted multi-word targets)
-            return " ".join(unknown_tokens)
-        
-        return None
+        unknown_tokens = [token.text for token in tokens if token.is_unknown]
+        return " ".join(unknown_tokens) if unknown_tokens else None
     
     def _extract_fields(self, tokens: List[RecognizedToken]) -> Dict[str, str]:
         """
         Extract field-value pairs from tokens.
         
         Finds field assignments by looking for FIELD words followed
-        by FIELD values. The recognizer has already classified which
-        values are field values vs entity values.
-        
-        Args:
-            tokens: List of recognized tokens
-            
-        Returns:
-            Dictionary of field names to values
+        by FIELD values. Returns dictionary of field names to values.
         """
         fields = {}
         
         for i in range(len(tokens) - 1):
-            current = tokens[i]
-            next_token = tokens[i + 1]
-            
-            # Simple: FIELD word followed by FIELD value
-            # Recognizer already classified these!
-            if current.is_field_word and next_token.is_field_value:
-                fields[current.text] = next_token.text
+            if tokens[i].is_field_word and tokens[i + 1].is_field_value:
+                fields[tokens[i].text] = tokens[i + 1].text
         
         return fields
     
@@ -279,64 +242,29 @@ class VLMXParser:
         Returns:
             List of field names
         """
-        field_words = []
-        
-        for i, token in enumerate(tokens):
-            if token.is_field_word:
-                # Check if this field word is NOT followed by a field value
-                # If it's the last token or the next token is not a field value, include it
-                if i == len(tokens) - 1 or not tokens[i + 1].is_field_value:
-                    field_words.append(token.text)
-        
-        return field_words
+        return [
+            token.text for i, token in enumerate(tokens)
+            if token.is_field_word and (i == len(tokens) - 1 or not tokens[i + 1].is_field_value)
+        ]
     
     def _validate_handler_requirements(self, result: ParseResult, context) -> bool:
         """
         Validate that the parse result has the minimum requirements for handler execution.
         
         Requirements:
-        1. Must have an action word with handler
-        2. Must satisfy context requirements based on the specific command
+        1. Must have an action handler
+        2. Must have a valid action word
         """
         if not result.action_handler:
             result.errors.append("No action handler found")
             return False
         
-        # Get the action word for validation
         action_words = result.action_words
-        if not action_words:
-            result.errors.append("No action word found")
-            return False
-            
-        from ..models.words import ActionWord
-        action_word = action_words[0]
-        if not isinstance(action_word, ActionWord):
-            result.errors.append("Invalid action word type")
+        if not action_words or not isinstance(action_words[0], ActionWord):
+            result.errors.append("No valid action word found")
             return False
         
-        # Validate context requirements using new command-level validation
-        from ..utils.context_helpers import validate_command_context_requirements
-        
-        # Get entity_value for navigation commands
-        entity_value = None
-        if result.command and hasattr(result.command, 'target') and result.command.target:
-            entity_value = result.command.target.id
-        
-        # Check if command has schema (schema_word present)
-        has_schema = bool(result.schema_words)
-        
-        # Check if command has app (app parameter - we'd need to implement this)
-        has_app = False  # For now, we don't have app parameter detection
-        
-        # Validate command context requirements - DISABLED FOR NOW
-        # is_valid, error_msg = validate_command_context_requirements(
-        #     action_word, context, entity_value, has_schema, has_app
-        # )
-        # 
-        # if not is_valid:
-        #     result.errors.append(error_msg or "Unknown validation error")
-        #     return False
-        
+        # TODO: Implement context validation based on command requirements
         return True
     
 
