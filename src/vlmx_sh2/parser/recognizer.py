@@ -26,6 +26,10 @@ class WordRecognizer:
     _CONFIDENCE_EXACT_MATCH = 100.0
     _CONFIDENCE_VALUE = 50.0
     _CONFIDENCE_UNKNOWN = 0.0
+
+    # =============================================================================
+    # 1. Initialization & Setup
+    # =============================================================================
     
     def __init__(self):
         """Initialize word recognizer with registry and alias mappings."""
@@ -52,32 +56,37 @@ class WordRecognizer:
         for word in self.word_registry.values():
             groups[word.word_type].append(word)
         return groups
+
+    # =============================================================================
+    # 2. Public API
+    # =============================================================================
     
-    @staticmethod
-    def _create_recognized_token(
-        token: Token,
-        token_type: TokenType,
-        word: Optional[Word] = None,
-        value_context: Optional[ValueContext] = None,
-        confidence: float = 0.0,
-        suggestions: Optional[List[str]] = None
-    ) -> RecognizedToken:
-        """Create RecognizedToken from Token with recognition data."""
-        return RecognizedToken(
-            text=token.text,
-            position=token.position,
-            was_quoted=token.was_quoted,
-            operator_after=token.operator_after,
-            token_type=token_type,
-            word=word,
-            value_context=value_context,
-            confidence=confidence,
-            suggestions=suggestions or []
-        )
+    def process_tokens(self, tokens: List[Token]) -> List[RecognizedToken]:
+        """
+        Process tokens to recognize words and classify values.
+        
+        Classification logic:
+        1. Try to match against word registry → WORD
+        2. If not matched, check if it's a value:
+           a. Quoted token after schema/action word → VALUE (SCHEMA context)
+           b. Token after operator → VALUE (FIELD context)
+        3. Otherwise → UNKNOWN
+        """
+        recognized_tokens = []
+        
+        for i, token in enumerate(tokens):
+            recognized_token = self._classify_token(token, recognized_tokens, i)
+            recognized_tokens.append(recognized_token)
+        
+        return recognized_tokens
     
     def get_words_by_type(self, word_type: WordType) -> List[Word]:
         """Get all words of a specific type."""
         return self.words_by_type.get(word_type, [])
+
+    # =============================================================================
+    # 3. Core Recognition & Classification
+    # =============================================================================
     
     def recognize_word(self, token_text: str) -> Tuple[Optional[Word], float, List[str]]:
         """
@@ -103,7 +112,6 @@ class WordRecognizer:
         # No match - provide suggestions
         suggestions = self.suggestion_engine.get_token_suggestions(token_text)
         return None, self._CONFIDENCE_UNKNOWN, suggestions
-    
     
     def _classify_token(
         self, 
@@ -134,25 +142,10 @@ class WordRecognizer:
                 return self._create_recognized_token(
                     token, TokenType.UNKNOWN, confidence=confidence, suggestions=suggestions
                 )
-    
-    def process_tokens(self, tokens: List[Token]) -> List[RecognizedToken]:
-        """
-        Process tokens to recognize words and classify values.
-        
-        Classification logic:
-        1. Try to match against word registry → WORD
-        2. If not matched, check if it's a value:
-           a. Quoted token after schema/action word → VALUE (SCHEMA context)
-           b. Token after operator → VALUE (FIELD context)
-        3. Otherwise → UNKNOWN
-        """
-        recognized_tokens = []
-        
-        for i, token in enumerate(tokens):
-            recognized_token = self._classify_token(token, recognized_tokens, i)
-            recognized_tokens.append(recognized_token)
-        
-        return recognized_tokens
+
+    # =============================================================================
+    # 4. Value Context Classification
+    # =============================================================================
     
     def _determine_value_context(
         self,
@@ -183,3 +176,29 @@ class WordRecognizer:
             return ValueContext.FIELD
         
         return None
+
+    # =============================================================================
+    # 5. Utilities
+    # =============================================================================
+    
+    @staticmethod
+    def _create_recognized_token(
+        token: Token,
+        token_type: TokenType,
+        word: Optional[Word] = None,
+        value_context: Optional[ValueContext] = None,
+        confidence: float = 0.0,
+        suggestions: Optional[List[str]] = None
+    ) -> RecognizedToken:
+        """Create RecognizedToken from Token with recognition data."""
+        return RecognizedToken(
+            text=token.text,
+            position=token.position,
+            was_quoted=token.was_quoted,
+            operator_after=token.operator_after,
+            token_type=token_type,
+            word=word,
+            value_context=value_context,
+            confidence=confidence,
+            suggestions=suggestions or []
+        )
