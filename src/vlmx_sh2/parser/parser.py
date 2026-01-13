@@ -15,15 +15,22 @@ from .filter import FilterParser
 from ..words.macros import expand_macros
 
 
-
 class VLMXParser:
     """Main parser for VLMX commands."""
+
+    # =============================================================================
+    # 1. Initialization
+    # =============================================================================
     
     def __init__(self):
         """Initialize the parser."""
         self.tokenizer = Tokenizer()
         self.word_recognizer = WordRecognizer()
         self.filter_parser = FilterParser()
+
+    # =============================================================================
+    # 2. Public API
+    # =============================================================================
     
     def parse(self, input_text: str) -> ParseResult:
         """
@@ -84,6 +91,40 @@ class VLMXParser:
             result.is_valid = False
         
         return result
+
+    async def execute_parsed_command(self, parse_result: ParseResult, context) -> Any:
+        """
+        Execute a parsed command by calling the action handler directly.
+        
+        Args:
+            parse_result: The result from parsing user input
+            context: Execution context
+            
+        Returns:
+            Result from handler execution
+        """
+        if not parse_result.is_valid:
+            raise ValueError(f"Cannot execute invalid parse result: {parse_result.errors}")
+        
+        if not parse_result.action_handler:
+            raise ValueError("No action handler available for execution")
+        
+        # Validate handler requirements
+        if not self._validate_handler_requirements(parse_result, context):
+            raise ValueError(f"Handler requirements not met: {parse_result.errors}")
+        
+        # Call the handler with the new simplified signature
+        try:
+            return await parse_result.action_handler(
+                parsed_command=parse_result.command,
+                context=context
+            )
+        except Exception as e:
+            raise RuntimeError(f"Handler execution failed: {str(e)}")
+
+    # =============================================================================
+    # 3. Command Building
+    # =============================================================================
     
     def _build_command(
         self,
@@ -136,6 +177,12 @@ class VLMXParser:
             filter_tokens=filter_tokens,
             filters=filters
         )
+
+    # =============================================================================
+    # 4. Token Extraction (Data Extraction from Tokens)
+    # =============================================================================
+    
+    # --- Action & Target Extraction ---
     
     def _extract_action(self, tokens: List[RecognizedToken]) -> ActionWord:
         """
@@ -178,6 +225,8 @@ class VLMXParser:
                 return token.word
         
         raise ValueError("No target word found in command")
+
+    # --- Name & Value Extraction ---
     
     def _extract_schema_name(self, tokens: List[RecognizedToken]) -> Optional[str]:
         """
@@ -215,6 +264,8 @@ class VLMXParser:
         """
         unknown_tokens = [token.text for token in tokens if token.is_unknown]
         return " ".join(unknown_tokens) if unknown_tokens else None
+
+    # --- Field Extraction ---
     
     def _extract_fields(self, tokens: List[RecognizedToken]) -> Dict[str, str]:
         """
@@ -248,6 +299,10 @@ class VLMXParser:
             token.text for i, token in enumerate(tokens)
             if token.is_field_word and (i == len(tokens) - 1 or not tokens[i + 1].is_field_value)
         ]
+
+    # =============================================================================
+    # 5. Command Execution (Handler Validation & Execution)
+    # =============================================================================
     
     def _validate_handler_requirements(self, result: ParseResult, context) -> bool:
         """
@@ -268,34 +323,3 @@ class VLMXParser:
         
         # TODO: Implement context validation based on command requirements
         return True
-    
-
-    async def execute_parsed_command(self, parse_result: ParseResult, context) -> Any:
-        """
-        Execute a parsed command by calling the action handler directly.
-        
-        Args:
-            parse_result: The result from parsing user input
-            context: Execution context
-            
-        Returns:
-            Result from handler execution
-        """
-        if not parse_result.is_valid:
-            raise ValueError(f"Cannot execute invalid parse result: {parse_result.errors}")
-        
-        if not parse_result.action_handler:
-            raise ValueError("No action handler available for execution")
-        
-        # Validate handler requirements
-        if not self._validate_handler_requirements(parse_result, context):
-            raise ValueError(f"Handler requirements not met: {parse_result.errors}")
-        
-        # Call the handler with the new simplified signature
-        try:
-            return await parse_result.action_handler(
-                parsed_command=parse_result.command,
-                context=context
-            )
-        except Exception as e:
-            raise RuntimeError(f"Handler execution failed: {str(e)}")

@@ -35,6 +35,10 @@ class FilterParser:
     _QUERY_KEYWORD_VALUES = {kw.value for kw in QueryKeyword}
     _BRACKET_VALUES = {br.value for br in Bracket}
     _OPERATOR_VALUES = {op.value for op in Operator}
+
+    # =============================================================================
+    # 1. Public API
+    # =============================================================================
     
     def parse_filters(self, recognized_filter_tokens: List[RecognizedToken]) -> Optional[FilterExpression]:
         """
@@ -58,7 +62,10 @@ class FilterParser:
         
         # Parse using existing recursive descent parser
         return self._parse_expression(simple_tokens)
-    
+
+    # =============================================================================
+    # 2. Top-Level Expression Parsing
+    # =============================================================================
     
     def _parse_expression(self, tokens: List[Token]) -> FilterExpression:
         """
@@ -89,6 +96,10 @@ class FilterParser:
             raise FilterParseError(f"Unexpected tokens after filter expression: {[t.text for t in remaining]}")
         
         return expr
+
+    # =============================================================================
+    # 3. Logical Expression Parsing (Precedence Order)
+    # =============================================================================
     
     def _parse_or_expression(self, tokens: List[Token]) -> Tuple[FilterExpression, List[Token]]:
         """
@@ -142,6 +153,10 @@ class FilterParser:
                 break
         
         return left_expr, remaining
+
+    # =============================================================================
+    # 4. Condition Parsing (Individual Conditions & Grouping)
+    # =============================================================================
     
     def _parse_condition(self, tokens: List[Token]) -> Tuple[FilterExpression, List[Token]]:
         """
@@ -196,6 +211,10 @@ class FilterParser:
         
         condition = FilterCondition(field=field, operator=Operator(operator_text), value=value)
         return FilterExpression(condition=condition), tokens[3:]
+
+    # =============================================================================
+    # 5. Utilities
+    # =============================================================================
     
     def _is_condition_start(self, tokens: List[Token]) -> bool:
         """
