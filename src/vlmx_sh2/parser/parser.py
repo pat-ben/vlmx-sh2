@@ -107,16 +107,16 @@ class VLMXParser:
         """
         action = self._extract_action(command_tokens)
         target = None
-        schema_value = None
+        schema_name = None
         
         if action.id == "cd":
-            # For navigation commands, extract schema_value from UNKNOWN tokens
-            schema_value = self._extract_navigation_target(command_tokens)
+            # For navigation commands, extract schema_name from UNKNOWN tokens
+            schema_name = self._extract_navigation_target(command_tokens)
         else:
             # For all other commands, try to extract target (entity/schema)
             try:
                 target = self._extract_target(command_tokens)
-                schema_value = self._extract_schema_value(command_tokens)
+                schema_name = self._extract_schema_name(command_tokens)
             except ValueError:
                 # No target found - this might be valid for some commands
                 pass
@@ -128,7 +128,7 @@ class VLMXParser:
         return ParsedCommand(
             action=action,
             target=target,
-            target_name=schema_value,
+            target_name=schema_name,
             field_values=self._extract_fields(command_tokens),
             field_words=self._extract_field_words(command_tokens),
             raw_input=raw_input,
@@ -177,18 +177,18 @@ class VLMXParser:
         
         raise ValueError("No target word found in command")
     
-    def _extract_schema_value(self, tokens: List[RecognizedToken]) -> Optional[str]:
+    def _extract_schema_name(self, tokens: List[RecognizedToken]) -> Optional[str]:
         """
-        Extract schema value from tokens.
+        Extract schema name from tokens.
         
         Finds target values (company names, fund names, etc.) by looking
         for VALUE tokens with ENTITY context that follow target words.
         
         Returns:
-            Schema value if found, None otherwise
+            Schema name if found, None otherwise
         """
         for i in range(len(tokens) - 1):
-            if (tokens[i].is_entity_word or tokens[i].is_schema_word) and tokens[i + 1].is_schema_value:
+            if (tokens[i].is_entity_word or tokens[i].is_schema_word) and tokens[i + 1].is_schema_name:
                 return tokens[i + 1].text
         
         # Also check for standalone entity values (when entity word is implied)

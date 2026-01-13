@@ -164,7 +164,7 @@ class WordRecognizer:
         Determine if a token is a value and what context it has.
         
         Rules:
-        1. Schema value: Quoted token after schema/action word
+        1. Schema name: Quoted token after schema/action word
            Examples: company "ACME", delete "ACME"
         2. Field value: Token after operator (quoted or not)
            Examples: currency=EUR, vision="Our vision"
@@ -174,7 +174,7 @@ class WordRecognizer:
         
         prev_token = recognized_tokens[current_position - 1]
         
-        # Schema value: Quoted token after schema or action word
+        # Schema name: Quoted token after schema or action word
         if token.was_quoted and (prev_token.is_schema_word or prev_token.is_action_word):
             return ValueContext.SCHEMA
         

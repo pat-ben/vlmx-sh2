@@ -134,8 +134,8 @@ class RecognizedToken(Token):
         return self.token_type == TokenType.VALUE and self.value_context == ValueContext.FIELD
     
     @property
-    def is_schema_value(self) -> bool:
-        """True if this is a schema value (e.g., company name for database ops)."""
+    def is_schema_name(self) -> bool:
+        """True if this is a schema name (e.g., company name for database ops)."""
         return self.token_type == TokenType.VALUE and self.value_context == ValueContext.SCHEMA
     
     @property

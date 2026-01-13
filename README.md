@@ -208,7 +208,7 @@ The parser converts user input into structured commands through multiple stages:
 - Alias and abbreviation support
 
 #### Value Extraction
-- **Schema values**: Company names, IDs (ACME, ACME-CORP)
+- **Schema names**: Company names, IDs (ACME, ACME-CORP)
 - **Field values**: Properties and settings (SA, EUR, THOUSANDS)
 - **Key=value pairs**: Modern syntax (entity=SA currency=EUR)
 

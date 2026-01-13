@@ -24,7 +24,7 @@ class ParsedCommand(BaseModel):
     Fields:
         action: The action word (create, update, show, delete, etc.)
         target: The target word (SchemaWord for database ops, EntityWord for table ops)
-        target_name: Schema value - name of the target instance ("ACME", "TechCorp", etc.)
+        target_name: Schema name - name of the target instance ("ACME", "TechCorp", etc.)
         field_values: Field-value pairs ({"currency": "EUR", "vision": "Our vision"})
         field_words: Field names without values (["vision", "mission"])
         raw_input: Original user input text
@@ -63,7 +63,7 @@ class ParsedCommand(BaseModel):
     # Command data
     target_name: Optional[str] = Field(
         default=None,
-        description="Schema value - name of the target instance (e.g., 'ACME', 'TechCorp')"
+        description="Schema name - name of the target instance (e.g., 'ACME', 'TechCorp')"
     )
     field_values: Dict[str, str] = Field(
         default_factory=dict,
