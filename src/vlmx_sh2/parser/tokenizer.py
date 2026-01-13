@@ -29,6 +29,7 @@ class Tokenizer:
     _OPERATOR_VALUES = {op.value for op in Operator}
     _QUERY_KEYWORD_VALUES = {kw.value for kw in QueryKeyword}
     _BRACKET_VALUES = {bracket.value for bracket in Bracket}
+    _QUOTE_CHARS = {'"', "'"}
     
     # Pre-sorted operators by length (longest first) for efficient detection
     _OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)
@@ -87,7 +88,7 @@ class Tokenizer:
             char = text[i]
             
             if not in_quotes:
-                if char in '"\'':
+                if char in cls._QUOTE_CHARS:
                     in_quotes = True
                     quote_char = char
                     current_token += char
@@ -117,7 +118,15 @@ class Tokenizer:
     
     @classmethod
     def _add_operator_tokens(cls, full_list: List[Dict[str, Any]], key: str, operator: str, value: str) -> None:
-        """Helper to add key, operator, value tokens to full list."""
+        """
+        Add key, operator, and value as separate tokens to full_list.
+        
+        Args:
+            full_list: List to append tokens to
+            key: The key part before operator
+            operator: The operator (=, >, <, etc.)
+            value: The value part after operator (quotes will be stripped)
+        """
         full_list.append({"text": key, "was_quoted": False, "is_excluded": False})
         full_list.append({"text": operator, "was_quoted": False, "is_excluded": True})
         
@@ -154,35 +163,36 @@ class Tokenizer:
         cls, 
         full_list: List[Dict[str, Any]]
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """Split full_list into command and filter portions."""
-        command_full_list = []
-        filter_full_list = []
-        
-        inside_filter = False
+        """Split full_list into command and filter portions using index-based approach."""
+        # Find bracket positions first
         bracket_start = None
+        bracket_end = None
         
         for i, item in enumerate(full_list):
-            token_text = item["text"]
-            
-            if token_text == "[":
+            if item["text"] == "[":
                 if bracket_start is not None:
                     raise TokenizerError("Nested [ brackets are not supported")
                 bracket_start = i
-                inside_filter = True
-                
-            elif token_text == "]":
-                if not inside_filter:
+            elif item["text"] == "]":
+                if bracket_start is None:
                     raise TokenizerError("Found ] without matching [")
-                inside_filter = False
-                
-            elif inside_filter:
-                filter_full_list.append(item)
-                
-            else:
-                command_full_list.append(item)
+                bracket_end = i
+                break  # Only support one filter section
         
-        if inside_filter:
+        # Validate bracket pairing
+        if bracket_start is not None and bracket_end is None:
             raise TokenizerError("Found [ without matching ]")
+        
+        # Slice based on bracket positions
+        if bracket_start is not None and bracket_end is not None:
+            # Command: everything before [ and after ]
+            command_full_list = full_list[:bracket_start] + full_list[bracket_end + 1:]
+            # Filter: everything between [ and ] (excluding brackets)
+            filter_full_list = full_list[bracket_start + 1:bracket_end]
+        else:
+            # No brackets - everything is command
+            command_full_list = full_list[:]
+            filter_full_list = []
         
         return command_full_list, filter_full_list
     
