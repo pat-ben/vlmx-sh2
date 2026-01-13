@@ -147,8 +147,8 @@ class WordRecognizer:
     # 4. Value Context Classification
     # =============================================================================
     
+    @staticmethod
     def _determine_value_context(
-        self,
         token: Token,
         recognized_tokens: List[RecognizedToken],
         current_position: int
