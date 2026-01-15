@@ -54,15 +54,24 @@ class Tokenizer:
         # Tokenizer delegates validation to unified Validator.
         # This keeps the tokenizer "dumb" and focused on extraction.
         # 
-        # Validator runs rules from diagnostics/rules.py based on IssueStage:
-        # - Empty command (current)
-        # - Additional rules will be added to VALIDATION_RULES registry
+        # VALIDATION PHILOSOPHY:
+        # - Validator.validate() runs ALL validation rules to collect ALL errors
+        # - Returns False only for BLOCKING errors (e.g., empty command)
+        # - Non-blocking errors (e.g., unclosed quotes) are logged but don't stop tokenization
+        # - This ensures users see ALL errors in their command, not just the first one
         # 
-        # All validation issues are logged to ValidationContext for 
-        # comprehensive diagnostic reporting (Nushell-quality error messages).
+        # Current rules:
+        # - empty_command (BLOCKING) - Can't tokenize nothing
+        # - Future: unclosed_quotes (NON-BLOCKING) - Can still extract tokens
+        # - Future: mismatched_brackets (NON-BLOCKING) - Can still extract tokens
 
+        # Run validation (logs errors, returns False only for BLOCKING errors)
+        # If blocking error found (e.g., empty command), we must stop
         if not Validator.validate(IssueStage.TOKENIZER, context, text=text):
-            return []
+            return []  # Only stops for BLOCKING errors (like empty command)
+
+        # No blocking errors - continue tokenization
+        # (Non-blocking errors were logged but we can still extract tokens)
         
         # Store original input for position tracking
         context.input_text = text

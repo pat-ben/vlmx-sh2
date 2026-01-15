@@ -9,6 +9,17 @@ Each rule defines:
 - What to check (validation logic)
 - What error to report (message, code, suggestion)
 - Which stage it belongs to
+- Whether it's blocking (stops stage) or non-blocking (logs but continues)
+
+BLOCKING vs NON-BLOCKING:
+- blocking=True: Fatal error that prevents stage from continuing
+  Example: Empty command (can't tokenize nothing)
+  
+- blocking=False: Error logged but stage can continue processing
+  Example: Unclosed quote (can still extract tokens we have)
+  
+Most rules should be non-blocking to collect ALL errors in one pass.
+Only mark as blocking if the stage truly cannot proceed.
 """
 
 from typing import Callable, List
@@ -31,6 +42,7 @@ class ValidationRule:
     message: str                    # Human-readable error message
     suggestion: str = ""            # Optional suggestion for fixing
     position: int = 0               # Default character position for error
+    blocking: bool = False          # If True, stage MUST stop on this error
 
 
 # =============================================================================
@@ -47,11 +59,31 @@ VALIDATION_RULES: List[ValidationRule] = [
         error_code="vlmx::tokenizer::empty_command",
         message="Command cannot be empty",
         suggestion="Try typing a command like 'create company' or 'show metadata'",
-        position=0
+        position=0,
+        blocking=True  # Empty command is BLOCKING - can't tokenize nothing
     ),
     
-    # Future tokenizer rules will be added here...
-    # Example: unclosed_quotes, mismatched_brackets, etc.
+    # Future tokenizer rules (examples - not yet implemented):
+    # 
+    # ValidationRule(
+    #     rule_id="unclosed_quote",
+    #     stage=IssueStage.TOKENIZER,
+    #     check=...,
+    #     error_code="vlmx::tokenizer::unclosed_quote",
+    #     message="Quote opened but not closed",
+    #     suggestion="Add closing quote",
+    #     blocking=False  # NON-BLOCKING - can still extract tokens
+    # ),
+    # 
+    # ValidationRule(
+    #     rule_id="mismatched_brackets",
+    #     stage=IssueStage.TOKENIZER,
+    #     check=...,
+    #     error_code="vlmx::tokenizer::mismatched_brackets",
+    #     message="Opening bracket without closing bracket",
+    #     suggestion="Add closing bracket ]",
+    #     blocking=False  # NON-BLOCKING - can still extract tokens
+    # ),
     
     
     # ==================== CLASSIFIER STAGE ====================
