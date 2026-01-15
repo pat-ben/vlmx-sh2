@@ -48,7 +48,8 @@ class Tokenizer:
             context.add_error(
                 stage=IssueStage.TOKENIZER,
                 message="Command cannot be empty",
-                position=0
+                position=0,
+                error_code="vlmx::tokenizer::empty_command"
             )
             return []
         

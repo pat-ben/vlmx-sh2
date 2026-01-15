@@ -37,18 +37,26 @@ class ValidationContext(BaseModel):
         stage: IssueStage,
         message: str,
         position: int = 0,
+        end_position: Optional[int] = None,
+        token_index: Optional[int] = None,
         token_text: Optional[str] = None,
+        error_code: Optional[str] = None,
+        doc_link: Optional[str] = None,
         suggestion: Optional[str] = None,
-        end_position: Optional[int] = None
+        related_tokens: Optional[List[int]] = None
     ) -> None:
-        """Add an error-level issue."""
+        """Add an error-level issue with rich diagnostic information."""
         self.issues.append(ValidationIssue(
             stage=stage,
             severity=IssueSeverity.ERROR,
             message=message,
             position=position,
             end_position=end_position,
+            token_index=token_index,
             token_text=token_text,
+            related_tokens=related_tokens,
+            error_code=error_code,
+            doc_link=doc_link,
             suggestion=suggestion
         ))
     
@@ -57,18 +65,26 @@ class ValidationContext(BaseModel):
         stage: IssueStage,
         message: str,
         position: int = 0,
+        end_position: Optional[int] = None,
+        token_index: Optional[int] = None,
         token_text: Optional[str] = None,
+        error_code: Optional[str] = None,
+        doc_link: Optional[str] = None,
         suggestion: Optional[str] = None,
-        end_position: Optional[int] = None
+        related_tokens: Optional[List[int]] = None
     ) -> None:
-        """Add a warning-level issue."""
+        """Add a warning-level issue with rich diagnostic information."""
         self.issues.append(ValidationIssue(
             stage=stage,
             severity=IssueSeverity.WARNING,
             message=message,
             position=position,
             end_position=end_position,
+            token_index=token_index,
             token_text=token_text,
+            related_tokens=related_tokens,
+            error_code=error_code,
+            doc_link=doc_link,
             suggestion=suggestion
         ))
     
@@ -77,18 +93,26 @@ class ValidationContext(BaseModel):
         stage: IssueStage,
         message: str,
         position: int = 0,
+        end_position: Optional[int] = None,
+        token_index: Optional[int] = None,
         token_text: Optional[str] = None,
+        error_code: Optional[str] = None,
+        doc_link: Optional[str] = None,
         suggestion: Optional[str] = None,
-        end_position: Optional[int] = None
+        related_tokens: Optional[List[int]] = None
     ) -> None:
-        """Add an info-level issue."""
+        """Add an info-level issue with rich diagnostic information."""
         self.issues.append(ValidationIssue(
             stage=stage,
             severity=IssueSeverity.INFO,
             message=message,
             position=position,
             end_position=end_position,
+            token_index=token_index,
             token_text=token_text,
+            related_tokens=related_tokens,
+            error_code=error_code,
+            doc_link=doc_link,
             suggestion=suggestion
         ))
     
@@ -97,20 +121,24 @@ class ValidationContext(BaseModel):
         stage: IssueStage,
         message: str,
         token,  # Can be Token, ClassifiedToken, or RecognizedToken
+        error_code: Optional[str] = None,
         suggestion: Optional[str] = None,
         **kwargs
     ) -> None:
         """
         Add error using token's position metadata.
         
-        Convenience method that extracts position info from token automatically.
+        Convenience method that extracts position info from token automatically,
+        including token_index for rich diagnostics.
         """
         self.add_error(
             stage=stage,
             message=message,
             position=token.char_start,
             end_position=token.char_end,
+            token_index=token.token_index,
             token_text=token.text,
+            error_code=error_code,
             suggestion=suggestion,
             **kwargs
         )
@@ -120,20 +148,24 @@ class ValidationContext(BaseModel):
         stage: IssueStage,
         message: str,
         token,  # Can be Token, ClassifiedToken, or RecognizedToken
+        error_code: Optional[str] = None,
         suggestion: Optional[str] = None,
         **kwargs
     ) -> None:
         """
         Add warning using token's position metadata.
         
-        Convenience method that extracts position info from token automatically.
+        Convenience method that extracts position info from token automatically,
+        including token_index for rich diagnostics.
         """
         self.add_warning(
             stage=stage,
             message=message,
             position=token.char_start,
             end_position=token.char_end,
+            token_index=token.token_index,
             token_text=token.text,
+            error_code=error_code,
             suggestion=suggestion,
             **kwargs
         )
@@ -143,20 +175,24 @@ class ValidationContext(BaseModel):
         stage: IssueStage,
         message: str,
         token,  # Can be Token, ClassifiedToken, or RecognizedToken
+        error_code: Optional[str] = None,
         suggestion: Optional[str] = None,
         **kwargs
     ) -> None:
         """
         Add info using token's position metadata.
         
-        Convenience method that extracts position info from token automatically.
+        Convenience method that extracts position info from token automatically,
+        including token_index for rich diagnostics.
         """
         self.add_info(
             stage=stage,
             message=message,
             position=token.char_start,
             end_position=token.char_end,
+            token_index=token.token_index,
             token_text=token.text,
+            error_code=error_code,
             suggestion=suggestion,
             **kwargs
         )
