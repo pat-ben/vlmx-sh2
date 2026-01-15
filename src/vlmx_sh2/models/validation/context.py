@@ -92,6 +92,75 @@ class ValidationContext(BaseModel):
             suggestion=suggestion
         ))
     
+    def add_error_from_token(
+        self,
+        stage: IssueStage,
+        message: str,
+        token,  # Can be Token, ClassifiedToken, or RecognizedToken
+        suggestion: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        """
+        Add error using token's position metadata.
+        
+        Convenience method that extracts position info from token automatically.
+        """
+        self.add_error(
+            stage=stage,
+            message=message,
+            position=token.char_start,
+            end_position=token.char_end,
+            token_text=token.text,
+            suggestion=suggestion,
+            **kwargs
+        )
+    
+    def add_warning_from_token(
+        self,
+        stage: IssueStage,
+        message: str,
+        token,  # Can be Token, ClassifiedToken, or RecognizedToken
+        suggestion: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        """
+        Add warning using token's position metadata.
+        
+        Convenience method that extracts position info from token automatically.
+        """
+        self.add_warning(
+            stage=stage,
+            message=message,
+            position=token.char_start,
+            end_position=token.char_end,
+            token_text=token.text,
+            suggestion=suggestion,
+            **kwargs
+        )
+    
+    def add_info_from_token(
+        self,
+        stage: IssueStage,
+        message: str,
+        token,  # Can be Token, ClassifiedToken, or RecognizedToken
+        suggestion: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        """
+        Add info using token's position metadata.
+        
+        Convenience method that extracts position info from token automatically.
+        """
+        self.add_info(
+            stage=stage,
+            message=message,
+            position=token.char_start,
+            end_position=token.char_end,
+            token_text=token.text,
+            suggestion=suggestion,
+            **kwargs
+        )
+    
     # ==================== QUERY METHODS ====================
     
     def has_issues(self) -> bool:

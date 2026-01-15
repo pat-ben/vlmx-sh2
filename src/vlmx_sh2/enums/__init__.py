@@ -36,6 +36,7 @@ from .parser import (
     Operator,
     QueryKeyword,
     Bracket,
+    TokenClass,
     TokenType,
     ValueContext,
 )
@@ -69,6 +70,7 @@ __all__ = [
     'Operator',
     'QueryKeyword',
     'Bracket',
+    'TokenClass',
     'TokenType',
     'ValueContext',
     

@@ -31,6 +31,14 @@ class Bracket(str, Enum):
     BRACKET_CLOSE = "]"
 
 
+class TokenClass(str, Enum):
+    """Structural classification of tokens (classifier stage)."""
+    TEXT = "text"              # Generic text, needs recognizer
+    OPERATOR = "operator"      # =, !=, <, >, <=, >=
+    BRACKET = "bracket"        # [, ], (, )
+    QUOTED_TEXT = "quoted"     # Was in quotes (stripped now)
+
+
 class TokenType(str, Enum):
     """Type classification for parsed tokens (set by recognizer)"""
     WORD = "word"        # Token that matches a Word in the registry

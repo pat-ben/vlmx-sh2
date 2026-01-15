@@ -1,21 +1,21 @@
 """
 RecognizedToken model for recognizer stage output.
 
-Extends Token with word recognition and value classification results.
+Contains both structural (from classifier) and semantic (from recognizer) classification.
 """
 
 from typing import Optional, List
-from pydantic import Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
-from .token import Token
 from vlmx_sh2.enums import TokenType, ValueContext
 from ..words import Word, WordType
 
 
-class RecognizedToken(Token):
+class RecognizedToken(BaseModel):
     """
     Token output from recognizer stage.
     
+    Contains both structural (from classifier) and semantic (from recognizer) classification.
     Single model that represents all token types (WORD, VALUE, UNKNOWN).
     Fields are populated based on token_type:
     - WORD tokens: word field is set
@@ -23,7 +23,12 @@ class RecognizedToken(Token):
     - UNKNOWN tokens: suggestions may be provided
     
     Fields:
-        token_type: Classification (WORD, VALUE, or UNKNOWN)
+        text: Token text (quotes stripped by classifier)
+        char_start: Character position where token starts in original input
+        char_end: Character position where token ends (exclusive)
+        token_index: Position in token array (0-indexed)
+        was_quoted: True if originally in quotes (from classifier)
+        token_type: Semantic classification (WORD, VALUE, or UNKNOWN)
         word: Complete Word object from registry (only for WORD tokens)
         value_context: Context for VALUE tokens (SCHEMA, ENTITY, or FIELD)
         confidence: Recognition confidence score (0-100)
@@ -33,7 +38,7 @@ class RecognizedToken(Token):
         # WORD token
         >>> RecognizedToken(
         ...     text="create",
-        ...     position=0,
+        ...     char_start=0, char_end=6, token_index=0,
         ...     token_type=TokenType.WORD,
         ...     word=ActionWord(id="create", ...)
         ... )
@@ -41,41 +46,47 @@ class RecognizedToken(Token):
         # VALUE token (schema)
         >>> RecognizedToken(
         ...     text="ACME",
-        ...     position=2,
+        ...     char_start=15, char_end=21, token_index=2,
         ...     was_quoted=True,
         ...     token_type=TokenType.VALUE,
         ...     value_context=ValueContext.SCHEMA
         ... )
         
-        # VALUE token (entity)
-        >>> RecognizedToken(
-        ...     text="TechCorp",
-        ...     position=2,
-        ...     was_quoted=True,
-        ...     token_type=TokenType.VALUE,
-        ...     value_context=ValueContext.ENTITY
-        ... )
-        
-        # VALUE token (field)
-        >>> RecognizedToken(
-        ...     text="EUR",
-        ...     position=4,
-        ...     token_type=TokenType.VALUE,
-        ...     value_context=ValueContext.FIELD
-        ... )
-        
         # UNKNOWN token
         >>> RecognizedToken(
         ...     text="xyz123",
-        ...     position=5,
+        ...     char_start=22, char_end=28, token_index=3,
         ...     token_type=TokenType.UNKNOWN,
         ...     suggestions=["create", "update"]
         ... )
     """
     
+    # Token data
+    text: str = Field(
+        description="Token text (quotes stripped by classifier)"
+    )
+    
+    # Position metadata (inherited/preserved from Token)
+    char_start: int = Field(
+        description="Character position where token starts in original input (0-indexed)"
+    )
+    char_end: int = Field(
+        description="Character position where token ends (exclusive, like Python slicing)"
+    )
+    token_index: int = Field(
+        description="Position in token array (0-indexed)"
+    )
+    
+    # Structural classification (inherited from classifier)
+    was_quoted: bool = Field(
+        default=False,
+        description="True if originally in quotes (from classifier)"
+    )
+    
+    # Semantic classification (added by recognizer)
     token_type: TokenType = Field(
         default=TokenType.UNKNOWN,
-        description="Classification: WORD, VALUE, or UNKNOWN"
+        description="Semantic classification: WORD, VALUE, or UNKNOWN"
     )
     
     word: Optional[Word] = Field(
@@ -102,6 +113,16 @@ class RecognizedToken(Token):
         arbitrary_types_allowed=True,
         frozen=False
     )
+    
+    @property
+    def char_length(self) -> int:
+        """Return the character length of the token."""
+        return self.char_end - self.char_start
+    
+    @property
+    def position(self) -> int:
+        """Alias for char_start (backward compatibility)."""
+        return self.char_start
     
     @property
     def is_word(self) -> bool:

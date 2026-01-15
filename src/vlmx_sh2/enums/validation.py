@@ -18,9 +18,10 @@ class IssueSeverity(str, Enum):
 class IssueStage(str, Enum):
     """Parsing stage where validation issue was detected."""
     
-    TOKENIZER = "tokenizer"      # Stage 1: Text → token blocks
-    RECOGNIZER = "recognizer"    # Stage 2: Tokens → recognized tokens
-    SPLITTER = "splitter"        # Stage 3: Split command/filter tokens
-    FILTER = "filter"            # Stage 4: Build filter AST
-    BUILDER = "builder"          # Stage 5: Build command object
-    HANDLER = "handler"        # Execution stage (post-parsing)
+    TOKENIZER = "tokenizer"        # Stage 1: Text → token blocks
+    CLASSIFIER = "classifier"      # Stage 2: Structural classification
+    RECOGNIZER = "recognizer"      # Stage 3: Semantic classification
+    SPLITTER = "splitter"          # Stage 4: Split command/filter
+    FILTER_PARSER = "filter_parser"  # Stage 5: Build filter AST
+    BUILDER = "builder"            # Stage 6: Build command
+    HANDLER = "handler"            # Post-parsing execution
