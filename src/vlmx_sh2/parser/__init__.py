@@ -10,14 +10,10 @@ Provides modular parsing functionality with clean separation of concerns:
 The main entry point is VLMXParser, which coordinates all parsing steps.
 """
 
-from .parser_DEPRECATED import VLMXParser
-from .tokenizer_DEPRECATED import Tokenizer
-from .recognizer_DEPRECATED import WordRecognizer
+from .tokenizer import Tokenizer
 from ..words.macros import expand_macros
 
 __all__ = [
-    'VLMXParser',
     'Tokenizer',
-    'WordRecognizer',
     'expand_macros',
 ]

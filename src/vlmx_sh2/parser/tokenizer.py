@@ -7,15 +7,17 @@ No structural classification (classifier stage's job).
 No command/filter splitting (splitter stage's job).
 
 Validation:
-- The tokenizer validates ONLY empty command input at this stage
-- Additional validation rules (quotes, brackets, etc.) will be added in future stages
+- Tokenizer delegates validation to TokenizerValidator (diagnostics/validators/tokenizer.py)
+- Current validation: empty command check
+- Future validation rules will be added to TokenizerValidator
 - All validation issues are logged to ValidationContext for diagnostic reporting
 """
 
 from typing import List
 from ..models.parser import Token
 from ..models.validation import ValidationContext
-from vlmx_sh2.enums import Operator, IssueStage
+from vlmx_sh2.enums import Operator
+from ..diagnostics.validators.tokenizer import TokenizerValidator
 
 
 class Tokenizer:
@@ -50,21 +52,17 @@ class Tokenizer:
         """
         # ==================== VALIDATION ====================
         # 
-        # Tokenizer validates ONLY empty command at this stage.
-        # Additional syntax validation (quotes, brackets, operators) 
-        # will be handled by subsequent parser stages (classifier, recognizer).
+        # Tokenizer delegates validation to TokenizerValidator.
+        # This keeps the tokenizer "dumb" and focused on extraction.
+        # 
+        # TokenizerValidator checks:
+        # - Empty command (current)
+        # - Additional rules will be added in future stages
         # 
         # All validation issues are logged to ValidationContext for 
         # comprehensive diagnostic reporting (Nushell-quality error messages).
 
-        if not text or not text.strip():
-            context.add_error(
-                stage=IssueStage.TOKENIZER,
-                message="Command cannot be empty",
-                position=0,
-                error_code="vlmx::tokenizer::empty_command",
-                suggestion="Try typing a command like 'create company' or 'show metadata'"
-            )
+        if not TokenizerValidator.validate_empty_command(text, context):
             return []
         
         # Store original input for position tracking
