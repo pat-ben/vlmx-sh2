@@ -7,7 +7,7 @@ confirmations. Provides structured result objects and text formatting.
 """
 
 from typing import Optional, TYPE_CHECKING
-from ..support.suggestions import SuggestionEngine
+from ..diagnostics.suggestions import SuggestionEngine
 
 if TYPE_CHECKING:
     from ..models.parser import ParseResult

@@ -1,8 +1,9 @@
+# File: src/vlmx_sh2/diagnostics/suggestions.py
 """
-Centralized suggestion engine for parser.
+Centralized suggestion engine for diagnostics.
 
-Consolidates all suggestion generation logic into a single, focused class
-to avoid duplication across parser components.
+Provides intelligent suggestions for fixing validation issues,
+including token-level and command-level suggestions.
 """
 
 from typing import List
