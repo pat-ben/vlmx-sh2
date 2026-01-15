@@ -9,9 +9,9 @@ parsing natural language commands into structured data.
 from typing import Any, List, Optional, Dict, Union
 from ..models.parser import ParseResult, ParsedCommand, RecognizedToken
 from ..models.words import ActionWord, SchemaWord, EntityWord
-from .tokenizer import Tokenizer
-from .recognizer import WordRecognizer
-from .filter import FilterParser
+from .tokenizer_DEPRECATED import Tokenizer
+from .recognizer_DEPRECATED import WordRecognizer
+from .filter_DEPRECATED import FilterParser
 from ..words.macros import expand_macros
 
 
