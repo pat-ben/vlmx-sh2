@@ -40,6 +40,12 @@ from .parser import (
     ValueContext,
 )
 
+# Validation ENUMs (diagnostics pipeline)
+from .validation import (
+    IssueSeverity,
+    IssueStage,
+)
+
 __all__ = [
     # Form/UI ENUMs
     'Legal',
@@ -65,4 +71,8 @@ __all__ = [
     'Bracket',
     'TokenType',
     'ValueContext',
+    
+    # Validation ENUMs
+    'IssueSeverity',
+    'IssueStage',
 ]

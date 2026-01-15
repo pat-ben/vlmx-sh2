@@ -44,7 +44,7 @@ class Tokenizer:
         Tokenize input text into separate command and filter token lists.
         
         Three-stage process:
-        1. Extract quoted strings
+        1. Extract raw token blocks
         2. Build full ordered list with metadata  
         3. Split into command and filter tokens
         """
