@@ -137,76 +137,42 @@ class Tokenizer:
         
         return text[current_pos:token_end], token_end
 
+    @classmethod
+    def _create_token(cls, text: str, char_start: int, token_index: int) -> Token:
+        """Helper to create Token with position metadata."""
+        return Token(
+            text=text,
+            char_start=char_start,
+            char_end=char_start + len(text),
+            token_index=token_index
+        )
+
     @classmethod  
     def _split_operators(cls, token_text: str, token_start: int, base_token_index: int) -> List[Token]:
-        """
-        Split token on operators if present.
-        
-        Args:
-            token_text: Text to potentially split
-            token_start: Starting character position in original input
-            base_token_index: Starting token index
-            
-        Returns:
-            List of Token objects (may be just one if no operators found)
-        """
-        # Don't split operators if this is a quoted string
+        """Split token on operators if present."""
+        # Don't split if quoted
         if (token_text.startswith('"') and token_text.endswith('"')) or \
            (token_text.startswith("'") and token_text.endswith("'")):
-            return [Token(
-                text=token_text,
-                char_start=token_start,
-                char_end=token_start + len(token_text),
-                token_index=base_token_index
-            )]
+            return [cls._create_token(token_text, token_start, base_token_index)]
         
         # Look for operators
         for operator in cls._OPERATORS_BY_LENGTH:
             if operator in token_text:
-                # Split on first occurrence of this operator
                 parts = token_text.split(operator, 1)
-                if len(parts) == 2 and parts[0]:  # Valid split with non-empty key
+                if len(parts) == 2 and parts[0]:  # Valid split
                     key_part, value_part = parts
                     tokens = []
-                    current_char_pos = token_start
-                    current_token_index = base_token_index
+                    char_pos = token_start
+                    token_idx = base_token_index
                     
-                    # Key token
-                    if key_part:
-                        tokens.append(Token(
-                            text=key_part,
-                            char_start=current_char_pos,
-                            char_end=current_char_pos + len(key_part),
-                            token_index=current_token_index
-                        ))
-                        current_char_pos += len(key_part)
-                        current_token_index += 1
-                    
-                    # Operator token
-                    tokens.append(Token(
-                        text=operator,
-                        char_start=current_char_pos,
-                        char_end=current_char_pos + len(operator),
-                        token_index=current_token_index
-                    ))
-                    current_char_pos += len(operator)
-                    current_token_index += 1
-                    
-                    # Value token (if non-empty)
-                    if value_part:
-                        tokens.append(Token(
-                            text=value_part,
-                            char_start=current_char_pos,
-                            char_end=current_char_pos + len(value_part),
-                            token_index=current_token_index
-                        ))
+                    # Add key, operator, value tokens
+                    for part in [key_part, operator, value_part]:
+                        if part:  # Only add non-empty
+                            tokens.append(cls._create_token(part, char_pos, token_idx))
+                            char_pos += len(part)
+                            token_idx += 1
                     
                     return tokens
         
-        # No operators found - return single token
-        return [Token(
-            text=token_text,
-            char_start=token_start,
-            char_end=token_start + len(token_text),
-            token_index=base_token_index
-        )]
+        # No operators - single token
+        return [cls._create_token(token_text, token_start, base_token_index)]
