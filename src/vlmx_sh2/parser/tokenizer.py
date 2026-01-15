@@ -1,17 +1,15 @@
 """
-New Tokenizer for 6-stage parser architecture.
+
+PARSING STAGE 1/6: Tokenization
 
 Clean tokenizer that extracts raw text blocks with rich position metadata.
 Tokenizer stays "dumb" - just extraction + position tracking.
-No structural classification (classifier stage's job).
-No command/filter splitting (splitter stage's job).
 
 Validation:
 - Tokenizer delegates validation to Validator (diagnostics/validator.py)
 - Validation rules defined in diagnostics/rules.py
 - Current validation: empty command check
-- Future validation rules added to VALIDATION_RULES registry
-- All validation issues are logged to ValidationContext for diagnostic reporting
+
 """
 
 from typing import List
