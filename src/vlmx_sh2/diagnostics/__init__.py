@@ -6,16 +6,22 @@ Provides validation issue tracking, suggestion generation, and diagnostic loggin
 to deliver Nushell-quality error reporting and user feedback.
 
 Components:
+- Validator: Unified validator for all parsing stages
+- ValidationRule: Model for defining validation rules
+- VALIDATION_RULES: Central registry of all validation rules
 - SuggestionEngine: Context-aware suggestions for fixing issues
-- TokenizerValidator: Validation rules for tokenizer stage
 - DiagnosticLogger: Issue tracking and logging (future)
 - DiagnosticReporter: Main coordinator for diagnostic output (future)
 """
 
 from .suggestions import SuggestionEngine
-from .validators.tokenizer import TokenizerValidator
+from .validator import Validator
+from .rules import ValidationRule, VALIDATION_RULES, get_rules_for_stage
 
 __all__ = [
     "SuggestionEngine",
-    "TokenizerValidator",
+    "Validator",
+    "ValidationRule",
+    "VALIDATION_RULES",
+    "get_rules_for_stage",
 ]

@@ -7,17 +7,18 @@ No structural classification (classifier stage's job).
 No command/filter splitting (splitter stage's job).
 
 Validation:
-- Tokenizer delegates validation to TokenizerValidator (diagnostics/validators/tokenizer.py)
+- Tokenizer delegates validation to Validator (diagnostics/validator.py)
+- Validation rules defined in diagnostics/rules.py
 - Current validation: empty command check
-- Future validation rules will be added to TokenizerValidator
+- Future validation rules added to VALIDATION_RULES registry
 - All validation issues are logged to ValidationContext for diagnostic reporting
 """
 
 from typing import List
 from ..models.parser import Token
 from ..models.validation import ValidationContext
-from vlmx_sh2.enums import Operator
-from ..diagnostics.validators.tokenizer import TokenizerValidator
+from vlmx_sh2.enums import Operator, IssueStage
+from ..diagnostics import Validator
 
 
 class Tokenizer:
@@ -52,17 +53,17 @@ class Tokenizer:
         """
         # ==================== VALIDATION ====================
         # 
-        # Tokenizer delegates validation to TokenizerValidator.
+        # Tokenizer delegates validation to unified Validator.
         # This keeps the tokenizer "dumb" and focused on extraction.
         # 
-        # TokenizerValidator checks:
+        # Validator runs rules from diagnostics/rules.py based on IssueStage:
         # - Empty command (current)
-        # - Additional rules will be added in future stages
+        # - Additional rules will be added to VALIDATION_RULES registry
         # 
         # All validation issues are logged to ValidationContext for 
         # comprehensive diagnostic reporting (Nushell-quality error messages).
 
-        if not TokenizerValidator.validate_empty_command(text, context):
+        if not Validator.validate(IssueStage.TOKENIZER, context, text=text):
             return []
         
         # Store original input for position tracking
