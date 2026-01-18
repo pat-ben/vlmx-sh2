@@ -45,7 +45,13 @@ class ValidationContext(BaseModel):
         suggestion: Optional[str] = None,
         related_tokens: Optional[List[int]] = None
     ) -> None:
-        """Add an error-level issue with rich diagnostic information."""
+        """
+        Add an error-level issue with rich diagnostic information.
+        
+        Use this for text-level validation or when token object is not available.
+        For token-level validation, prefer add_error_from_token() to automatically
+        extract position metadata from tokens.
+        """
         self.issues.append(ValidationIssue(
             stage=stage,
             severity=IssueSeverity.ERROR,
@@ -127,6 +133,10 @@ class ValidationContext(BaseModel):
     ) -> None:
         """
         Add error using token's position metadata.
+        
+        Use this for token-level validation to automatically extract position
+        metadata from tokens. This method provides precise error locations
+        with character positions, token indices, and token text.
         
         Convenience method that extracts position info from token automatically,
         including token_index for rich diagnostics.

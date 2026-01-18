@@ -49,35 +49,31 @@ class Tokenizer:
                 Token(text='"ACME"', char_start=15, char_end=21, token_index=2),
             ]
         """
-        # ==================== VALIDATION ====================
+        # ==================== TWO-TIER VALIDATION ====================
         # 
-        # Tokenizer delegates validation to unified Validator.
-        # This keeps the tokenizer "dumb" and focused on extraction.
-        # 
-        # VALIDATION PHILOSOPHY:
-        # - Validator.validate() runs ALL validation rules to collect ALL errors
-        # - Returns False only for BLOCKING errors (e.g., empty command)
-        # - Non-blocking errors (e.g., unclosed quotes) are logged but don't stop tokenization
-        # - This ensures users see ALL errors in their command, not just the first one
-        # 
-        # Current rules:
-        # - empty_command (BLOCKING) - Can't tokenize nothing
-        # - Future: unclosed_quotes (NON-BLOCKING) - Can still extract tokens
-        # - Future: mismatched_brackets (NON-BLOCKING) - Can still extract tokens
-
-        # Run validation (logs errors, returns False only for BLOCKING errors)
-        # If blocking error found (e.g., empty command), we must stop
-        if not Validator.validate(IssueStage.TOKENIZER, context, text=text):
-            return []  # Only stops for BLOCKING errors (like empty command)
-
-        # No blocking errors - continue tokenization
-        # (Non-blocking errors were logged but we can still extract tokens)
+        # Step 1: Text-level validation (pre-tokenization)
+        # - Validates raw input before any parsing begins
+        # - Always blocking (fail fast on fundamental issues)
+        # - Position always 0 (no tokens exist yet)
+        # - Examples: empty command, max length, encoding issues
         
-        # Store original input for position tracking
+        if not Validator.validate_text(IssueStage.TOKENIZER, context, text=text):
+            return []  # Stop immediately for text-level errors
+        
+        # Step 2: Extract tokens with position metadata
         context.input_text = text
+        tokens = cls._extract_with_positions(text)
         
-        # Extract tokens with position metadata
-        return cls._extract_with_positions(text)
+        # Step 3: Token-level validation (post-tokenization)
+        # - Validates individual tokens with position metadata
+        # - Non-blocking by default (collect ALL errors)
+        # - Position extracted from token metadata
+        # - Examples: unclosed quotes, mismatched brackets, unknown words
+        # Note: We don't check return value unless there's a rare blocking token error
+        
+        Validator.validate_tokens(IssueStage.TOKENIZER, context, tokens=tokens)
+        
+        return tokens
 
     @classmethod
     def _extract_with_positions(cls, text: str) -> List[Token]:

@@ -3,28 +3,64 @@
 Validation rule model.
 
 Defines the ValidationRule Pydantic model for validation rules across parsing stages.
+Supports two-tier validation architecture for comprehensive diagnostics.
 """
 
-from typing import Callable, Any
-from pydantic import BaseModel, Field
+from typing import Callable, Any, Literal
+from pydantic import BaseModel, Field, validator
 from vlmx_sh2.enums import IssueStage
 
 
 class ValidationRule(BaseModel):
     """
-    A single validation rule.
+    A single validation rule supporting two-tier validation architecture.
     
-    Defines validation logic and error reporting for a specific check.
-    Rules are organized by parsing stage (IssueStage enum).
+    Two Types of Validation:
+    
+    1. Text-Level Validation (Pre-tokenization):
+       - Input: Raw text string
+       - Position: Always 0 (no tokens exist yet)
+       - Blocking: Always True (fundamental failures that prevent parsing)
+       - Examples: empty command, max length exceeded, invalid encoding
+       - Philosophy: "Fail fast" - can't proceed if we can't even read the input
+    
+    2. Token-Level Validation (Post-tokenization):
+       - Input: List of tokens with position metadata
+       - Position: Extracted from token.char_start, token.char_end, token.token_index
+       - Blocking: Default False (collect ALL errors for comprehensive diagnostics)
+       - Examples: unclosed quotes, mismatched brackets, unrecognized words
+       - Philosophy: "Collect all errors" - show user everything wrong in one go
+    
+    The validation_level field determines which validation tier this rule belongs to.
     """
     rule_id: str = Field(..., description="Unique identifier (e.g., 'empty_command')")
     stage: IssueStage = Field(..., description="Which stage this rule applies to")
+    validation_level: Literal["text", "token"] = Field(
+        default="text", 
+        description="Validation tier: 'text' for pre-tokenization, 'token' for post-tokenization"
+    )
     check: Callable[..., bool] = Field(..., description="Validation function - returns True if valid")
     error_code: str = Field(..., description="Structured error code (e.g., 'vlmx::tokenizer::empty_command')")
     message: str = Field(..., description="Human-readable error message")
     suggestion: str = Field(default="", description="Optional suggestion for fixing")
-    position: int = Field(default=0, description="Default character position for error")
-    blocking: bool = Field(default=False, description="If True, stage MUST stop on this error")
+    position: int = Field(
+        default=0, 
+        description="Default character position for error (used only for text-level validation)"
+    )
+    blocking: bool = Field(
+        default=None, 
+        description="If True, stage MUST stop on this error. Auto-set based on validation_level if None"
+    )
+
+    @validator('blocking', always=True)
+    def set_blocking_default(cls, v, values):
+        """Set blocking default based on validation level if not explicitly provided."""
+        if v is None:
+            # Text-level validation is always blocking (fail fast)
+            # Token-level validation is non-blocking by default (collect all errors)
+            validation_level = values.get('validation_level', 'text')
+            return validation_level == 'text'
+        return v
 
     class Config:
         arbitrary_types_allowed = True  # Allows Callable type
