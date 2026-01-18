@@ -2,7 +2,7 @@
 
 PARSING STAGE 1/6: Tokenization
 
-Clean tokenizer that extracts raw text blocks with rich position metadata.
+Tokenizer that extracts raw text blocks with rich position metadata.
 Tokenizer stays "dumb" - just extraction + position tracking.
 
 Validation:
@@ -15,16 +15,16 @@ Validation:
 from typing import List
 from ..models.parser import Token
 from ..models.validation import ValidationContext
-from vlmx_sh2.enums import Operator, IssueStage
+from vlmx_sh2.enums import Operator, IssueStage, Bracket
 from ..diagnostics import Validator
 
 
 class Tokenizer:
-    """New tokenizer for 6-stage architecture - extraction with position metadata."""
+    """Individual and quote token extraction with position metadata."""
     
     # Class-level constants (kept from current tokenizer)
     _QUOTE_CHARS = {'"', "'"}
-    _BRACKET_VALUES = {'[', ']', '(', ')'}
+    _BRACKET_VALUES = {bracket.value for bracket in Bracket}
     
     # Pre-sorted operators by length (longest first) for efficient detection
     _OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)

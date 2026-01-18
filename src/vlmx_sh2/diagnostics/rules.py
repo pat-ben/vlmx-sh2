@@ -22,27 +22,9 @@ Most rules should be non-blocking to collect ALL errors in one pass.
 Only mark as blocking if the stage truly cannot proceed.
 """
 
-from typing import Callable, List
-from dataclasses import dataclass
+from typing import List
+from ..models.validation import ValidationRule
 from ..enums import IssueStage
-
-
-@dataclass
-class ValidationRule:
-    """
-    A single validation rule.
-    
-    Defines validation logic and error reporting for a specific check.
-    Rules are organized by parsing stage (IssueStage enum).
-    """
-    rule_id: str                    # Unique identifier (e.g., "empty_command")
-    stage: IssueStage               # Which stage this rule applies to
-    check: Callable[..., bool]      # Validation function - returns True if valid
-    error_code: str                 # Structured error code (e.g., "vlmx::tokenizer::empty_command")
-    message: str                    # Human-readable error message
-    suggestion: str = ""            # Optional suggestion for fixing
-    position: int = 0               # Default character position for error
-    blocking: bool = False          # If True, stage MUST stop on this error
 
 
 # =============================================================================
