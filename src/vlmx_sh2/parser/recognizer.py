@@ -139,7 +139,7 @@ class Recognizer:
         Returns:
             RecognizedToken with semantic classification
         """
-        # OPERATORS and BRACKETS: Just copy structural info
+        # OPERATORS and BRACKETS: Pass through structural info
         if classified_token.token_class in (TokenClass.OPERATOR, TokenClass.BRACKET):
             return self._pass_through_structural_token(classified_token)
         
@@ -294,11 +294,11 @@ class Recognizer:
         Pass through structural tokens (OPERATOR/BRACKET) without semantic classification.
         
         These tokens are already fully classified by the Classifier stage.
-        Sets token_type to UNKNOWN as structural tokens don't have semantic word/value types.
+        Sets token_type to STRUCTURAL as these tokens have structural meaning only.
         """
         return RecognizedToken(
             **self._base_fields_from_classified(classified_token),
-            token_type=TokenType.UNKNOWN,  # Structural tokens don't have semantic word/value types
+            token_type=TokenType.STRUCTURAL,  # Structural tokens have no semantic word/value meaning
             confidence=100.0
         )
     

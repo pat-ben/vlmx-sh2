@@ -40,9 +40,10 @@ class TokenClass(str, Enum):
 
 class TokenType(str, Enum):
     """Type classification for parsed tokens (set by recognizer)"""
-    WORD = "word"        # Token that matches a Word in the registry
-    VALUE = "value"      # Token representing a value (company name, etc.)
-    UNKNOWN = "unknown"  # Token that doesn't match any known pattern
+    WORD = "word"           # Token that matches a Word in the registry
+    VALUE = "value"         # Token representing a value (company name, etc.)
+    STRUCTURAL = "structural"  # Structural tokens (operators, brackets) - no semantic meaning
+    UNKNOWN = "unknown"     # Token that doesn't match any known pattern
 
 
 class ValueContext(str, Enum):
