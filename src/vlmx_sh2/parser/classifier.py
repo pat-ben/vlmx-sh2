@@ -4,7 +4,8 @@ PARSING STAGE 2/6: Classification
 
 Performs structural classification of tokens.
 Converts Token objects to ClassifiedToken objects by:
-- Identifying operators and brackets
+- Identifying operators (=, !=, <, >, <=, >=) and which specific operator
+- Identifying brackets ([, ], (, )) and which specific bracket
 - Stripping quotes and marking quoted text
 - Marking remaining tokens as generic text
 
@@ -25,7 +26,8 @@ class Classifier:
     
     Performs structural classification of tokens.
     Converts Token objects to ClassifiedToken objects by:
-    - Identifying operators and brackets
+    - Identifying operators (=, !=, <, >, <=, >=) and which specific operator
+    - Identifying brackets ([, ], (, )) and which specific bracket
     - Stripping quotes and marking quoted text
     - Marking remaining tokens as generic text
     
@@ -101,7 +103,8 @@ class Classifier:
                 char_start=token.char_start,
                 char_end=token.char_end,
                 token_index=token.token_index,
-                token_class=TokenClass.BRACKET
+                token_class=TokenClass.BRACKET,
+                bracket=Bracket(text)
             )
         
         # Check for quoted text

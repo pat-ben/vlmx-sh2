@@ -7,7 +7,7 @@ Contains structural classification with quotes stripped and operators identified
 from typing import Optional
 from pydantic import BaseModel, Field
 
-from vlmx_sh2.enums.parser import TokenClass, Operator
+from vlmx_sh2.enums.parser import TokenClass, Operator, Bracket
 
 
 class ClassifiedToken(BaseModel):
@@ -35,6 +35,8 @@ class ClassifiedToken(BaseModel):
         ...                 token_class=TokenClass.QUOTED_TEXT, was_quoted=True)
         >>> ClassifiedToken(text="=", char_start=28, char_end=29, token_index=3,
         ...                 token_class=TokenClass.OPERATOR, operator=Operator.EQUAL)
+        >>> ClassifiedToken(text="[", char_start=22, char_end=23, token_index=4,
+        ...                 token_class=TokenClass.BRACKET, bracket=Bracket.BRACKET_OPEN)
     """
     
     # Token data
@@ -64,6 +66,10 @@ class ClassifiedToken(BaseModel):
     operator: Optional[Operator] = Field(
         default=None,
         description="If OPERATOR class, which operator it is"
+    )
+    bracket: Optional[Bracket] = Field(
+        default=None,
+        description="If BRACKET class, which bracket it is"
     )
     
     @property
