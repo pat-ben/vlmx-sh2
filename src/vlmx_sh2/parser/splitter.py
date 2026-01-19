@@ -1,5 +1,5 @@
 """
-PARSING STAGE 4/6: Command/Filter Splitting
+PARSING STAGE 5/8: Command/Filter Splitting
 
 Splits recognized tokens into command and filter portions based on bracket positions.
 Operates on semantically classified tokens from the Recognizer stage.
@@ -19,7 +19,7 @@ from ..diagnostics import Validator
 
 class Splitter:
     """
-    PARSING STAGE 4/6: Command/Filter Splitting
+    PARSING STAGE 5/8: Command/Filter Splitting
     
     Splits recognized tokens into command and filter portions based on
     bracket positions. Operates on semantically classified tokens.

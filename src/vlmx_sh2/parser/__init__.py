@@ -2,18 +2,31 @@
 Parser package.
 
 Provides modular parsing functionality with clean separation of concerns:
+- Normalization: Text preprocessing and macro expansion
 - Tokenization: Breaking input into tokens
+- Classification: Structural token analysis
 - Recognition: Matching tokens to known words
-- Extraction: Extracting values and fields
-- Parsing: Orchestrating the complete parsing process
+- Interpretation: Intelligence layer for user intent
+- Splitting: Command/Filter separation
+- Parsing: Building final command structures
 
-The main entry point is VLMXParser, which coordinates all parsing steps.
+The parsing pipeline consists of 8 stages, each with specific responsibilities.
 """
 
-from .tokenizer import Tokenizer
-from ..words.macros import expand_macros
+from .normalizer import Normalizer     # NEW - Stage 0
+from .tokenizer import Tokenizer       # Stage 1
+from .classifier import Classifier     # Stage 2
+from .recognizer import Recognizer     # Stage 3
+from .interpreter import Interpreter   # NEW - Stage 4
+from .splitter import Splitter         # Stage 5
+# from .builder import Builder         # Future - Stage 7
 
 __all__ = [
-    'Tokenizer',
-    'expand_macros',
+    'Normalizer',      # NEW - Stage 0
+    'Tokenizer',       # Stage 1
+    'Classifier',      # Stage 2
+    'Recognizer',      # Stage 3
+    'Interpreter',     # NEW - Stage 4
+    'Splitter',        # Stage 5
+    # 'Builder',       # Future - Stage 7
 ]

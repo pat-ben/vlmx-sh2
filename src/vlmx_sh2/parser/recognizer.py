@@ -1,5 +1,5 @@
 """
-PARSING STAGE 3/6: Semantic Recognition
+PARSING STAGE 3/8: Semantic Recognition
 
 Performs semantic classification of structurally classified tokens.
 Converts ClassifiedToken objects to RecognizedToken objects by:
@@ -22,7 +22,7 @@ from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage
 
 class Recognizer:
     """
-    PARSING STAGE 3/6: Semantic Recognition
+    PARSING STAGE 3/8: Semantic Recognition
     
     Recognizes words and classifies values from classifier output.
     Converts ClassifiedToken objects to RecognizedToken objects with
