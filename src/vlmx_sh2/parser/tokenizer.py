@@ -52,7 +52,7 @@ class Tokenizer:
             
         # Extract tokens with position metadata
         context.input_text = text
-        tokens = cls._extract_with_positions(text)
+        tokens = cls._extract_tokens(text)
 
         # Validate tokens (non-blocking, collect all errors)
         Validator.validate_tokens(IssueStage.TOKENIZER, context, tokens=tokens)
@@ -65,7 +65,7 @@ class Tokenizer:
 # =============================================================================
 
     @classmethod
-    def _extract_with_positions(cls, text: str) -> List[Token]:
+    def _extract_tokens(cls, text: str) -> List[Token]:
         """Extract tokens with position metadata. Token indices assigned in post-processing."""
         tokens = []
         current_pos = 0
@@ -81,15 +81,15 @@ class Tokenizer:
                 break
                 
             # Extract next token
-            token_start = current_pos
-            token_text, token_end = cls._extract_next_token(text, current_pos)
+            char_pos = current_pos
+            token_text, char_end = cls._extract_next_token(text, current_pos)
             
             if token_text:
                 # Check for operators and split if needed
-                operator_tokens = cls._split_operators(token_text, token_start)
-                tokens.extend(operator_tokens)
+                split_tokens = cls._split_operators(token_text, char_pos)
+                tokens.extend(split_tokens)
             
-            current_pos = token_end
+            current_pos = char_end
         
         # Post-processing: assign token indices
         for token_index, token in enumerate(tokens):
@@ -103,9 +103,9 @@ class Tokenizer:
 # =============================================================================
 
     @classmethod
-    def _extract_next_token(cls, text: str, start_pos: int) -> tuple[str, int]:
-        """Extract single token starting at start_pos. Returns (token_text, end_position)."""
-        current_pos = start_pos
+    def _extract_next_token(cls, text: str, char_pos: int) -> tuple[str, int]:
+        """Extract single token starting at char_pos. Returns (token_text, char_end)."""
+        current_pos = char_pos
         text_length = len(text)
         
         # Handle brackets as individual tokens
@@ -117,29 +117,29 @@ class Tokenizer:
             return cls._extract_quoted_token(text, current_pos, text_length)
         
         # Handle regular text (stop at whitespace, brackets, or quotes)
-        token_end = current_pos
-        while token_end < text_length:
-            char = text[token_end]
+        char_end = current_pos
+        while char_end < text_length:
+            char = text[char_end]
             if char.isspace() or char in cls._BRACKET_VALUES or char in cls._QUOTE_CHARS:
                 break
-            token_end += 1
+            char_end += 1
         
-        return text[current_pos:token_end], token_end
+        return text[current_pos:char_end], char_end
 
     @classmethod
-    def _extract_quoted_token(cls, text: str, start_pos: int, text_length: int) -> tuple[str, int]:
-        """Extract quoted string from start_pos. Returns (token_text, end_pos)."""
-        quote_char = text[start_pos]
-        token_end = start_pos + 1
+    def _extract_quoted_token(cls, text: str, char_pos: int, text_length: int) -> tuple[str, int]:
+        """Extract quoted string from char_pos. Returns (token_text, char_end)."""
+        quote_char = text[char_pos]
+        char_end = char_pos + 1
         
         # Find closing quote
-        while token_end < text_length:
-            if text[token_end] == quote_char:
-                token_end += 1  # Include closing quote
+        while char_end < text_length:
+            if text[char_end] == quote_char:
+                char_end += 1  # Include closing quote
                 break
-            token_end += 1
+            char_end += 1
         
-        return text[start_pos:token_end], token_end
+        return text[char_pos:char_end], char_end
 
 
 # =============================================================================
@@ -147,7 +147,7 @@ class Tokenizer:
 # =============================================================================
 
     @classmethod
-    def _find_operator_split(cls, token_text: str) -> tuple[str, str, str] | None:
+    def _find_operator(cls, token_text: str) -> tuple[str, str, str] | None:
         """Find operator in token. Returns (key, operator, value) or None. Longest-first matching."""
         for operator in cls._OPERATORS_BY_LENGTH:
             if operator in token_text:
@@ -157,30 +157,30 @@ class Tokenizer:
         return None
 
     @classmethod  
-    def _split_operators(cls, token_text: str, token_start: int) -> List[Token]:
+    def _split_operators(cls, token_text: str, char_pos: int) -> List[Token]:
         """Split token on operators if present."""
         # Don't split if quoted
         if (token_text.startswith('"') and token_text.endswith('"')) or \
            (token_text.startswith("'") and token_text.endswith("'")):
-            return [cls._create_token(token_text, token_start)]
+            return [cls._create_token(token_text, char_pos)]
         
         # Look for operators using helper method
-        operator_split = cls._find_operator_split(token_text)
-        if operator_split:
-            key_part, operator, value_part = operator_split
+        operator_match = cls._find_operator(token_text)
+        if operator_match:
+            key, operator, value = operator_match
             tokens = []
-            char_pos = token_start
+            write_pos = char_pos
             
             # Add key, operator, value tokens
-            for part in [key_part, operator, value_part]:
+            for part in [key, operator, value]:
                 if part:  # Only add non-empty
-                    tokens.append(cls._create_token(part, char_pos))
-                    char_pos += len(part)
+                    tokens.append(cls._create_token(part, write_pos))
+                    write_pos += len(part)
             
             return tokens
         
         # No operators - single token
-        return [cls._create_token(token_text, token_start)]
+        return [cls._create_token(token_text, char_pos)]
 
 
 # =============================================================================
@@ -188,11 +188,11 @@ class Tokenizer:
 # =============================================================================
 
     @classmethod
-    def _create_token(cls, text: str, char_start: int) -> Token:
+    def _create_token(cls, text: str, char_pos: int) -> Token:
         """Create Token with position metadata. Token index set in post-processing."""
         return Token(
             text=text,
-            char_start=char_start,
-            char_end=char_start + len(text),
+            char_start=char_pos,
+            char_end=char_pos + len(text),
             token_index=0  # Placeholder, will be set in post-processing
         )
