@@ -194,9 +194,47 @@ VALIDATION_RULES: List[ValidationRule] = [
     ),
     
     
+    # ==================== SPLITTER STAGE ====================
+    
+    # TOKEN-LEVEL VALIDATION (Post-split)
+    
+    ValidationRule(
+        rule_id="nested_brackets",
+        stage=IssueStage.SPLITTER,
+        validation_level="token",
+        check=lambda token, tokens, **kwargs: not _has_nested_brackets(token, tokens),
+        error_code="vlmx::splitter::nested_brackets",
+        message="Nested filter brackets are not supported",
+        suggestion="Use only one filter section with logical operators (and/or) instead of nesting",
+        blocking=True  # Blocking - can't parse nested filters
+    ),
+
+    ValidationRule(
+        rule_id="multiple_filter_sections",
+        stage=IssueStage.SPLITTER,
+        validation_level="token",
+        check=lambda token, tokens, **kwargs: not _has_multiple_filter_sections(token, tokens),
+        error_code="vlmx::splitter::multiple_filters",
+        message="Multiple filter sections are not supported",
+        suggestion="Combine filters into one section using logical operators (and/or)",
+        blocking=True  # Blocking - can't handle multiple filters
+    ),
+
+    ValidationRule(
+        rule_id="empty_filter",
+        stage=IssueStage.SPLITTER,
+        validation_level="token",
+        check=lambda token, tokens, **kwargs: not _has_empty_filter(token, tokens),
+        error_code="vlmx::splitter::empty_filter",
+        message="Filter brackets are empty []",
+        suggestion="Add filter conditions inside brackets or remove the brackets",
+        blocking=False  # Non-blocking - treat as no filter
+    ),
+    
+    
     # ==================== OTHER STAGES ====================
     
-    # Future rules for SPLITTER, FILTER_PARSER, BUILDER, HANDLER...
+    # Future rules for FILTER_PARSER, BUILDER, HANDLER...
 ]
 
 
@@ -504,3 +542,122 @@ def _is_orphaned_field_value(token, tokens: List) -> bool:
         return True  # No field name before operator - orphaned
     
     return False  # Has proper context
+
+
+# =============================================================================
+# SPLITTER VALIDATION HELPERS
+# =============================================================================
+
+def _has_nested_brackets(token, tokens: List) -> bool:
+    """
+    Check if there are nested filter brackets [[...]].
+    
+    Only checks once (on first token) to avoid duplicate errors.
+    
+    Args:
+        token: Current token
+        tokens: All tokens
+        
+    Returns:
+        True if nested brackets found, False otherwise
+    """
+    # Only check on first token to avoid duplicates
+    if tokens and token != tokens[0]:
+        return False
+    
+    from vlmx_sh2.enums import Bracket
+    
+    # Find opening bracket
+    bracket_open_index = None
+    for i, t in enumerate(tokens):
+        if hasattr(t, 'bracket') and t.bracket == Bracket.BRACKET_OPEN:
+            bracket_open_index = i
+            break
+    
+    if bracket_open_index is None:
+        return False  # No brackets
+    
+    # Find closing bracket
+    bracket_close_index = None
+    for i in range(bracket_open_index + 1, len(tokens)):
+        if hasattr(tokens[i], 'bracket') and tokens[i].bracket == Bracket.BRACKET_CLOSE:
+            bracket_close_index = i
+            break
+    
+    if bracket_close_index is None:
+        return False  # No closing bracket (already caught by Classifier)
+    
+    # Check for nested opening bracket between the pair
+    for i in range(bracket_open_index + 1, bracket_close_index):
+        if hasattr(tokens[i], 'bracket') and tokens[i].bracket == Bracket.BRACKET_OPEN:
+            return True  # Found nested bracket
+    
+    return False
+
+
+def _has_multiple_filter_sections(token, tokens: List) -> bool:
+    """
+    Check if there are multiple filter sections [...] [...].
+    
+    Only checks once (on first token) to avoid duplicate errors.
+    
+    Args:
+        token: Current token
+        tokens: All tokens
+        
+    Returns:
+        True if multiple filter sections found, False otherwise
+    """
+    # Only check on first token to avoid duplicates
+    if tokens and token != tokens[0]:
+        return False
+    
+    from vlmx_sh2.enums import Bracket
+    
+    # Count opening brackets
+    open_count = 0
+    for t in tokens:
+        if hasattr(t, 'bracket') and t.bracket == Bracket.BRACKET_OPEN:
+            open_count += 1
+            if open_count > 1:
+                return True  # Found multiple opening brackets
+    
+    return False
+
+
+def _has_empty_filter(token, tokens: List) -> bool:
+    """
+    Check if filter brackets are empty [].
+    
+    Only checks once (on first token) to avoid duplicate errors.
+    
+    Args:
+        token: Current token
+        tokens: All tokens
+        
+    Returns:
+        True if empty filter found, False otherwise
+    """
+    # Only check on first token to avoid duplicates
+    if tokens and token != tokens[0]:
+        return False
+    
+    from vlmx_sh2.enums import Bracket
+    
+    # Find bracket pair
+    bracket_open_index = None
+    for i, t in enumerate(tokens):
+        if hasattr(t, 'bracket') and t.bracket == Bracket.BRACKET_OPEN:
+            bracket_open_index = i
+            break
+    
+    if bracket_open_index is None:
+        return False  # No brackets
+    
+    # Check if next token is closing bracket
+    if bracket_open_index + 1 < len(tokens):
+        next_token = tokens[bracket_open_index + 1]
+        if hasattr(next_token, 'bracket') and next_token.bracket == Bracket.BRACKET_CLOSE:
+            return True  # Empty filter []
+    
+    return False

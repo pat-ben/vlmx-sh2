@@ -15,6 +15,7 @@ from .classified_token import ClassifiedToken
 from .recognized_token import RecognizedToken
 from .parse_result import ParseResult
 from .parsed_command import ParsedCommand
+from .split_result import SplitResult
 
 __all__ = [
     # Enums
@@ -27,8 +28,9 @@ __all__ = [
     
     # Models
     "Token",
-    "ClassifiedToken",
+    "ClassifiedToken", 
     "RecognizedToken",
+    "SplitResult",
     "ParseResult",
     "ParsedCommand",
 ]
