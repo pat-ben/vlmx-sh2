@@ -6,10 +6,15 @@ Performs structural classification of tokens.
 Converts Token objects to ClassifiedToken objects by:
 - Identifying operators (=, !=, <, >, <=, >=) and which specific operator
 - Identifying brackets ([, ], (, )) and which specific bracket
-- Stripping quotes and marking quoted text
-- Marking remaining tokens as generic text
+- Detecting and stripping quotes from text (setting was_quoted flag)
+- Classifying all text as TEXT category
 
 Does NOT perform semantic analysis (that's Recognizer's job).
+
+Classification produces 3 main categories:
+- TEXT: All text tokens (with was_quoted boolean for quote detection)
+- OPERATOR: Operator tokens (with operator enum for specific type)
+- BRACKET: Bracket tokens (with bracket enum for specific type)
 
 """
 
@@ -28,10 +33,15 @@ class Classifier:
     Converts Token objects to ClassifiedToken objects by:
     - Identifying operators (=, !=, <, >, <=, >=) and which specific operator
     - Identifying brackets ([, ], (, )) and which specific bracket
-    - Stripping quotes and marking quoted text
-    - Marking remaining tokens as generic text
+    - Detecting and stripping quotes from text (setting was_quoted flag)
+    - Classifying all text as TEXT category
     
     Does NOT perform semantic analysis (that's Recognizer's job).
+    
+    Classification produces 3 main categories:
+    - TEXT: All text tokens (with was_quoted boolean for quote detection)
+    - OPERATOR: Operator tokens (with operator enum for specific type)
+    - BRACKET: Bracket tokens (with bracket enum for specific type)
     """    
 
     # Class-level constants for efficient membership checks
@@ -74,8 +84,9 @@ class Classifier:
         Classification rules:
         1. If text matches Operator enum values -> TokenClass.OPERATOR
         2. If text matches Bracket enum values -> TokenClass.BRACKET
-        3. If text starts and ends with quotes -> TokenClass.QUOTED_TEXT (strip quotes)
-        4. Otherwise -> TokenClass.TEXT
+        3. Otherwise -> TokenClass.TEXT
+           - If text has quotes: strip them and set was_quoted=True
+           - If text has no quotes: keep as-is and set was_quoted=False
         
         Args:
             token: Token to classify
@@ -107,24 +118,18 @@ class Classifier:
                 bracket=Bracket(text)
             )
         
-        # Check for quoted text
-        if cls._is_quoted(text):
-            return ClassifiedToken(
-                text=text[1:-1],  # Strip quotes from text
-                char_start=token.char_start,
-                char_end=token.char_end,
-                token_index=token.token_index,
-                token_class=TokenClass.QUOTED_TEXT,
-                was_quoted=True
-            )
+        # Check if text is quoted (and strip quotes if so)
+        is_quoted = cls._is_quoted(text)
+        final_text = text[1:-1] if is_quoted else text
         
-        # Default case: generic text
+        # All text uses TEXT class (was_quoted indicates if quoted)
         return ClassifiedToken(
-            text=text,
+            text=final_text,
             char_start=token.char_start,
             char_end=token.char_end,
             token_index=token.token_index,
-            token_class=TokenClass.TEXT
+            token_class=TokenClass.TEXT,
+            was_quoted=is_quoted
         )
 
     @staticmethod

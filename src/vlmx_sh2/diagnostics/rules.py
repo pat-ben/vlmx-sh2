@@ -180,7 +180,7 @@ def _has_unclosed_quote(token) -> bool:
     Check if token has an unclosed quote.
     
     Works with both Token (pre-classification) and ClassifiedToken (post-classification) objects.
-    For ClassifiedToken: If classified as QUOTED_TEXT, quotes were successfully matched.
+    For ClassifiedToken: If was_quoted=True, quotes were successfully matched and stripped.
     For Token: Check if text has unmatched quotes.
     
     Args:
@@ -194,15 +194,13 @@ def _has_unclosed_quote(token) -> bool:
         >>> _has_unclosed_quote(token)
         True
         
-        >>> classified_token = ClassifiedToken(text='hello', token_class=TokenClass.QUOTED_TEXT)
+        >>> classified_token = ClassifiedToken(text='hello', token_class=TokenClass.TEXT, was_quoted=True)
         >>> _has_unclosed_quote(classified_token)
-        False  # Successfully classified as quoted means quotes were matched
+        False  # Successfully matched quotes were stripped
     """
-    # If it was classified as QUOTED_TEXT, quotes were successfully matched and stripped
-    if hasattr(token, 'token_class'):
-        from vlmx_sh2.enums import TokenClass
-        if token.token_class == TokenClass.QUOTED_TEXT:
-            return False  # Quotes were properly closed and stripped
+    # If it was classified with was_quoted=True, quotes were successfully matched and stripped
+    if hasattr(token, 'was_quoted') and token.was_quoted:
+        return False  # Quotes were properly closed and stripped
     
     # Check if it looks like an unclosed quote in the text
     text = token.text

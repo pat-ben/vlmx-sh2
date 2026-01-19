@@ -33,10 +33,9 @@ class Bracket(str, Enum):
 
 class TokenClass(str, Enum):
     """Structural classification of tokens (classifier stage)."""
-    TEXT = "text"              # Generic text, needs recognizer
+    TEXT = "text"              # Text (quoted or not, quotes stripped if present)
     OPERATOR = "operator"      # =, !=, <, >, <=, >=
     BRACKET = "bracket"        # [, ], (, )
-    QUOTED_TEXT = "quoted"     # Was in quotes (stripped now)
 
 
 class TokenType(str, Enum):

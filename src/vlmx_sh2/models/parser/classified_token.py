@@ -24,17 +24,25 @@ class ClassifiedToken(BaseModel):
         char_start: Character position where token starts in original input
         char_end: Character position where token ends (exclusive)
         token_index: Position in token array (0-indexed)
-        token_class: Structural classification (OPERATOR, BRACKET, QUOTED_TEXT, TEXT)
-        was_quoted: True if originally in quotes
+        token_class: Structural classification (TEXT, OPERATOR, BRACKET)
+        was_quoted: True if originally in quotes (TEXT tokens only)
         operator: If OPERATOR class, which operator it is
+        bracket: If BRACKET class, which bracket it is
     
     Examples:
+        # TEXT token (not quoted)
         >>> ClassifiedToken(text="create", char_start=0, char_end=6, token_index=0, 
-        ...                 token_class=TokenClass.TEXT)
+        ...                 token_class=TokenClass.TEXT, was_quoted=False)
+        
+        # TEXT token (was quoted, quotes stripped)
         >>> ClassifiedToken(text="ACME", char_start=15, char_end=21, token_index=2,
-        ...                 token_class=TokenClass.QUOTED_TEXT, was_quoted=True)
+        ...                 token_class=TokenClass.TEXT, was_quoted=True)
+        
+        # OPERATOR token
         >>> ClassifiedToken(text="=", char_start=28, char_end=29, token_index=3,
         ...                 token_class=TokenClass.OPERATOR, operator=Operator.EQUAL)
+        
+        # BRACKET token
         >>> ClassifiedToken(text="[", char_start=22, char_end=23, token_index=4,
         ...                 token_class=TokenClass.BRACKET, bracket=Bracket.BRACKET_OPEN)
     """
@@ -57,11 +65,11 @@ class ClassifiedToken(BaseModel):
     
     # Structural classification (NEW - added by classifier)
     token_class: TokenClass = Field(
-        description="Structural classification (OPERATOR | BRACKET | QUOTED_TEXT | TEXT)"
+        description="Structural classification (TEXT | OPERATOR | BRACKET)"
     )
     was_quoted: bool = Field(
         default=False,
-        description="True if originally in quotes"
+        description="True if originally in quotes (TEXT tokens only)"
     )
     operator: Optional[Operator] = Field(
         default=None,
