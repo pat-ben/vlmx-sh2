@@ -107,7 +107,28 @@ VALIDATION_RULES: List[ValidationRule] = [
     
     # ==================== CLASSIFIER STAGE ====================
     
-    # Future classifier rules will be added here...
+    # TOKEN-LEVEL VALIDATION (Post-classification)
+    ValidationRule(
+        rule_id="unclosed_quote",
+        stage=IssueStage.CLASSIFIER,
+        validation_level="token",
+        check=lambda token, **kwargs: not _has_unclosed_quote(token),
+        error_code="vlmx::classifier::unclosed_quote",
+        message="Quote opened but not closed",
+        suggestion="Add closing quote to match the opening quote",
+        blocking=False  # Non-blocking - collect all errors
+    ),
+    
+    ValidationRule(
+        rule_id="mismatched_brackets",
+        stage=IssueStage.CLASSIFIER,
+        validation_level="token",
+        check=lambda token, tokens, **kwargs: _check_bracket_balance_per_token(token, tokens),
+        error_code="vlmx::classifier::mismatched_brackets",
+        message="Brackets are not balanced",
+        suggestion="Ensure each opening bracket '[' or '(' has a matching closing bracket ']' or ')'",
+        blocking=False  # Non-blocking
+    ),
     
     
     # ==================== RECOGNIZER STAGE ====================
@@ -148,3 +169,117 @@ def get_rule_by_id(rule_id: str) -> ValidationRule:
         if rule.rule_id == rule_id:
             return rule
     raise ValueError(f"Validation rule not found: {rule_id}")
+
+
+# =============================================================================
+# VALIDATION HELPER FUNCTIONS
+# =============================================================================
+
+def _has_unclosed_quote(token) -> bool:
+    """
+    Check if token has an unclosed quote.
+    
+    Args:
+        token: Token object with .text attribute
+        
+    Returns:
+        True if token has unclosed quote, False otherwise
+        
+    Examples:
+        >>> token = Token(text='"hello')
+        >>> _has_unclosed_quote(token)
+        True
+        
+        >>> token = Token(text='"hello"')
+        >>> _has_unclosed_quote(token)
+        False
+    """
+    text = token.text
+    
+    # Must be at least 1 character and start with quote
+    if len(text) < 1:
+        return False
+    
+    # Check for unclosed double quotes
+    if text.startswith('"') and not text.endswith('"'):
+        return True
+    
+    # Check for unclosed single quotes  
+    if text.startswith("'") and not text.endswith("'"):
+        return True
+    
+    return False
+
+
+def _check_bracket_balance(tokens: List) -> bool:
+    """
+    Check if brackets are balanced across all tokens.
+    
+    Args:
+        tokens: List of Token objects
+        
+    Returns:
+        True if brackets are balanced, False otherwise
+        
+    Examples:
+        >>> tokens = [Token(text='['), Token(text='test'), Token(text=']')]
+        >>> _check_bracket_balance(tokens)
+        True
+        
+        >>> tokens = [Token(text='['), Token(text='test')]  # Missing closing bracket
+        >>> _check_bracket_balance(tokens)
+        False
+    """
+    # Stack to track opening brackets
+    stack = []
+    
+    # Mapping of closing to opening brackets
+    bracket_pairs = {
+        ']': '[',
+        ')': '('
+    }
+    
+    for token in tokens:
+        text = token.text
+        
+        if text in ['[', '(']:
+            # Opening bracket - push to stack
+            stack.append(text)
+        elif text in [']', ')']:
+            # Closing bracket - check if it matches
+            if not stack:
+                # Closing bracket without opening
+                return False
+            
+            last_opening = stack.pop()
+            expected_opening = bracket_pairs[text]
+            
+            if last_opening != expected_opening:
+                # Mismatched bracket types
+                return False
+    
+    # All brackets should be matched (stack should be empty)
+    return len(stack) == 0
+
+
+def _check_bracket_balance_per_token(token, tokens: List) -> bool:
+    """
+    Check bracket balance only once per token list, reporting error on first token only.
+    
+    This avoids duplicate validation errors when called per token by the validator.
+    Only reports the error for the first token in the list.
+    
+    Args:
+        token: Current token being validated
+        tokens: Complete list of tokens
+        
+    Returns:
+        True if brackets are balanced OR this is not the first token
+        False if brackets are unbalanced AND this is the first token
+    """
+    # Only check balance on the first token to avoid duplicate errors
+    if tokens and token == tokens[0]:
+        return _check_bracket_balance(tokens)
+    
+    # For all other tokens, return True to avoid duplicate error reporting
+    return True
