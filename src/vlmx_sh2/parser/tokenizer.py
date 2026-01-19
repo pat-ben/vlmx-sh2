@@ -19,6 +19,10 @@ from vlmx_sh2.enums import Operator, IssueStage, Bracket
 from ..diagnostics import Validator
 
 
+# =============================================================================
+# PUBLIC API
+# =============================================================================
+
 class Tokenizer:
     """Individual and quote token extraction with position metadata."""
     
@@ -32,15 +36,8 @@ class Tokenizer:
     @classmethod
     def tokenize(cls, text: str, context: ValidationContext) -> List[Token]:
         """
-        Tokenize input text into flat list of tokens with rich position metadata.
+        Tokenize input with validation. Returns list of Token objects.
         
-        Args:
-            text: Raw user input
-            context: ValidationContext for error reporting
-            
-        Returns:
-            List of Token objects with complete position metadata
-            
         Examples:
             >>> tokenize('create company "ACME"', context)
             [
@@ -49,45 +46,27 @@ class Tokenizer:
                 Token(text='"ACME"', char_start=15, char_end=21, token_index=2),
             ]
         """
-        # ==================== TWO-TIER VALIDATION ====================
-        # 
-        # Step 1: Text-level validation (pre-tokenization)
-        # - Validates raw input before any parsing begins
-        # - Always blocking (fail fast on fundamental issues)
-        # - Position always 0 (no tokens exist yet)
-        # - Examples: empty command, max length, encoding issues
-        
+        # Validate raw text (blocking)
         if not Validator.validate_text(IssueStage.TOKENIZER, context, text=text):
-            return []  # Stop immediately for text-level errors
-        
-        # Step 2: Extract tokens with position metadata
+            return []
+            
+        # Extract tokens with position metadata
         context.input_text = text
         tokens = cls._extract_with_positions(text)
-        
-        # Step 3: Token-level validation (post-tokenization)
-        # - Validates individual tokens with position metadata
-        # - Non-blocking by default (collect ALL errors)
-        # - Position extracted from token metadata
-        # - Examples: unclosed quotes, mismatched brackets, unknown words
-        # Note: We don't check return value unless there's a rare blocking token error
-        
+
+        # Validate tokens (non-blocking, collect all errors)
         Validator.validate_tokens(IssueStage.TOKENIZER, context, tokens=tokens)
         
         return tokens
 
+
+# =============================================================================
+# MAIN EXTRACTION LOGIC
+# =============================================================================
+
     @classmethod
     def _extract_with_positions(cls, text: str) -> List[Token]:
-        """
-        Extract tokens with complete position metadata.
-        
-        Single-pass algorithm that tracks:
-        - Current scan position in input
-        - Token boundaries (start/end)  
-        - Quote state
-        
-        Token indices are assigned in post-processing for simplicity.
-        Returns list of Token objects with all metadata populated.
-        """
+        """Extract tokens with position metadata. Token indices assigned in post-processing."""
         tokens = []
         current_pos = 0
         text_length = len(text)
@@ -97,7 +76,7 @@ class Tokenizer:
             while current_pos < text_length and text[current_pos].isspace():
                 current_pos += 1
             
-            # Defensive check for edge cases where whitespace skipping reaches end
+            # Edge case: whitespace skip reached end
             if current_pos >= text_length:
                 break
                 
@@ -118,14 +97,14 @@ class Tokenizer:
         
         return tokens
 
+
+# =============================================================================
+# TOKEN EXTRACTION HELPERS
+# =============================================================================
+
     @classmethod
     def _extract_next_token(cls, text: str, start_pos: int) -> tuple[str, int]:
-        """
-        Extract a single token starting at start_pos.
-        
-        Returns:
-            (token_text, end_position)
-        """
+        """Extract single token starting at start_pos. Returns (token_text, end_position)."""
         current_pos = start_pos
         text_length = len(text)
         
@@ -149,23 +128,7 @@ class Tokenizer:
 
     @classmethod
     def _extract_quoted_token(cls, text: str, start_pos: int, text_length: int) -> tuple[str, int]:
-        """
-        Extract a complete quoted string starting at start_pos.
-        
-        Args:
-            text: Input text containing the quoted string
-            start_pos: Position of the opening quote character
-            text_length: Length of the input text
-            
-        Returns:
-            tuple[str, int]: (token_text, end_position)
-                - token_text: Complete quoted string including opening and closing quotes
-                - end_position: Position after the closing quote
-                
-        Note:
-            The result includes both opening and closing quotes in the token text.
-            If no closing quote is found, extracts until end of text.
-        """
+        """Extract quoted string from start_pos. Returns (token_text, end_pos)."""
         quote_char = text[start_pos]
         token_end = start_pos + 1
         
@@ -178,35 +141,20 @@ class Tokenizer:
         
         return text[start_pos:token_end], token_end
 
+
+# =============================================================================
+# OPERATOR HANDLING
+# =============================================================================
+
     @classmethod
     def _find_operator_split(cls, token_text: str) -> tuple[str, str, str] | None:
-        """
-        Detect operator in token and return split parts.
-        
-        Args:
-            token_text: Text to search for operators
-            
-        Returns:
-            (key, operator, value) if operator found, None otherwise
-            
-        Uses longest-first matching for operator precedence.
-        """
+        """Find operator in token. Returns (key, operator, value) or None. Longest-first matching."""
         for operator in cls._OPERATORS_BY_LENGTH:
             if operator in token_text:
                 parts = token_text.split(operator, 1)
                 if len(parts) == 2 and parts[0]:  # Valid split with non-empty key
                     return parts[0], operator, parts[1]
         return None
-
-    @classmethod
-    def _create_token(cls, text: str, char_start: int) -> Token:
-        """Helper to create Token with position metadata. Token index set in post-processing."""
-        return Token(
-            text=text,
-            char_start=char_start,
-            char_end=char_start + len(text),
-            token_index=0  # Placeholder, will be set in post-processing
-        )
 
     @classmethod  
     def _split_operators(cls, token_text: str, token_start: int) -> List[Token]:
@@ -233,3 +181,18 @@ class Tokenizer:
         
         # No operators - single token
         return [cls._create_token(token_text, token_start)]
+
+
+# =============================================================================
+# TOKEN CREATION HELPERS
+# =============================================================================
+
+    @classmethod
+    def _create_token(cls, text: str, char_start: int) -> Token:
+        """Create Token with position metadata. Token index set in post-processing."""
+        return Token(
+            text=text,
+            char_start=char_start,
+            char_end=char_start + len(text),
+            token_index=0  # Placeholder, will be set in post-processing
+        )
