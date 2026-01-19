@@ -25,7 +25,7 @@ class ClassifiedToken(BaseModel):
         char_end: Character position where token ends (exclusive)
         token_index: Position in token array (0-indexed)
         token_class: Structural classification (TEXT, OPERATOR, BRACKET)
-        was_quoted: True if originally in quotes (TEXT tokens only)
+        was_quoted: True if originally in quotes (TEXT tokens only), None for OPERATOR/BRACKET
         operator: If OPERATOR class, which operator it is
         bracket: If BRACKET class, which bracket it is
     
@@ -38,11 +38,11 @@ class ClassifiedToken(BaseModel):
         >>> ClassifiedToken(text="ACME", char_start=15, char_end=21, token_index=2,
         ...                 token_class=TokenClass.TEXT, was_quoted=True)
         
-        # OPERATOR token
+        # OPERATOR token (was_quoted=None by default)
         >>> ClassifiedToken(text="=", char_start=28, char_end=29, token_index=3,
         ...                 token_class=TokenClass.OPERATOR, operator=Operator.EQUAL)
         
-        # BRACKET token
+        # BRACKET token (was_quoted=None by default)
         >>> ClassifiedToken(text="[", char_start=22, char_end=23, token_index=4,
         ...                 token_class=TokenClass.BRACKET, bracket=Bracket.BRACKET_OPEN)
     """
@@ -67,9 +67,9 @@ class ClassifiedToken(BaseModel):
     token_class: TokenClass = Field(
         description="Structural classification (TEXT | OPERATOR | BRACKET)"
     )
-    was_quoted: bool = Field(
-        default=False,
-        description="True if originally in quotes (TEXT tokens only)"
+    was_quoted: Optional[bool] = Field(
+        default=None,
+        description="True if originally in quotes (TEXT tokens only, None for non-TEXT tokens)"
     )
     operator: Optional[Operator] = Field(
         default=None,

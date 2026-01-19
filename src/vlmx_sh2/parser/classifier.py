@@ -54,6 +54,7 @@ class Classifier:
                 token, 
                 TokenClass.OPERATOR,
                 operator=Operator(text)
+                # was_quoted intentionally omitted (defaults to None)
             )
         
         # Check for brackets
@@ -62,6 +63,7 @@ class Classifier:
                 token,
                 TokenClass.BRACKET,
                 bracket=Bracket(text)
+                # was_quoted intentionally omitted (defaults to None)
             )
         
         # Check if text is quoted (and strip quotes if so)
