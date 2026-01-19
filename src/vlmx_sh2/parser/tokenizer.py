@@ -132,17 +132,7 @@ class Tokenizer:
         
         # Handle quoted strings
         if text[current_pos] in cls._QUOTE_CHARS:
-            quote_char = text[current_pos]
-            token_end = current_pos + 1
-            
-            # Find closing quote
-            while token_end < text_length:
-                if text[token_end] == quote_char:
-                    token_end += 1  # Include closing quote
-                    break
-                token_end += 1
-            
-            return text[current_pos:token_end], token_end
+            return cls._extract_quoted_token(text, current_pos, text_length)
         
         # Handle regular text (stop at whitespace, brackets, or quotes)
         token_end = current_pos
@@ -153,6 +143,37 @@ class Tokenizer:
             token_end += 1
         
         return text[current_pos:token_end], token_end
+
+    @classmethod
+    def _extract_quoted_token(cls, text: str, start_pos: int, text_length: int) -> tuple[str, int]:
+        """
+        Extract a complete quoted string starting at start_pos.
+        
+        Args:
+            text: Input text containing the quoted string
+            start_pos: Position of the opening quote character
+            text_length: Length of the input text
+            
+        Returns:
+            tuple[str, int]: (token_text, end_position)
+                - token_text: Complete quoted string including opening and closing quotes
+                - end_position: Position after the closing quote
+                
+        Note:
+            The result includes both opening and closing quotes in the token text.
+            If no closing quote is found, extracts until end of text.
+        """
+        quote_char = text[start_pos]
+        token_end = start_pos + 1
+        
+        # Find closing quote
+        while token_end < text_length:
+            if text[token_end] == quote_char:
+                token_end += 1  # Include closing quote
+                break
+            token_end += 1
+        
+        return text[start_pos:token_end], token_end
 
     @classmethod
     def _create_token(cls, text: str, char_start: int, token_index: int) -> Token:
