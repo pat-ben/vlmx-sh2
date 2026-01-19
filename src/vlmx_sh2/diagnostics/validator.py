@@ -81,10 +81,10 @@ class Validator:
                     # Log error to context using rule's default position (0 for text-level)
                     context.add_error(
                         stage=stage,
-                        message=rule.message,
+                        message=rule.get_message(text=text, **kwargs),
                         position=rule.position,
                         error_code=rule.error_code,
-                        suggestion=rule.suggestion
+                        suggestion=rule.get_suggestion(text=text, **kwargs)
                     )
                     
                     # Text-level rules are always blocking, but continue checking
@@ -149,9 +149,9 @@ class Validator:
                         context.add_error_from_token(
                             token=token,
                             stage=stage,
-                            message=rule.message,
+                            message=rule.get_message(token=token, tokens=tokens, **kwargs),
                             error_code=rule.error_code,
-                            suggestion=rule.suggestion
+                            suggestion=rule.get_suggestion(token=token, tokens=tokens, **kwargs)
                         )
                         
                         # Check if this is a rare blocking token-level error

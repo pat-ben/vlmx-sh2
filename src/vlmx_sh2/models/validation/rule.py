@@ -6,7 +6,7 @@ Defines the ValidationRule Pydantic model for validation rules across parsing st
 Supports two-tier validation architecture for comprehensive diagnostics.
 """
 
-from typing import Callable, Any, Literal
+from typing import Callable, Any, Literal, Union
 from pydantic import BaseModel, Field, validator
 from vlmx_sh2.enums import IssueStage
 
@@ -41,8 +41,8 @@ class ValidationRule(BaseModel):
     )
     check: Callable[..., bool] = Field(..., description="Validation function - returns True if valid")
     error_code: str = Field(..., description="Structured error code (e.g., 'vlmx::tokenizer::empty_command')")
-    message: str = Field(..., description="Human-readable error message")
-    suggestion: str = Field(default="", description="Optional suggestion for fixing")
+    message: Union[str, Callable[..., str]] = Field(..., description="Human-readable error message or function that generates one")
+    suggestion: Union[str, Callable[..., str]] = Field(default="", description="Optional suggestion for fixing or function that generates one")
     position: int = Field(
         default=0, 
         description="Default character position for error (used only for text-level validation)"
@@ -61,6 +61,18 @@ class ValidationRule(BaseModel):
             validation_level = values.get('validation_level', 'text')
             return validation_level == 'text'
         return v
+
+    def get_message(self, **kwargs) -> str:
+        """Get the error message, resolving callable if necessary."""
+        if callable(self.message):
+            return self.message(**kwargs)
+        return self.message
+    
+    def get_suggestion(self, **kwargs) -> str:
+        """Get the suggestion, resolving callable if necessary."""
+        if callable(self.suggestion):
+            return self.suggestion(**kwargs)
+        return self.suggestion
 
     class Config:
         arbitrary_types_allowed = True  # Allows Callable type

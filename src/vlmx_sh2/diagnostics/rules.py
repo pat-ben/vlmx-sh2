@@ -30,7 +30,8 @@ Each rule defines:
 
 from typing import List
 from ..models.validation import ValidationRule
-from ..enums import IssueStage
+from ..models.words import WordType
+from ..enums import IssueStage, TokenType, ValueContext
 
 
 # =============================================================================
@@ -133,7 +134,32 @@ VALIDATION_RULES: List[ValidationRule] = [
     
     # ==================== RECOGNIZER STAGE ====================
     
-    # Future recognizer rules will be added here...
+    # TOKEN-LEVEL VALIDATION (Post-recognition)
+    ValidationRule(
+        rule_id="unknown_word",
+        stage=IssueStage.RECOGNIZER,
+        validation_level="token",
+        check=lambda token, **kwargs: token.token_type != TokenType.UNKNOWN,
+        error_code="vlmx::recognizer::unknown_word",
+        message=lambda token, **kwargs: f"Unrecognized word: '{token.text}'",
+        suggestion=lambda token, **kwargs: (
+            f"Did you mean '{token.suggestions[0]}'?" 
+            if token.suggestions 
+            else "Check spelling or use 'help' to see available commands"
+        ),
+        blocking=False  # Non-blocking - allow command to proceed
+    ),
+    
+    ValidationRule(
+        rule_id="orphaned_schema_value",
+        stage=IssueStage.RECOGNIZER,
+        validation_level="token",
+        check=lambda token, tokens, **kwargs: not _is_orphaned_schema_value(token, tokens),
+        error_code="vlmx::recognizer::orphaned_schema_value",
+        message="Quoted value appears without an action or schema word before it",
+        suggestion="Add an action (create, delete) or schema word (company, fund) before the quoted value",
+        blocking=True  # Blocking - unclear what to do with orphaned value
+    ),
     
     
     # ==================== OTHER STAGES ====================
@@ -299,4 +325,57 @@ def _check_bracket_balance_per_token(token, tokens: List) -> bool:
         return _check_bracket_balance(tokens)
     
     # For all other tokens, return True to avoid duplicate error reporting
+    return True
+
+
+def _is_orphaned_schema_value(token, tokens: List) -> bool:
+    """
+    Check if a schema value (quoted value with SCHEMA context) is orphaned.
+    
+    A schema value is orphaned if it appears without an action or schema word before it.
+    This catches errors like: "ACME" currency=EUR (missing action/schema)
+    
+    Args:
+        token: Current RecognizedToken being validated
+        tokens: Complete list of RecognizedToken objects
+        
+    Returns:
+        True if token is an orphaned schema value, False otherwise
+        
+    Examples:
+        >>> # Good: create company "ACME" 
+        >>> tokens = [action_token, schema_token, value_token]
+        >>> _is_orphaned_schema_value(value_token, tokens)
+        False
+        
+        >>> # Bad: "ACME" currency=EUR
+        >>> tokens = [value_token, field_token, ...]
+        >>> _is_orphaned_schema_value(value_token, tokens)
+        True  # No action/schema before quoted value
+    """
+    # Only check schema values
+    if not (token.token_type == TokenType.VALUE and 
+            token.value_context == ValueContext.SCHEMA):
+        return False  # Not a schema value, not orphaned
+    
+    # Find current token position
+    try:
+        current_index = tokens.index(token)
+    except ValueError:
+        return False  # Token not found in list
+    
+    # If it's the first token, it's definitely orphaned
+    if current_index == 0:
+        return True
+    
+    # Check the previous token
+    prev_token = tokens[current_index - 1]
+    
+    # Schema values should be preceded by action or schema words
+    if prev_token.token_type == TokenType.WORD:
+        if (prev_token.word_type == WordType.ACTION or 
+            prev_token.word_type == WordType.SCHEMA):
+            return False  # Not orphaned - has proper action/schema word
+    
+    # No valid action/schema word found before this schema value
     return True
