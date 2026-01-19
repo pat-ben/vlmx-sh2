@@ -179,8 +179,12 @@ def _has_unclosed_quote(token) -> bool:
     """
     Check if token has an unclosed quote.
     
+    Works with both Token (pre-classification) and ClassifiedToken (post-classification) objects.
+    For ClassifiedToken: If classified as QUOTED_TEXT, quotes were successfully matched.
+    For Token: Check if text has unmatched quotes.
+    
     Args:
-        token: Token object with .text attribute
+        token: Token or ClassifiedToken object with .text attribute
         
     Returns:
         True if token has unclosed quote, False otherwise
@@ -190,14 +194,19 @@ def _has_unclosed_quote(token) -> bool:
         >>> _has_unclosed_quote(token)
         True
         
-        >>> token = Token(text='"hello"')
-        >>> _has_unclosed_quote(token)
-        False
+        >>> classified_token = ClassifiedToken(text='hello', token_class=TokenClass.QUOTED_TEXT)
+        >>> _has_unclosed_quote(classified_token)
+        False  # Successfully classified as quoted means quotes were matched
     """
-    text = token.text
+    # If it was classified as QUOTED_TEXT, quotes were successfully matched and stripped
+    if hasattr(token, 'token_class'):
+        from vlmx_sh2.enums import TokenClass
+        if token.token_class == TokenClass.QUOTED_TEXT:
+            return False  # Quotes were properly closed and stripped
     
-    # Must be at least 1 character and start with quote
-    if len(text) < 1:
+    # Check if it looks like an unclosed quote in the text
+    text = token.text
+    if len(text) < 2:
         return False
     
     # Check for unclosed double quotes
@@ -215,8 +224,11 @@ def _check_bracket_balance(tokens: List) -> bool:
     """
     Check if brackets are balanced across all tokens.
     
+    Works with both Token (pre-classification) and ClassifiedToken (post-classification) objects.
+    Only considers tokens classified as BRACKET or tokens with bracket text.
+    
     Args:
-        tokens: List of Token objects
+        tokens: List of Token or ClassifiedToken objects
         
     Returns:
         True if brackets are balanced, False otherwise
@@ -226,9 +238,10 @@ def _check_bracket_balance(tokens: List) -> bool:
         >>> _check_bracket_balance(tokens)
         True
         
-        >>> tokens = [Token(text='['), Token(text='test')]  # Missing closing bracket
-        >>> _check_bracket_balance(tokens)
-        False
+        >>> classified = [ClassifiedToken(text='[', token_class=TokenClass.BRACKET), 
+        ...               ClassifiedToken(text='test', token_class=TokenClass.TEXT)]
+        >>> _check_bracket_balance(classified)
+        False  # Missing closing bracket
     """
     # Stack to track opening brackets
     stack = []
@@ -241,6 +254,12 @@ def _check_bracket_balance(tokens: List) -> bool:
     
     for token in tokens:
         text = token.text
+        
+        # For ClassifiedToken, only process if it's actually a bracket
+        if hasattr(token, 'token_class'):
+            from vlmx_sh2.enums import TokenClass
+            if token.token_class != TokenClass.BRACKET:
+                continue  # Skip non-bracket classified tokens
         
         if text in ['[', '(']:
             # Opening bracket - push to stack
