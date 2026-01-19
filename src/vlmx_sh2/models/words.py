@@ -30,7 +30,11 @@ class BaseWord(BaseModel):
     """
     
     id: str = Field(description="Unique word identifier (e.g., 'create', 'company', 'currency')")    
-    description: str = Field(description="Human-readable description of the word")    
+    description: str = Field(description="Human-readable description of the word")
+    aliases: List[str] = Field(
+        default_factory=list, 
+        description="Alternative names for this word (e.g., ['del', 'rm'] for 'delete', ['org'] for 'organization')"
+    )
     deprecated: bool = Field(default=False, description="Whether this word is deprecated and should not be used")
     replaced_by: Optional[str] = Field(default=None, description="If deprecated, which word replaces this one")    
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -64,7 +68,7 @@ class ActionWord(BaseWord):
     Action word - represents commands like create, update, delete, show.
     """
     
-    aliases: List[str] = Field(default_factory=list, description="Alternative names for this word (e.g., ['add', 'new'] for 'create')")
+    # aliases field removed - now inherited from BaseWord
     word_type: Literal[WordType.ACTION] = WordType.ACTION
     execution_type: ExecutionType = Field(default=ExecutionType.STANDARD, description="Type of execution for this action")
     handler: Any = Field(description="Function to handle this action")

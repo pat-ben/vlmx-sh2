@@ -48,15 +48,22 @@ class Recognizer:
         """
         Build mapping from lowercase aliases to canonical word IDs.
         
-        Example: {"delete": "delete", "del": "delete", "rm": "delete"}
+        Now handles aliases from ALL word types (ACTION, SCHEMA, ENTITY, FIELD).
+        
+        Example: {
+            "delete": "delete", "del": "delete", "rm": "delete",  # ActionWord
+            "org": "organization",                                  # EntityWord
+            "co": "company",                                        # SchemaWord
+            "curr": "currency"                                      # FieldWord
+        }
         """
         alias_map = {}
         for word_id, word in self.word_registry.items():
             # Add word ID itself
             alias_map[word_id.lower()] = word_id
             
-            # Add aliases for ActionWords
-            if isinstance(word, ActionWord):
+            # Add aliases from any word type that has them
+            if hasattr(word, 'aliases') and word.aliases:
                 for alias in word.aliases:
                     alias_map[alias.lower()] = word_id
         

@@ -15,84 +15,73 @@ from ..enums.forms import TypeOrg
 
 
 def generate_schema_words() -> Dict[str, SchemaWord]:
-    """
-    Generate SchemaWord objects from TypeOrg enum.
-    
-    Creates one word per organization type that can be used for 
-    database creation/deletion operations.
-    
-    Returns:
-        Dictionary mapping schema word IDs to SchemaWord objects
-    """
-    schema_words = {}
-    
-    # For now, we only support CompanyDatabase
-    # In the future, each TypeOrg will have its own specific DatabaseModel
+    """Generate SchemaWord objects for all organization types."""
     from ..models.schemas.company import CompanyDatabase
     
-    type_org = TypeOrg.COMPANY
-    schema_class = CompanyDatabase
+    schema_words = {}
     
-    word_id = type_org.value  # "company"
-    description = type_org.description  # Use the description property from TypeOrg enum
-    
-    schema_word = SchemaWord(
-        id=word_id,
-        description=description,
-        type_value=type_org,
-        schema_class=schema_class
+    # Company schema
+    schema_words["company"] = SchemaWord(
+        id="company",
+        description="Company organization type",
+        aliases=["co"],  # ADD THIS
+        type_value=TypeOrg.COMPANY,
+        schema_class=CompanyDatabase
     )
     
-    schema_words[word_id] = schema_word
+    # Future schemas can be added here:
+    # schema_words["fund"] = SchemaWord(
+    #     id="fund",
+    #     description="Fund organization type",
+    #     aliases=["f"],
+    #     type_value=TypeOrg.FUND,
+    #     schema_class=FundDatabase
+    # )
     
     return schema_words
 
 
 def generate_entity_words(schema: Type[SchemaModel]) -> Dict[str, EntityWord]:
     """
-    Generate EntityWord objects from schemas.
-
+    Generate EntityWord objects from database schema's entity models.
+    
     Args:
-        schema: Database schemas containing entity definitions
-
+        schema: Database schema class (e.g., CompanyDatabase)
+        
     Returns:
-        Dictionary mapping entity word IDs to EntityWord objects
+        Dictionary of entity_id → EntityWord
     """
     entity_words = {}
-
+    
     for entity_cls in schema.tables:
-        word_id = entity_cls.get_entity_word_id()
-        description = entity_cls.get_entity_description()
-        context = entity_cls.context
-
-        entity_word = EntityWord(
-            id=word_id,
-            description=description,
-            context=context,
-            entity_model=entity_cls,
+        # Get aliases if entity defines them
+        # NOTE: Aliases can be added via get_word_aliases() class method
+        # Example: OrganizationEntity.get_word_aliases() → ["org", "o"]
+        aliases = []
+        if hasattr(entity_cls, 'get_word_aliases'):
+            aliases = entity_cls.get_word_aliases()
+        
+        entity_words[entity_cls.get_entity_word_id()] = EntityWord(
+            id=entity_cls.get_entity_word_id(),
+            description=entity_cls.get_entity_description(),
+            aliases=aliases,  # Pass aliases
+            context=entity_cls.context,
+            entity_model=entity_cls
         )
-
-        entity_words[word_id] = entity_word
-
+    
     return entity_words
 
 
 
 def generate_field_words(schema: Type[SchemaModel]) -> Dict[str, FieldWord]:
     """
-    Generate FieldWord objects from entity fields.
-
-    Aggregates fields by name across all schemas, creating one FieldWord
-    per unique field name that references all schemas containing that field.
+    Generate FieldWord objects from entity model fields.
     
-    For fields appearing in multiple schemas, uses a generic description
-    to indicate the field is shared across schemas.
-
     Args:
-        schema: Database schemas containing entity definitions
-
+        schema: Database schema class
+        
     Returns:
-        Dictionary mapping field word IDs to FieldWord objects
+        Dictionary of field_name → FieldWord
     """
     # Group schemas by field name
     field_to_entities: Dict[str, List[Type[EntityModel]]] = defaultdict(list)
@@ -123,21 +112,24 @@ def generate_field_words(schema: Type[SchemaModel]) -> Dict[str, FieldWord]:
 
     # Create FieldWord objects
     field_words = {}
-
+    
     for field_name, entities in field_to_entities.items():
+        # NOTE: Field aliases could be defined in field metadata in the future
+        # For now, no automatic aliases for fields
+        aliases = []
+        
         # If field appears in multiple schemas, use generic description
         if len(entities) > 1:
             description = f"{field_name.capitalize()} (common to multiple schemas)"
         else:
             description = field_to_descriptions[field_name]
 
-        field_word = FieldWord(
+        field_words[field_name] = FieldWord(
             id=field_name,
             description=description,
+            aliases=aliases,  # Empty for now, ready for future use
             entity_models=entities,
         )
-
-        field_words[field_name] = field_word
 
     return field_words
 
