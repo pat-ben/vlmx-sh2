@@ -7,7 +7,7 @@ Contains both structural (from classifier) and semantic (from recognizer) classi
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
 
-from vlmx_sh2.enums import TokenType, ValueContext
+from vlmx_sh2.enums import TokenType, ValueContext, TokenClass, Operator, Bracket
 from ..words import Word, WordType
 
 
@@ -78,9 +78,21 @@ class RecognizedToken(BaseModel):
     )
     
     # Structural classification (inherited from classifier)
+    token_class: Optional[TokenClass] = Field(
+        default=None,
+        description="Structural classification from classifier (TEXT, OPERATOR, BRACKET)"
+    )
     was_quoted: bool = Field(
         default=False,
         description="True if originally in quotes (from classifier)"
+    )
+    operator: Optional[Operator] = Field(
+        default=None,
+        description="If OPERATOR class, which operator it is"
+    )
+    bracket: Optional[Bracket] = Field(
+        default=None,
+        description="If BRACKET class, which bracket it is"
     )
     
     # Semantic classification (added by recognizer)
