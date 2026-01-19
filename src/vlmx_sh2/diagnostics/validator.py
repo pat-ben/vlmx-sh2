@@ -134,6 +134,14 @@ class Validator:
             >>> Validator.validate_tokens(IssueStage.TOKENIZER, context, tokens=tokens)
             True
         """
+        # Create suggestion engine once for this validation pass
+        # This avoids recreating it for each unknown token
+        suggestion_engine = kwargs.get('suggestion_engine')
+        if not suggestion_engine:
+            from .suggestions import SuggestionEngine
+            suggestion_engine = SuggestionEngine()
+            kwargs['suggestion_engine'] = suggestion_engine
+        
         rules = get_token_rules_for_stage(stage)
         has_blocking_error = False
         

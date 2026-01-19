@@ -6,7 +6,6 @@ Converts ClassifiedToken objects to RecognizedToken objects by:
 - Recognizing words from registry (actions, entities, fields, schemas)
 - Handling aliases (del � delete, rm � delete, etc.)
 - Classifying values based on context (schema names, field values)
-- Providing suggestions for unrecognized tokens
 - Copying structural information (operators, brackets) from Classifier
 
 Does NOT handle command/filter splitting (that's Splitter's job).
@@ -17,7 +16,7 @@ from ..models.parser import ClassifiedToken, RecognizedToken
 from ..models.validation import ValidationContext
 from ..models.words import Word, WordType, ActionWord
 from ..words import get_all_words, get_word
-from ..diagnostics import Validator, SuggestionEngine
+from ..diagnostics import Validator
 from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage
 
 
@@ -36,9 +35,8 @@ class Recognizer:
     _CONFIDENCE_UNKNOWN = 0.0
     
     def __init__(self):
-        """Initialize recognizer with registry and suggestion engine."""
+        """Initialize recognizer with registry and alias mappings."""
         self.word_registry = get_all_words()
-        self.suggestion_engine = SuggestionEngine()
         self.alias_to_word = self._build_alias_map()
         self.words_by_type = self._group_words_by_type()
     
@@ -168,7 +166,7 @@ class Recognizer:
             )
         
         # Not a value, try WORD recognition
-        word, confidence, suggestions = self.recognize_word(classified_token.text)
+        word, confidence = self.recognize_word(classified_token.text)
         
         if word:
             return self._create_recognized_token(
@@ -181,11 +179,11 @@ class Recognizer:
             return self._create_recognized_token(
                 classified_token,
                 token_type=TokenType.UNKNOWN,
-                confidence=confidence,
-                suggestions=suggestions
+                confidence=confidence
+                # No suggestions passed - will be added by validator
             )
     
-    def recognize_word(self, token_text: str) -> Tuple[Optional[Word], float, List[str]]:
+    def recognize_word(self, token_text: str) -> Tuple[Optional[Word], float]:
         """
         Try to recognize a token as a word from the registry.
         
@@ -195,10 +193,9 @@ class Recognizer:
             token_text: Text to recognize
             
         Returns:
-            Tuple of (word, confidence, suggestions)
+            Tuple of (word, confidence)
             - word: Word object if matched, None otherwise
             - confidence: 100.0 if matched, 0.0 otherwise
-            - suggestions: List of similar words if not matched
         """
         token_lower = token_text.lower()
         
@@ -206,11 +203,10 @@ class Recognizer:
         if token_lower in self.alias_to_word:
             word_id = self.alias_to_word[token_lower]
             word = get_word(word_id)
-            return word, self._CONFIDENCE_EXACT_MATCH, []
+            return word, self._CONFIDENCE_EXACT_MATCH
         
-        # No match - provide suggestions
-        suggestions = self.suggestion_engine.get_token_suggestions(token_text)
-        return None, self._CONFIDENCE_UNKNOWN, suggestions
+        # No match
+        return None, self._CONFIDENCE_UNKNOWN
     
     # =============================================================================
     # Value Context Classification
@@ -267,8 +263,7 @@ class Recognizer:
         token_type: TokenType,
         word: Optional[Word] = None,
         value_context: Optional[ValueContext] = None,
-        confidence: float = 0.0,
-        suggestions: Optional[List[str]] = None
+        confidence: float = 0.0
     ) -> RecognizedToken:
         """
         Create RecognizedToken from ClassifiedToken with semantic classification.
@@ -282,7 +277,6 @@ class Recognizer:
             word: Word object if WORD type
             value_context: Context if VALUE type
             confidence: Recognition confidence (0-100)
-            suggestions: Suggestions if UNKNOWN type
             
         Returns:
             RecognizedToken with complete classification
@@ -306,8 +300,8 @@ class Recognizer:
             token_type=token_type,
             word=word,
             value_context=value_context,
-            confidence=confidence,
-            suggestions=suggestions or []
+            confidence=confidence
+            # suggestions field defaults to empty list in RecognizedToken
         )
     
     def _copy_structural_token(

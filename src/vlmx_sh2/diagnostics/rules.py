@@ -31,7 +31,7 @@ Each rule defines:
 from typing import List
 from ..models.validation import ValidationRule
 from ..models.words import WordType
-from ..enums import IssueStage, TokenType, ValueContext
+from ..enums import IssueStage, TokenType, ValueContext, TokenClass
 
 
 # =============================================================================
@@ -139,15 +139,14 @@ VALIDATION_RULES: List[ValidationRule] = [
         rule_id="unknown_word",
         stage=IssueStage.RECOGNIZER,
         validation_level="token",
-        check=lambda token, **kwargs: token.token_type != TokenType.UNKNOWN,
+        check=lambda token, **kwargs: not (
+            token.token_type == TokenType.UNKNOWN and 
+            getattr(token, 'token_class', None) == TokenClass.TEXT
+        ),
         error_code="vlmx::recognizer::unknown_word",
         message=lambda token, **kwargs: f"Unrecognized word: '{token.text}'",
-        suggestion=lambda token, **kwargs: (
-            f"Did you mean '{token.suggestions[0]}'?" 
-            if token.suggestions 
-            else "Check spelling or use 'help' to see available commands"
-        ),
-        blocking=False  # Non-blocking - allow command to proceed
+        suggestion=lambda token, **kwargs: _get_unknown_word_suggestion(token, **kwargs),
+        blocking=False  # Non-blocking - collect all errors
     ),
     
     ValidationRule(
@@ -156,9 +155,42 @@ VALIDATION_RULES: List[ValidationRule] = [
         validation_level="token",
         check=lambda token, tokens, **kwargs: not _is_orphaned_schema_value(token, tokens),
         error_code="vlmx::recognizer::orphaned_schema_value",
-        message="Quoted value appears without an action or schema word before it",
+        message="Quoted value without action or schema word before it",
         suggestion="Add an action (create, delete) or schema word (company, fund) before the quoted value",
         blocking=True  # Blocking - unclear what to do with orphaned value
+    ),
+
+    ValidationRule(
+        rule_id="orphaned_field_value",
+        stage=IssueStage.RECOGNIZER,
+        validation_level="token",
+        check=lambda token, tokens, **kwargs: not _is_orphaned_field_value(token, tokens),
+        error_code="vlmx::recognizer::orphaned_field_value",
+        message="Value after operator but no field name before it",
+        suggestion="Add a field name before the operator (e.g., 'currency=...' or 'vision=...')",
+        blocking=True  # Blocking - unclear what field this value belongs to
+    ),
+
+    ValidationRule(
+        rule_id="low_confidence_word",
+        stage=IssueStage.RECOGNIZER,
+        validation_level="token",
+        check=lambda token, **kwargs: token.confidence >= 50.0 or token.token_type == TokenType.UNKNOWN,
+        error_code="vlmx::recognizer::low_confidence",
+        message=lambda token, **kwargs: f"Low confidence recognizing '{token.text}' as {token.word.id if token.word else 'value'}",
+        suggestion="Consider being more specific or checking spelling",
+        blocking=False  # Non-blocking - informational
+    ),
+
+    ValidationRule(
+        rule_id="value_without_context",
+        stage=IssueStage.RECOGNIZER,
+        validation_level="token",
+        check=lambda token, **kwargs: not (token.token_type == TokenType.VALUE and token.value_context is None),
+        error_code="vlmx::recognizer::value_no_context",
+        message="Value token classified without proper context (internal parser issue)",
+        suggestion="This indicates a parser bug - please report with the command you used",
+        blocking=False  # Non-blocking - but indicates parser issue
     ),
     
     
@@ -379,3 +411,96 @@ def _is_orphaned_schema_value(token, tokens: List) -> bool:
     
     # No valid action/schema word found before this schema value
     return True
+
+
+# =============================================================================
+# RECOGNIZER VALIDATION HELPERS
+# =============================================================================
+
+def _get_unknown_word_suggestion(token, **kwargs) -> str:
+    """
+    Generate suggestion for unknown word token.
+    
+    Uses SuggestionEngine to provide context-aware suggestions.
+    Falls back to generic help if no good suggestions available.
+    
+    Args:
+        token: RecognizedToken with token_type=UNKNOWN
+        **kwargs: Additional context (may include 'tokens' for full context)
+        
+    Returns:
+        Suggestion string
+    """
+    # Get suggestion engine (create instance if needed)
+    # Note: Could be passed in kwargs for efficiency
+    suggestion_engine = kwargs.get('suggestion_engine')
+    if not suggestion_engine:
+        from ..diagnostics.suggestions import SuggestionEngine
+        suggestion_engine = SuggestionEngine()
+    
+    # Generate suggestions for this token
+    suggestions = suggestion_engine.get_token_suggestions(token.text)
+    
+    if suggestions:
+        # Return top suggestion with alternatives
+        if len(suggestions) > 1:
+            return f"Did you mean '{suggestions[0]}'? Other options: {', '.join(suggestions[1:3])}"
+        else:
+            return f"Did you mean '{suggestions[0]}'?"
+    else:
+        # No good suggestions
+        return "Check spelling or use 'help' to see available commands"
+
+
+def _is_orphaned_field_value(token, tokens: List) -> bool:
+    """
+    Check if token is a field value after operator but without field name.
+    
+    Field values MUST follow pattern: FieldWord OPERATOR VALUE
+    
+    Valid examples:
+    - currency=EUR
+    - vision="Our vision"
+    
+    Invalid examples:
+    - =EUR (missing field name before operator)
+    - currency EUR (missing operator)
+    
+    Args:
+        token: Current token to check
+        tokens: All tokens in the list
+        
+    Returns:
+        True if token is orphaned field value, False otherwise
+    """
+    # Only check VALUE tokens with FIELD context
+    if token.token_type != TokenType.VALUE or token.value_context != ValueContext.FIELD:
+        return False
+    
+    # Find this token's position
+    try:
+        token_index = token.token_index
+    except AttributeError:
+        try:
+            token_index = tokens.index(token)
+        except ValueError:
+            return False
+    
+    # Need at least 2 tokens before this one (field + operator)
+    if token_index < 2:
+        return True  # Not enough tokens before - orphaned
+    
+    # Check pattern: should be FieldWord OPERATOR VALUE
+    operator_token = tokens[token_index - 1]
+    field_token = tokens[token_index - 2]
+    
+    # Previous token should be OPERATOR
+    if not (hasattr(operator_token, 'token_class') and 
+            operator_token.token_class == TokenClass.OPERATOR):
+        return True  # Not after operator - orphaned
+    
+    # Token before operator should be FieldWord
+    if not (hasattr(field_token, 'is_field_word') and field_token.is_field_word):
+        return True  # No field name before operator - orphaned
+    
+    return False  # Has proper context
