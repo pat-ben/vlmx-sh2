@@ -4,7 +4,7 @@ PARSING STAGE 3/6: Semantic Recognition
 Performs semantic classification of structurally classified tokens.
 Converts ClassifiedToken objects to RecognizedToken objects by:
 - Recognizing words from registry (actions, entities, fields, schemas)
-- Handling aliases (del � delete, rm � delete, etc.)
+- Handling aliases (del → delete, rm → delete, etc.)
 - Classifying values based on context (schema names, field values)
 - Copying structural information (operators, brackets) from Classifier
 
@@ -46,13 +46,9 @@ class Recognizer:
     
     def _build_alias_map(self) -> Dict[str, str]:
         """
-        Build mapping from lowercase aliases to word IDs.
+        Build mapping from lowercase aliases to canonical word IDs.
         
-        Maps both word IDs and their aliases to the canonical word ID.
         Example: {"delete": "delete", "del": "delete", "rm": "delete"}
-        
-        Returns:
-            Dictionary mapping lowercase alias � word ID
         """
         alias_map = {}
         for word_id, word in self.word_registry.items():
@@ -71,7 +67,7 @@ class Recognizer:
         Group words by their type for quick access.
         
         Returns:
-            Dictionary mapping WordType � List of Words
+            Dictionary mapping WordType → List of Words
         """
         groups = {wt: [] for wt in WordType}
         for word in self.word_registry.values():
@@ -130,24 +126,22 @@ class Recognizer:
         current_position: int
     ) -> RecognizedToken:
         """
-        Recognize a single classified token.
+        Recognize a single token from classifier output.
         
-        Logic:
-        1. OPERATOR/BRACKET tokens: Copy as-is (already classified structurally)
-        2. TEXT tokens: Try value classification first, then word recognition
-        3. Unknown: Provide suggestions
+        For TEXT tokens: attempts value classification, then word recognition.
+        For OPERATOR/BRACKET tokens: passes through structural classification.
         
         Args:
-            classified_token: Token to recognize
-            recognized_tokens: Previously recognized tokens (for context)
-            current_position: Position in token array
+            classified_token: Token from classifier
+            recognized_tokens: Previous tokens for context
+            current_position: Index in token array
             
         Returns:
             RecognizedToken with semantic classification
         """
         # OPERATORS and BRACKETS: Just copy structural info
         if classified_token.token_class in (TokenClass.OPERATOR, TokenClass.BRACKET):
-            return self._copy_structural_token(classified_token)
+            return self._pass_through_structural_token(classified_token)
         
         # TEXT tokens: Perform semantic classification
         # Try VALUE classification first (context-dependent)
@@ -185,17 +179,13 @@ class Recognizer:
     
     def recognize_word(self, token_text: str) -> Tuple[Optional[Word], float]:
         """
-        Try to recognize a token as a word from the registry.
-        
-        Handles aliases automatically (del � delete, rm � delete, etc.)
+        Recognize token as word from registry, handling aliases automatically.
         
         Args:
             token_text: Text to recognize
             
         Returns:
-            Tuple of (word, confidence)
-            - word: Word object if matched, None otherwise
-            - confidence: 100.0 if matched, 0.0 otherwise
+            (word, confidence): Word object and score (100.0 if matched, 0.0 otherwise)
         """
         token_lower = token_text.lower()
         
@@ -241,9 +231,10 @@ class Recognizer:
         prev_token = recognized_tokens[current_position - 1]
         
         # Rule 1: Schema name (quoted token after schema/action word)
-        if classified_token.was_quoted and prev_token.is_word:
-            if prev_token.is_schema_word or prev_token.is_action_word:
-                return ValueContext.SCHEMA
+        if (classified_token.was_quoted and 
+            prev_token.is_word and 
+            (prev_token.is_schema_word or prev_token.is_action_word)):
+            return ValueContext.SCHEMA
         
         # Rule 2: Field value (token after operator)
         # NEW: Check if previous token's token_class is OPERATOR
@@ -257,6 +248,23 @@ class Recognizer:
     # Token Creation Helpers
     # =============================================================================
     
+    def _base_fields_from_classified(self, classified_token: ClassifiedToken) -> dict:
+        """
+        Extract common fields from ClassifiedToken for RecognizedToken creation.
+        
+        Returns base dictionary with structural fields that are common to all token types.
+        """
+        return {
+            "text": classified_token.text,
+            "char_start": classified_token.char_start,
+            "char_end": classified_token.char_end,
+            "token_index": classified_token.token_index,
+            "token_class": classified_token.token_class,
+            "was_quoted": classified_token.was_quoted,
+            "operator": classified_token.operator,
+            "bracket": classified_token.bracket,
+        }
+    
     def _create_recognized_token(
         self,
         classified_token: ClassifiedToken,
@@ -268,76 +276,30 @@ class Recognizer:
         """
         Create RecognizedToken from ClassifiedToken with semantic classification.
         
-        Copies all structural information from ClassifiedToken and adds
-        semantic classification fields.
-        
-        Args:
-            classified_token: Source token with structural info
-            token_type: Semantic type (WORD, VALUE, UNKNOWN)
-            word: Word object if WORD type
-            value_context: Context if VALUE type
-            confidence: Recognition confidence (0-100)
-            
-        Returns:
-            RecognizedToken with complete classification
+        Combines structural fields from classifier with semantic classification.
         """
         return RecognizedToken(
-            # Token data
-            text=classified_token.text,
-            
-            # Position metadata (from Token � Classifier)
-            char_start=classified_token.char_start,
-            char_end=classified_token.char_end,
-            token_index=classified_token.token_index,
-            
-            # Structural classification (from Classifier)
-            token_class=classified_token.token_class,
-            was_quoted=classified_token.was_quoted,
-            operator=classified_token.operator,
-            bracket=classified_token.bracket,
-            
-            # Semantic classification (NEW - added by Recognizer)
+            **self._base_fields_from_classified(classified_token),
             token_type=token_type,
             word=word,
             value_context=value_context,
             confidence=confidence
-            # suggestions field defaults to empty list in RecognizedToken
         )
     
-    def _copy_structural_token(
+    def _pass_through_structural_token(
         self,
         classified_token: ClassifiedToken
     ) -> RecognizedToken:
         """
-        Copy structural token (OPERATOR/BRACKET) without semantic classification.
+        Pass through structural tokens (OPERATOR/BRACKET) without semantic classification.
         
         These tokens are already fully classified by the Classifier stage.
-        No semantic work needed - just copy the information.
-        
-        Args:
-            classified_token: Operator or bracket token
-            
-        Returns:
-            RecognizedToken with structural info only
+        Sets token_type to UNKNOWN as structural tokens don't have semantic word/value types.
         """
         return RecognizedToken(
-            # Token data
-            text=classified_token.text,
-            
-            # Position metadata
-            char_start=classified_token.char_start,
-            char_end=classified_token.char_end,
-            token_index=classified_token.token_index,
-            
-            # Structural classification (from Classifier)
-            token_class=classified_token.token_class,
-            was_quoted=classified_token.was_quoted,
-            operator=classified_token.operator,
-            bracket=classified_token.bracket,
-            
-            # Semantic classification: Not applicable for structural tokens
-            token_type=TokenType.UNKNOWN,  # Not WORD or VALUE
-            confidence=100.0  # Fully confident in structural classification
+            **self._base_fields_from_classified(classified_token),
+            token_type=TokenType.UNKNOWN,  # Structural tokens don't have semantic word/value types
+            confidence=100.0
         )
     
     # =============================================================================
