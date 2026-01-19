@@ -84,13 +84,12 @@ class Tokenizer:
         - Current scan position in input
         - Token boundaries (start/end)  
         - Quote state
-        - Token index counter
         
+        Token indices are assigned in post-processing for simplicity.
         Returns list of Token objects with all metadata populated.
         """
         tokens = []
         current_pos = 0
-        token_index = 0
         text_length = len(text)
         
         while current_pos < text_length:
@@ -98,6 +97,7 @@ class Tokenizer:
             while current_pos < text_length and text[current_pos].isspace():
                 current_pos += 1
             
+            # Defensive check for edge cases where whitespace skipping reaches end
             if current_pos >= text_length:
                 break
                 
@@ -107,11 +107,14 @@ class Tokenizer:
             
             if token_text:
                 # Check for operators and split if needed
-                operator_tokens = cls._split_operators(token_text, token_start, token_index)
+                operator_tokens = cls._split_operators(token_text, token_start)
                 tokens.extend(operator_tokens)
-                token_index += len(operator_tokens)
             
             current_pos = token_end
+        
+        # Post-processing: assign token indices
+        for token_index, token in enumerate(tokens):
+            token.token_index = token_index
         
         return tokens
 
@@ -176,41 +179,57 @@ class Tokenizer:
         return text[start_pos:token_end], token_end
 
     @classmethod
-    def _create_token(cls, text: str, char_start: int, token_index: int) -> Token:
-        """Helper to create Token with position metadata."""
+    def _find_operator_split(cls, token_text: str) -> tuple[str, str, str] | None:
+        """
+        Detect operator in token and return split parts.
+        
+        Args:
+            token_text: Text to search for operators
+            
+        Returns:
+            (key, operator, value) if operator found, None otherwise
+            
+        Uses longest-first matching for operator precedence.
+        """
+        for operator in cls._OPERATORS_BY_LENGTH:
+            if operator in token_text:
+                parts = token_text.split(operator, 1)
+                if len(parts) == 2 and parts[0]:  # Valid split with non-empty key
+                    return parts[0], operator, parts[1]
+        return None
+
+    @classmethod
+    def _create_token(cls, text: str, char_start: int) -> Token:
+        """Helper to create Token with position metadata. Token index set in post-processing."""
         return Token(
             text=text,
             char_start=char_start,
             char_end=char_start + len(text),
-            token_index=token_index
+            token_index=0  # Placeholder, will be set in post-processing
         )
 
     @classmethod  
-    def _split_operators(cls, token_text: str, token_start: int, base_token_index: int) -> List[Token]:
+    def _split_operators(cls, token_text: str, token_start: int) -> List[Token]:
         """Split token on operators if present."""
         # Don't split if quoted
         if (token_text.startswith('"') and token_text.endswith('"')) or \
            (token_text.startswith("'") and token_text.endswith("'")):
-            return [cls._create_token(token_text, token_start, base_token_index)]
+            return [cls._create_token(token_text, token_start)]
         
-        # Look for operators
-        for operator in cls._OPERATORS_BY_LENGTH:
-            if operator in token_text:
-                parts = token_text.split(operator, 1)
-                if len(parts) == 2 and parts[0]:  # Valid split
-                    key_part, value_part = parts
-                    tokens = []
-                    char_pos = token_start
-                    token_idx = base_token_index
-                    
-                    # Add key, operator, value tokens
-                    for part in [key_part, operator, value_part]:
-                        if part:  # Only add non-empty
-                            tokens.append(cls._create_token(part, char_pos, token_idx))
-                            char_pos += len(part)
-                            token_idx += 1
-                    
-                    return tokens
+        # Look for operators using helper method
+        operator_split = cls._find_operator_split(token_text)
+        if operator_split:
+            key_part, operator, value_part = operator_split
+            tokens = []
+            char_pos = token_start
+            
+            # Add key, operator, value tokens
+            for part in [key_part, operator, value_part]:
+                if part:  # Only add non-empty
+                    tokens.append(cls._create_token(part, char_pos))
+                    char_pos += len(part)
+            
+            return tokens
         
         # No operators - single token
-        return [cls._create_token(token_text, token_start, base_token_index)]
+        return [cls._create_token(token_text, token_start)]
