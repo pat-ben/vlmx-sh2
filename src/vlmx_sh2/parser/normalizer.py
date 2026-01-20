@@ -22,10 +22,10 @@ def normalize(input_text: str, context: ValidationContext) -> str:
     Returns empty string if validation fails.
     """
     # Step 1: Expand command macros    
-    text = expand_macros(input_text)
+    normalized_text = expand_macros(input_text)
     
     # Step 2: Text validation using diagnostics system (BLOCKING)        
-    if not Validator.validate_text(IssueStage.NORMALIZER, context, text=text):
+    if not Validator.validate_text(IssueStage.NORMALIZER, context, text=normalized_text):
         return ""  # Blocking validation failed - return empty string
             
-    return text
+    return normalized_text
