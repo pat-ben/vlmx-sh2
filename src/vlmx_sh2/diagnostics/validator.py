@@ -6,11 +6,22 @@ Supports both text-level (pre-tokenization) and token-level (post-tokenization)
 validation with fine-grained position tracking.
 """
 
-from typing import Any, List
+from typing import Any, List, Union, Protocol, overload
 from ..models.validation import ValidationContext
 from ..models.parser.token import Token
+from ..models.parser.classified_token import ClassifiedToken
+from ..models.parser.recognized_token import RecognizedToken
 from ..enums import IssueStage
 from .rules import get_text_rules_for_stage, get_token_rules_for_stage
+
+
+class TokenLike(Protocol):
+    """Protocol for any token-like object that has a text attribute."""
+    text: str
+
+
+# Type alias for any token type used in the pipeline
+AnyToken = Union[Token, ClassifiedToken, RecognizedToken]
 
 
 class Validator:
@@ -103,23 +114,51 @@ class Validator:
         # Return False immediately on first failure (text-level is fail fast)
         return not has_blocking_error
     
+    @overload
     @staticmethod
     def validate_tokens(
         stage: IssueStage,
         context: ValidationContext,
         tokens: List[Token],
         **kwargs: Any
+    ) -> bool: ...
+    
+    @overload
+    @staticmethod
+    def validate_tokens(
+        stage: IssueStage,
+        context: ValidationContext,
+        tokens: List[ClassifiedToken],
+        **kwargs: Any
+    ) -> bool: ...
+    
+    @overload
+    @staticmethod
+    def validate_tokens(
+        stage: IssueStage,
+        context: ValidationContext,
+        tokens: List[RecognizedToken],
+        **kwargs: Any
+    ) -> bool: ...
+    
+    @staticmethod
+    def validate_tokens(
+        stage: IssueStage,
+        context: ValidationContext,
+        tokens: List[TokenLike],
+        **kwargs: Any
     ) -> bool:
         """
         Run token-level validation rules for a given stage.
         
-        Token-level validation runs AFTER tokenization with position metadata.
-        Most token-level rules are non-blocking (collect all errors philosophy).
+        Token-level validation runs AFTER tokenization on any token type
+        (Token, ClassifiedToken, or RecognizedToken). Most token-level rules 
+        are non-blocking (collect all errors philosophy).
         
         Args:
             stage: Which parsing stage to validate
             context: ValidationContext for logging issues
-            tokens: List of tokens to validate
+            tokens: List of tokens to validate (any token type)
             **kwargs: Additional inputs for validation rules
             
         Returns:
@@ -128,7 +167,7 @@ class Validator:
             
         Example:
             >>> context = ValidationContext()
-            >>> tokens = [Token(text="create", position=0), Token(text="company", position=7)]
+            >>> tokens = [Token(text="create"), Token(text="company")]
             >>> Validator.validate_tokens(IssueStage.TOKENIZER, context, tokens=tokens)
             True
         """

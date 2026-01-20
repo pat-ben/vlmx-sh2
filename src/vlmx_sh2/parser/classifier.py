@@ -9,6 +9,7 @@ from ..models.parser import Token, ClassifiedToken
 from ..models.validation import ValidationContext
 from vlmx_sh2.enums import Operator, Bracket, TokenClass, IssueStage
 from ..diagnostics import Validator
+from .tokenizer import Tokenizer
 
 
 class Classifier:
@@ -27,16 +28,25 @@ class Classifier:
     # =============================================================================
     @classmethod
     def classify(cls, tokens: List[Token], context: ValidationContext) -> List[ClassifiedToken]:
-        """Classify tokens structurally."""
-        classified_tokens = []
+        """
+        Classify tokens structurally.
         
-        for token in tokens:
-            classified_token = cls._classify_single_token(token)
-            classified_tokens.append(classified_token)
+        Converts Token objects to ClassifiedToken objects with structural
+        classification (TEXT, OPERATOR, BRACKET). Strips quotes and unescapes
+        escaped quotes for TEXT tokens.
+        
+        Args:
+            tokens: List of Token objects from tokenizer
+            context: ValidationContext for error reporting
+            
+        Returns:
+            List of ClassifiedToken objects with structural classification
+        """
+        # Classify all tokens
+        classified_tokens = [cls._classify_single_token(token) for token in tokens]
         
         # Post-classification validation
         # Validates structural issues (unclosed quotes, mismatched brackets)
-        # on CLASSIFIED tokens (non-blocking, collects all errors)
         Validator.validate_tokens(IssueStage.CLASSIFIER, context, tokens=classified_tokens)
         
         return classified_tokens
@@ -45,9 +55,9 @@ class Classifier:
     # PRIVATE HELPERS
     # =============================================================================
     @classmethod
-    def _normalize_query_keyword(cls, text: str) -> str:
+    def _normalize_query_symbol(cls, text: str) -> str:
         """
-        Normalize query keyword symbols to their word equivalents.
+        Normalize query symbols to their word equivalents.
         
         Converts symbols like & and | to their keyword forms (and, or)
         to ensure consistent handling throughout the parsing pipeline.
@@ -56,78 +66,113 @@ class Classifier:
             text: Token text to potentially normalize
             
         Returns:
-            Normalized text if it's a query keyword symbol, otherwise original text
+            Normalized text if it's a query symbol, otherwise original text
             
         Examples:
-            >>> Classifier._normalize_query_keyword("&")
+            >>> Classifier._normalize_query_symbol("&")
             "and"
-            >>> Classifier._normalize_query_keyword("|")
+            >>> Classifier._normalize_query_symbol("|")
             "or"
-            >>> Classifier._normalize_query_keyword("create")
+            >>> Classifier._normalize_query_symbol("create")
             "create"
         """
         return cls._QUERY_SYMBOLS.get(text, text)
 
+    @staticmethod
+    def _unescape_quotes(text: str) -> str:
+        """
+        Remove backslash escapes from quoted content.
+        
+        After stripping outer quotes, this unescapes any escaped quotes
+        that were inside the quoted string.
+        
+        Args:
+            text: Text with potential escaped quotes (after outer quotes stripped)
+            
+        Returns:
+            Text with escaped quotes unescaped
+            
+        Examples:
+            >>> Classifier._unescape_quotes('hello\\"world')
+            'hello"world'
+            >>> Classifier._unescape_quotes("it\\'s")
+            "it's"
+        """
+        return text.replace('\\"', '"').replace("\\'", "'")
+
     @classmethod
     def _classify_single_token(cls, token: Token) -> ClassifiedToken:
-        """Classify single token as OPERATOR, BRACKET, or TEXT."""
+        """
+        Classify single token as OPERATOR, BRACKET, or TEXT.
+        
+        Processing:
+        1. Normalize query symbols (& → and, | → or)
+        2. Check if operator or bracket (using normalized text)
+        3. For text: check if quoted, strip quotes, unescape escaped quotes
+        
+        Note: Query keywords (and, or) are classified as TEXT, not OPERATOR.
+        They will be recognized as words by the Recognizer stage.
+        """
         text = token.text
         
         # Normalize query keyword symbols to words before classification
-        normalized_text = cls._normalize_query_keyword(text)
+        # (& → and, | → or) - these will be TEXT tokens, recognized as words later
+        normalized_text = cls._normalize_query_symbol(text)
         
         # Check for operators using normalized text
         if normalized_text in cls._OPERATOR_VALUES:
             return cls._create_classified_token(
-                token, 
-                TokenClass.OPERATOR,
                 text=normalized_text,
+                token_class=TokenClass.OPERATOR,
                 operator=Operator(normalized_text)
-                # was_quoted intentionally omitted (defaults to None)
             )
         
         # Check for brackets using normalized text
         if normalized_text in cls._BRACKET_VALUES:
             return cls._create_classified_token(
-                token,
-                TokenClass.BRACKET,
                 text=normalized_text,
+                token_class=TokenClass.BRACKET,
                 bracket=Bracket(normalized_text)
-                # was_quoted intentionally omitted (defaults to None)
             )
         
-        # Check if original text is quoted (and strip quotes if so)
-        is_quoted = cls._is_quoted(text)
-        stripped_text = text[1:-1] if is_quoted else normalized_text
+        # Check if original text is quoted using Tokenizer's method
+        has_quotes, _ = Tokenizer._has_quotes(text)
+        
+        # Strip quotes and unescape if quoted
+        if has_quotes:
+            stripped_text = text[1:-1]  # Remove outer quotes
+            stripped_text = cls._unescape_quotes(stripped_text)  # Unescape \" and \'
+        else:
+            stripped_text = normalized_text
         
         # All text uses TEXT class (was_quoted indicates if quoted)
         return cls._create_classified_token(
-            token,
-            TokenClass.TEXT,
             text=stripped_text,
-            was_quoted=is_quoted
+            token_class=TokenClass.TEXT,
+            was_quoted=has_quotes
         )
 
     @classmethod
     def _create_classified_token(
-        cls, 
-        token: Token, 
+        cls,
+        text: str,
         token_class: TokenClass,
-        text: str | None = None,
         **extra_fields
     ) -> ClassifiedToken:
-        """Create ClassifiedToken without position metadata."""
+        """
+        Create ClassifiedToken without position metadata.
+        
+        Args:
+            text: Token text (quotes stripped if applicable)
+            token_class: Structural classification (TEXT, OPERATOR, or BRACKET)
+            **extra_fields: Additional fields (was_quoted, operator, bracket)
+            
+        Returns:
+            ClassifiedToken with structural classification
+        """
         return ClassifiedToken(
-            text=text if text is not None else token.text,
+            text=text,
             token_class=token_class,
             **extra_fields
         )
 
-    @staticmethod
-    def _is_quoted(text: str) -> bool:
-        """Check if text is properly quoted."""
-        if len(text) < 2:
-            return False
-        
-        first, last = text[0], text[-1]
-        return first == last and first in ('"', "'")
