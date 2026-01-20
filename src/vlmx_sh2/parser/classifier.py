@@ -20,6 +20,13 @@ class Classifier:
     _QUOTE_CHARS = {'"', "'"}
     _BRACKET_VALUES = {bracket.value for bracket in Bracket}
     _OPERATOR_VALUES = {op.value for op in Operator}  # Set for O(1) membership checks
+    
+    _QUERY_KEYWORD_SYMBOLS = {
+        "&": "and",
+        "&&": "and",
+        "|": "or",
+        "||": "or"
+    }
 
     # =============================================================================
     # PUBLIC API
@@ -44,31 +51,60 @@ class Classifier:
     # PRIVATE HELPERS
     # =============================================================================
     @classmethod
+    def _normalize_query_keyword(cls, text: str) -> str:
+        """
+        Normalize query keyword symbols to their word equivalents.
+        
+        Converts symbols like & and | to their keyword forms (and, or)
+        to ensure consistent handling throughout the parsing pipeline.
+        
+        Args:
+            text: Token text to potentially normalize
+            
+        Returns:
+            Normalized text if it's a query keyword symbol, otherwise original text
+            
+        Examples:
+            >>> Classifier._normalize_query_keyword("&")
+            "and"
+            >>> Classifier._normalize_query_keyword("|")
+            "or"
+            >>> Classifier._normalize_query_keyword("create")
+            "create"
+        """
+        return cls._QUERY_KEYWORD_SYMBOLS.get(text, text)
+
+    @classmethod
     def _classify_single_token(cls, token: Token) -> ClassifiedToken:
         """Classify single token as OPERATOR, BRACKET, or TEXT."""
         text = token.text
         
-        # Check for operators
-        if text in cls._OPERATOR_VALUES:
+        # Normalize query keyword symbols to words before classification
+        normalized_text = cls._normalize_query_keyword(text)
+        
+        # Check for operators using normalized text
+        if normalized_text in cls._OPERATOR_VALUES:
             return cls._create_classified_token(
                 token, 
                 TokenClass.OPERATOR,
-                operator=Operator(text)
+                text=normalized_text,
+                operator=Operator(normalized_text)
                 # was_quoted intentionally omitted (defaults to None)
             )
         
-        # Check for brackets
-        if text in cls._BRACKET_VALUES:
+        # Check for brackets using normalized text
+        if normalized_text in cls._BRACKET_VALUES:
             return cls._create_classified_token(
                 token,
                 TokenClass.BRACKET,
-                bracket=Bracket(text)
+                text=normalized_text,
+                bracket=Bracket(normalized_text)
                 # was_quoted intentionally omitted (defaults to None)
             )
         
-        # Check if text is quoted (and strip quotes if so)
+        # Check if original text is quoted (and strip quotes if so)
         is_quoted = cls._is_quoted(text)
-        stripped_text = text[1:-1] if is_quoted else text
+        stripped_text = text[1:-1] if is_quoted else normalized_text
         
         # All text uses TEXT class (was_quoted indicates if quoted)
         return cls._create_classified_token(

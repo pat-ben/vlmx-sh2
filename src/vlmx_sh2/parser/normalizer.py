@@ -17,7 +17,6 @@ class Normalizer:
     
     Responsibilities:
     - Expand command macros (cc → create company)
-    - Expand operator macros (& → and, | → or)
     - Validate text format (blocking errors)
     - Future: Unicode normalization, whitespace cleanup
     
@@ -31,7 +30,7 @@ class Normalizer:
         Normalize raw input text for parsing.
         
         Processing steps:
-        1. Expand macros (both command and operator macros)
+        1. Expand command macros (multi-word expansions)
         2. Validate text (blocking validation only)
         
         Args:
@@ -47,15 +46,11 @@ class Normalizer:
             >>> Normalizer.normalize("cc name=ACME")
             "create company name=ACME"
             
-            >>> Normalizer.normalize("field1=a & field2=b")
-            "field1=a and field2=b"
-            
             >>> Normalizer.normalize("")
             ValueError: "Command cannot be empty"
         """
-        # Step 1: Expand macros
-        # This includes both command macros (cc → create company)
-        # and operator macros (& → and, | → or)
+        # Step 1: Expand command macros
+        # This includes multi-word command macros (cc → create company)
         text = expand_macros(input_text)
         
         # Step 2: Text validation (BLOCKING)
