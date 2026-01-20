@@ -21,8 +21,8 @@ class ClassifiedToken(BaseModel):
     
     Fields:
         text: Token text with quotes stripped (classifier's job)
-        char_start: Character position where token starts in original input
-        char_end: Character position where token ends (exclusive)
+        char_start: Character position where token starts in NORMALIZED text
+        char_end: Character position where token ends in NORMALIZED text (exclusive)
         token_index: Position in token array (0-indexed)
         token_class: Structural classification (TEXT, OPERATOR, BRACKET)
         was_quoted: True if originally in quotes (TEXT tokens only), None for OPERATOR/BRACKET
@@ -54,10 +54,10 @@ class ClassifiedToken(BaseModel):
     
     # Position metadata (inherited/preserved from Token)
     char_start: int = Field(
-        description="Character position where token starts in original input (0-indexed)"
+        description="Character position where token starts in NORMALIZED text (0-indexed)"
     )
     char_end: int = Field(
-        description="Character position where token ends (exclusive, like Python slicing)"
+        description="Character position where token ends in NORMALIZED text (exclusive)"
     )
     token_index: int = Field(
         description="Position in token array (0-indexed)"

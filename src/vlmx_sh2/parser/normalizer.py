@@ -23,12 +23,20 @@ def normalize(input_text: str, context: ValidationContext) -> str:
     Normalize raw input text for parsing.
     
     Expands macros (cc → create company) and validates text.
+    Stores both original and normalized text in context.
     Returns empty string if validation fails.
     """
+    # Store original input (only if not already set)
+    if not context.input_text:
+        context.input_text = input_text
+    
     # Step 1: Expand command macros    
     normalized_text = expand_macros(input_text)
     
-    # Step 2: Text validation using diagnostics system (BLOCKING)        
+    # Step 2: Store normalized text in context
+    context.normalized_text = normalized_text
+    
+    # Step 3: Text validation using diagnostics system (BLOCKING)        
     if not Validator.validate_text(IssueStage.NORMALIZER, context, text=normalized_text):
         return ""  # Blocking validation failed - return empty string
             

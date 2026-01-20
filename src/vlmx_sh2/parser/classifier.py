@@ -18,16 +18,10 @@ class Classifier:
     # CLASS CONSTANTS
     # =============================================================================
     _QUOTE_CHARS = {'"', "'"}
+    _QUERY_SYMBOLS = {"&": "and", "&&": "and", "|": "or", "||": "or"}
     _BRACKET_VALUES = {bracket.value for bracket in Bracket}
-    _OPERATOR_VALUES = {op.value for op in Operator}  # Set for O(1) membership checks
+    _OPERATOR_VALUES = {op.value for op in Operator}  # Set for O(1) membership checks    
     
-    _QUERY_KEYWORD_SYMBOLS = {
-        "&": "and",
-        "&&": "and",
-        "|": "or",
-        "||": "or"
-    }
-
     # =============================================================================
     # PUBLIC API
     # =============================================================================
@@ -72,7 +66,7 @@ class Classifier:
             >>> Classifier._normalize_query_keyword("create")
             "create"
         """
-        return cls._QUERY_KEYWORD_SYMBOLS.get(text, text)
+        return cls._QUERY_SYMBOLS.get(text, text)
 
     @classmethod
     def _classify_single_token(cls, token: Token) -> ClassifiedToken:

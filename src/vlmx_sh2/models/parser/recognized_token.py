@@ -13,7 +13,10 @@ from ..words import Word, WordType
 
 class RecognizedToken(BaseModel):
     """
-    Token output from recognizer stage.
+    Recognized token with semantic classification.
+    
+    Position metadata (char_start, char_end) reference the NORMALIZED text
+    (after macro expansion), not the original user input.
     
     Contains both structural (from classifier) and semantic (from recognizer) classification.
     Single model that represents all token types (WORD, VALUE, UNKNOWN).
@@ -24,8 +27,8 @@ class RecognizedToken(BaseModel):
     
     Fields:
         text: Token text (quotes stripped by classifier)
-        char_start: Character position where token starts in original input
-        char_end: Character position where token ends (exclusive)
+        char_start: Character position where token starts in NORMALIZED text
+        char_end: Character position where token ends in NORMALIZED text (exclusive)
         token_index: Position in token array (0-indexed)
         was_quoted: True if originally in quotes (from classifier)
         token_type: Semantic classification (WORD, VALUE, or UNKNOWN)
@@ -35,6 +38,9 @@ class RecognizedToken(BaseModel):
         suggestions: Suggestions for unrecognized tokens
     
     Examples:
+        Input:      "cc ACME Corp"
+        Normalized: "create company ACME Corp"
+        
         # WORD token
         >>> RecognizedToken(
         ...     text="create",
@@ -46,8 +52,8 @@ class RecognizedToken(BaseModel):
         # VALUE token (schema)
         >>> RecognizedToken(
         ...     text="ACME",
-        ...     char_start=15, char_end=21, token_index=2,
-        ...     was_quoted=True,
+        ...     char_start=15, char_end=19, token_index=2,
+        ...     was_quoted=False,
         ...     token_type=TokenType.VALUE,
         ...     value_context=ValueContext.SCHEMA
         ... )
@@ -55,9 +61,9 @@ class RecognizedToken(BaseModel):
         # UNKNOWN token
         >>> RecognizedToken(
         ...     text="xyz123",
-        ...     char_start=22, char_end=28, token_index=3,
+        ...     char_start=20, char_end=26, token_index=3,
         ...     token_type=TokenType.UNKNOWN,
-        ...     suggestions=["create", "update"]
+        ...     suggestions=["Corp", "Inc"]
         ... )
     """
     
@@ -68,10 +74,10 @@ class RecognizedToken(BaseModel):
     
     # Position metadata (inherited/preserved from Token)
     char_start: int = Field(
-        description="Character position where token starts in original input (0-indexed)"
+        description="Character position where token starts in NORMALIZED text (0-indexed)"
     )
     char_end: int = Field(
-        description="Character position where token ends (exclusive, like Python slicing)"
+        description="Character position where token ends in NORMALIZED text (exclusive)"
     )
     token_index: int = Field(
         description="Position in token array (0-indexed)"

@@ -32,7 +32,7 @@ class ValidationIssue(BaseModel):
     message: str = Field(description="Human-readable description of the issue")
     
     # Character-level positioning
-    position: int = Field(default=0, description="Character position in original input (0-indexed)")
+    position: int = Field(default=0, description="Character position in relevant text context (0-indexed)")
     end_position: Optional[int] = Field(default=None, description="Optional end position for multi-character issues")
     
     # Token-level context

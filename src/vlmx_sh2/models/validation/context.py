@@ -21,7 +21,14 @@ class ValidationContext(BaseModel):
     """
     
     issues: List[ValidationIssue] = Field(default_factory=list, description="List of all validation issues found")
-    input_text: str = Field(default="", description="Original input text for error reporting")
+    input_text: str = Field(
+        default="", 
+        description="Original raw input typed by user (never modified, used for user-facing error messages)"
+    )
+    normalized_text: str = Field(
+        default="", 
+        description="Normalized text after macro expansion (what was tokenized, token positions reference this)"
+    )
     
     class Config:
         frozen = False
