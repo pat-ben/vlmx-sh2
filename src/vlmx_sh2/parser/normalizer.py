@@ -29,42 +29,16 @@ class Normalizer:
         """
         Normalize raw input text for parsing.
         
-        Processing steps:
-        1. Expand command macros (multi-word expansions)
-        2. Validate text (blocking validation only)
-        
-        Args:
-            input_text: Raw user input string
-            
-        Returns:
-            Normalized text ready for tokenization
-            
-        Raises:
-            ValueError: If text validation fails (blocking)
-            
-        Examples:
-            >>> Normalizer.normalize("cc name=ACME")
-            "create company name=ACME"
-            
-            >>> Normalizer.normalize("")
-            ValueError: "Command cannot be empty"
-        """
-        # Step 1: Expand command macros
-        # This includes multi-word command macros (cc → create company)
+         """
+        # Step 1: Expand command macros    
         text = expand_macros(input_text)
         
-        # Step 2: Text validation (BLOCKING)
-        # These are fundamental issues that prevent any further processing
+        # Step 2: Text validation (BLOCKING)        
         Normalizer._validate_text(text)
-        
-        # Future enhancements can go here:
-        # - Unicode normalization (NFC/NFKC)
-        # - Whitespace cleanup (remove multiple spaces, trim)
-        # - Remove zero-width characters
-        # - Handle special Unicode quotes/dashes
-        
+                
         return text
     
+
     @staticmethod
     def _validate_text(text: str) -> None:
         """
