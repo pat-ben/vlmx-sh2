@@ -18,7 +18,7 @@ class Classifier:
     # =============================================================================
     # CLASS CONSTANTS
     # =============================================================================
-    _QUOTE_CHARS = {'"', "'"}
+
     _QUERY_SYMBOLS = {"&": "and", "&&": "and", "|": "or", "||": "or"}
     _BRACKET_VALUES = {bracket.value for bracket in Bracket}
     _OPERATOR_VALUES = {op.value for op in Operator}  # Set for O(1) membership checks    
