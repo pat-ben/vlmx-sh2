@@ -18,6 +18,7 @@ class IssueSeverity(str, Enum):
 class IssueStage(str, Enum):
     """Parsing stage where validation issue was detected."""
     
+    NORMALIZER = "normalizer"      # Stage 0: Text normalization and macro expansion
     TOKENIZER = "tokenizer"        # Stage 1: Text → token blocks
     CLASSIFIER = "classifier"      # Stage 2: Structural classification
     RECOGNIZER = "recognizer"      # Stage 3: Semantic classification

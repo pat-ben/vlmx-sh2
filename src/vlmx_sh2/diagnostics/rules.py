@@ -44,28 +44,27 @@ VALIDATION_RULES: List[ValidationRule] = [
     # TEXT-LEVEL VALIDATION (Pre-tokenization)
     ValidationRule(
         rule_id="empty_command",
-        stage=IssueStage.TOKENIZER,
+        stage=IssueStage.NORMALIZER,
         validation_level="text",
         check=lambda text, **kwargs: bool(text and text.strip()),
-        error_code="vlmx::tokenizer::empty_command",
+        error_code="vlmx::normalizer::empty_command",
         message="Command cannot be empty",
         suggestion="Try typing a command like 'create company' or 'show metadata'",
         position=0,
         blocking=True  # Text-level validation is always blocking
     ),
     
-    # Example text-level rules (not yet implemented):
-    # 
-    # ValidationRule(
-    #     rule_id="max_length_exceeded",
-    #     stage=IssueStage.TOKENIZER,
-    #     validation_level="text",
-    #     check=lambda text, **kwargs: len(text) <= 10000,
-    #     error_code="vlmx::input::max_length",
-    #     message="Command exceeds maximum length (10,000 characters)",
-    #     suggestion="Break your command into smaller parts",
-    #     blocking=True  # Text-level validation is always blocking
-    # ),
+    ValidationRule(
+        rule_id="max_length_exceeded",
+        stage=IssueStage.NORMALIZER,
+        validation_level="text",
+        check=lambda text, **kwargs: len(text) <= 10000,
+        error_code="vlmx::normalizer::max_length",
+        message="Command exceeds maximum length (10,000 characters)",
+        suggestion="Break your command into smaller parts",
+        position=0,
+        blocking=True  # Text-level validation is always blocking
+    ),
     #
     # ValidationRule(
     #     rule_id="invalid_encoding",
