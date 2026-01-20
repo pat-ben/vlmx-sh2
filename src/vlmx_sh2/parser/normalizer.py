@@ -14,6 +14,10 @@ from ..models.validation import ValidationContext
 from ..enums import IssueStage
 
 
+# =============================================================================
+# PUBLIC API
+# =============================================================================
+
 def normalize(input_text: str, context: ValidationContext) -> str:
     """
     Normalize raw input text for parsing.

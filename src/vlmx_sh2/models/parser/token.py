@@ -32,7 +32,7 @@ class Token(BaseModel):
         description="The actual text of the token (quotes kept as-is from input)"
     )
     char_start: int = Field(
-        description="Character position where token starts in original input (0-indexed)"
+        description="Character position where token starts in tokenizer input (0-indexed)"
     )
     char_end: int = Field(
         description="Character position where token ends (exclusive, like Python slicing)"

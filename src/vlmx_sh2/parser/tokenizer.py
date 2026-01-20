@@ -27,15 +27,14 @@ class Tokenizer:
     # PUBLIC API
     # =============================================================================
     @classmethod
-    def tokenize(cls, text: str, context: ValidationContext) -> List[Token]:
-        """Tokenize input with validation. Returns list of Token objects."""
-        # Validate raw text (blocking)
-        if not Validator.validate_text(IssueStage.TOKENIZER, context, text=text):
+    def tokenize(cls, normalized_text: str, context: ValidationContext) -> List[Token]:
+        """Tokenize normalized input with validation. Returns list of Token objects."""
+        # Validate normalized text (blocking)
+        if not Validator.validate_text(IssueStage.TOKENIZER, context, text=normalized_text):
             return []
             
-        # Extract tokens with position metadata
-        context.input_text = text
-        tokens = cls._extract_tokens(text)
+        # Extract tokens with position metadata (positions relative to normalized_text)
+        tokens = cls._extract_tokens(normalized_text)
 
         # Validate tokens (non-blocking, collect all errors)
         Validator.validate_tokens(IssueStage.TOKENIZER, context, tokens=tokens)
