@@ -46,28 +46,25 @@ class Tokenizer:
     def _extract_tokens(cls, text: str) -> List[Token]:
         """Extract tokens without position tracking."""
         tokens = []
-        current_pos = 0
-        
+        cursor = 0  # Parsing cursor position in text
         text_length = len(text)
         
-        while current_pos < text_length:
+        while cursor < text_length:
             # Skip whitespace
-            while current_pos < text_length and text[current_pos].isspace():
-                current_pos += 1
+            while cursor < text_length and text[cursor].isspace():
+                cursor += 1
             
             # Edge case: whitespace skip reached end
-            if current_pos >= text_length:
+            if cursor >= text_length:
                 break
                 
-            # Extract next token
-            token_text, char_end = cls._extract_next_token(text, current_pos)
+            # Extract next token (returns token text and new cursor position)
+            token_text, cursor = cls._extract_next_token(text, cursor)
             
             if token_text:
                 # Check for operators and split if needed
                 split_tokens = cls._split_operators(token_text)
                 tokens.extend(split_tokens)
-            
-            current_pos = char_end
         
         return tokens
 
@@ -77,49 +74,67 @@ class Tokenizer:
     # =============================================================================
 
     @classmethod
-    def _extract_next_token(cls, text: str, char_pos: int) -> tuple[str, int]:
-        """Extract single token from current position."""
-        current_pos = char_pos
+    def _extract_next_token(cls, text: str, start: int) -> tuple[str, int]:
+        """
+        Extract single token from current cursor position.
+        
+        Args:
+            text: Input text to tokenize
+            start: Current cursor position (where to start reading)
+            
+        Returns:
+            (token_text, end): Extracted token text and cursor position after the token
+        """
         text_length = len(text)
         
         # Handle brackets as individual tokens
-        if text[current_pos] in cls._BRACKET_VALUES:
-            return text[current_pos], current_pos + 1
+        if text[start] in cls._BRACKET_VALUES:
+            return text[start], start + 1
         
         # Handle quoted strings
-        if text[current_pos] in cls._QUOTE_CHARS:
-            return cls._extract_quoted_token(text, current_pos, text_length)
+        if text[start] in cls._QUOTE_CHARS:
+            return cls._extract_quoted_token(text, start, text_length)
         
         # Handle regular text (stop at whitespace, brackets, or quotes)
-        char_end = current_pos
-        while char_end < text_length:
-            char = text[char_end]
+        end = start
+        while end < text_length:
+            char = text[end]
             if char.isspace() or char in cls._BRACKET_VALUES or char in cls._QUOTE_CHARS:
                 break
-            char_end += 1
+            end += 1
         
-        return text[current_pos:char_end], char_end
+        return text[start:end], end
 
     @classmethod
-    def _extract_quoted_token(cls, text: str, char_pos: int, text_length: int) -> tuple[str, int]:
-        """Extract quoted string including quotes, supporting escaped quotes."""
-        quote_char = text[char_pos]
-        char_end = char_pos + 1
+    def _extract_quoted_token(cls, text: str, start: int, text_length: int) -> tuple[str, int]:
+        """
+        Extract quoted string including quotes, supporting escaped quotes.
+        
+        Args:
+            text: Input text to tokenize
+            start: Current cursor position (should be at opening quote)
+            text_length: Length of input text
+            
+        Returns:
+            (quoted_text, end): Extracted quoted string and cursor position after closing quote
+        """
+        quote_char = text[start]
+        end = start + 1
         
         # Find closing quote, handling escaped quotes
-        while char_end < text_length:
-            if text[char_end] == '\\' and char_end + 1 < text_length:
+        while end < text_length:
+            if text[end] == '\\' and end + 1 < text_length:
                 # Skip escaped character (including escaped quotes)
-                char_end += 2
+                end += 2
                 continue
             
-            if text[char_end] == quote_char:
-                char_end += 1  # Include closing quote
+            if text[end] == quote_char:
+                end += 1  # Include closing quote
                 break
             
-            char_end += 1
+            end += 1
         
-        return text[char_pos:char_end], char_end
+        return text[start:end], end
 
 
     # =============================================================================
