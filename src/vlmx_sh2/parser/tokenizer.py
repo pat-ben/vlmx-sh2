@@ -47,6 +47,7 @@ class Tokenizer:
         """Extract tokens with position metadata."""
         tokens = []
         current_pos = 0
+        
         text_length = len(text)
         
         while current_pos < text_length:
@@ -106,15 +107,21 @@ class Tokenizer:
 
     @classmethod
     def _extract_quoted_token(cls, text: str, char_pos: int, text_length: int) -> tuple[str, int]:
-        """Extract quoted string including quotes."""
+        """Extract quoted string including quotes, supporting escaped quotes."""
         quote_char = text[char_pos]
         char_end = char_pos + 1
         
-        # Find closing quote
+        # Find closing quote, handling escaped quotes
         while char_end < text_length:
+            if text[char_end] == '\\' and char_end + 1 < text_length:
+                # Skip escaped character (including escaped quotes)
+                char_end += 2
+                continue
+            
             if text[char_end] == quote_char:
                 char_end += 1  # Include closing quote
                 break
+            
             char_end += 1
         
         return text[char_pos:char_end], char_end
@@ -138,8 +145,8 @@ class Tokenizer:
     def _split_operators(cls, token_text: str, char_pos: int) -> List[Token]:
         """Split token on operators if present."""
         # Don't split if quoted
-        if (token_text.startswith('"') and token_text.endswith('"')) or \
-           (token_text.startswith("'") and token_text.endswith("'")):
+        has_quotes, _ = cls._has_quotes(token_text)
+        if has_quotes:
             return [cls._create_token(token_text, char_pos)]
         
         # Look for operators using helper method
@@ -147,13 +154,22 @@ class Tokenizer:
         if operator_match:
             key, operator, value = operator_match
             tokens = []
-            write_pos = char_pos
             
-            # Add key, operator, value tokens
-            for part in [key, operator, value]:
-                if part:  # Only add non-empty
-                    tokens.append(cls._create_token(part, write_pos))
-                    write_pos += len(part)
+            # Find operator position in original token_text
+            operator_index = token_text.index(operator)
+            
+            # Create tokens with explicit position calculations:
+            # - key: starts at char_pos, length = len(key)
+            if key:
+                tokens.append(cls._create_token(key, char_pos))
+            
+            # - operator: starts at char_pos + operator_index, length = len(operator)
+            tokens.append(cls._create_token(operator, char_pos + operator_index))
+            
+            # - value: starts at char_pos + operator_index + len(operator), length = len(value)
+            if value:
+                value_start = char_pos + operator_index + len(operator)
+                tokens.append(cls._create_token(value, value_start))
             
             return tokens
         
@@ -164,6 +180,35 @@ class Tokenizer:
     # =============================================================================
     # TOKEN CREATION HELPERS
     # =============================================================================
+
+    @classmethod
+    def _has_quotes(cls, text: str) -> tuple[bool, str | None]:
+        """
+        Check if text has matching quotes and return quote character.
+        
+        Returns:
+            (has_quotes, quote_char) where quote_char is the detected quote character or None
+            
+        Examples:
+            >>> Tokenizer._has_quotes('"hello"')
+            (True, '"')
+            >>> Tokenizer._has_quotes("'world'")
+            (True, "'")
+            >>> Tokenizer._has_quotes('hello')
+            (False, None)
+            >>> Tokenizer._has_quotes('"hello')  # Unclosed
+            (False, None)
+        """
+        # Check minimum length
+        if len(text) < 2:
+            return False, None
+        
+        # Check if starts and ends with same quote character
+        first_char = text[0]
+        if first_char in cls._QUOTE_CHARS and text[-1] == first_char:
+            return True, first_char
+        
+        return False, None
 
     @classmethod
     def _create_token(cls, text: str, char_pos: int) -> Token:
