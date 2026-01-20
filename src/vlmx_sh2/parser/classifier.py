@@ -66,15 +66,8 @@ class Classifier:
             text: Token text to potentially normalize
             
         Returns:
-            Normalized text if it's a query symbol, otherwise original text
-            
-        Examples:
-            >>> Classifier._normalize_query_symbol("&")
-            "and"
-            >>> Classifier._normalize_query_symbol("|")
-            "or"
-            >>> Classifier._normalize_query_symbol("create")
-            "create"
+            Normalized text if it's a query symbol, otherwise original text            
+
         """
         return cls._QUERY_SYMBOLS.get(text, text)
 
@@ -90,13 +83,8 @@ class Classifier:
             text: Text with potential escaped quotes (after outer quotes stripped)
             
         Returns:
-            Text with escaped quotes unescaped
-            
-        Examples:
-            >>> Classifier._unescape_quotes('hello\\"world')
-            'hello"world'
-            >>> Classifier._unescape_quotes("it\\'s")
-            "it's"
+            Text with escaped quotes unescaped            
+
         """
         return text.replace('\\"', '"').replace("\\'", "'")
 

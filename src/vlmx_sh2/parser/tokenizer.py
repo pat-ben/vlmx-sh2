@@ -190,17 +190,8 @@ class Tokenizer:
         Check if text has matching quotes and return quote character.
         
         Returns:
-            (has_quotes, quote_char) where quote_char is the detected quote character or None
-            
-        Examples:
-            >>> Tokenizer._has_quotes('"hello"')
-            (True, '"')
-            >>> Tokenizer._has_quotes("'world'")
-            (True, "'")
-            >>> Tokenizer._has_quotes('hello')
-            (False, None)
-            >>> Tokenizer._has_quotes('"hello')  # Unclosed
-            (False, None)
+            (has_quotes, quote_char) where quote_char is the detected quote character or None            
+
         """
         # Check minimum length
         if len(text) < 2:
