@@ -263,9 +263,6 @@ class Recognizer:
         """
         return {
             "text": classified_token.text,
-            "char_start": classified_token.char_start,
-            "char_end": classified_token.char_end,
-            "token_index": classified_token.token_index,
             "token_class": classified_token.token_class,
             "was_quoted": classified_token.was_quoted,
             "operator": classified_token.operator,

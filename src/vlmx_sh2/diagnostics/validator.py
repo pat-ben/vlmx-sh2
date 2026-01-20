@@ -78,11 +78,10 @@ class Validator:
                 is_valid = rule.check(text=text, **kwargs)
                 
                 if not is_valid:
-                    # Log error to context using rule's default position (0 for text-level)
+                    # Log error to context without position information
                     context.add_error(
                         stage=stage,
                         message=rule.get_message(text=text, **kwargs),
-                        position=rule.position,
                         error_code=rule.error_code,
                         suggestion=rule.get_suggestion(text=text, **kwargs)
                     )
@@ -97,7 +96,6 @@ class Validator:
                 context.add_error(
                     stage=stage,
                     message=f"Text validation rule '{rule.rule_id}' failed: {str(e)}",
-                    position=0,
                     error_code=f"vlmx::{stage.value}::text_validation_error"
                 )
                 has_blocking_error = True
@@ -153,7 +151,7 @@ class Validator:
                     is_valid = rule.check(token=token, tokens=tokens, **kwargs)
                     
                     if not is_valid:
-                        # Log error using token position metadata
+                        # Log error using token text for position resolution
                         context.add_error_from_token(
                             token=token,
                             stage=stage,
@@ -172,7 +170,6 @@ class Validator:
                 context.add_error(
                     stage=stage,
                     message=f"Token validation rule '{rule.rule_id}' failed: {str(e)}",
-                    position=0,
                     error_code=f"vlmx::{stage.value}::token_validation_error"
                 )
                 has_blocking_error = True
@@ -222,7 +219,6 @@ class Validator:
                         context.add_error(
                             stage=stage,
                             message=rule.message,
-                            position=rule.position,
                             error_code=rule.error_code,
                             suggestion=rule.suggestion
                         )
@@ -234,7 +230,6 @@ class Validator:
                     context.add_error(
                         stage=stage,
                         message=f"Validation rule '{rule.rule_id}' failed: {str(e)}",
-                        position=0,
                         error_code=f"vlmx::{stage.value}::validation_error"
                     )
                     has_blocking_error = True

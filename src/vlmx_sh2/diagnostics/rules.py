@@ -50,7 +50,6 @@ VALIDATION_RULES: List[ValidationRule] = [
         error_code="vlmx::normalizer::empty_command",
         message="Command cannot be empty",
         suggestion="Try typing a command like 'create company' or 'show metadata'",
-        position=0,
         blocking=True  # Text-level validation is always blocking
     ),
     
@@ -62,7 +61,6 @@ VALIDATION_RULES: List[ValidationRule] = [
         error_code="vlmx::normalizer::max_length",
         message="Command exceeds maximum length (10,000 characters)",
         suggestion="Break your command into smaller parts",
-        position=0,
         blocking=True  # Text-level validation is always blocking
     ),
     #

@@ -43,31 +43,22 @@ class ValidationContext(BaseModel):
         self,
         stage: IssueStage,
         message: str,
-        position: int = 0,
-        end_position: Optional[int] = None,
-        token_index: Optional[int] = None,
         token_text: Optional[str] = None,
         error_code: Optional[str] = None,
         doc_link: Optional[str] = None,
-        suggestion: Optional[str] = None,
-        related_tokens: Optional[List[int]] = None
+        suggestion: Optional[str] = None
     ) -> None:
         """
-        Add an error-level issue with rich diagnostic information.
+        Add an error-level issue with diagnostic information.
         
-        Use this for text-level validation or when token object is not available.
-        For token-level validation, prefer add_error_from_token() to automatically
-        extract position metadata from tokens.
+        Position information is resolved lazily when displaying errors.
+        Use token_text to provide context for position resolution.
         """
         self.issues.append(ValidationIssue(
             stage=stage,
             severity=IssueSeverity.ERROR,
             message=message,
-            position=position,
-            end_position=end_position,
-            token_index=token_index,
             token_text=token_text,
-            related_tokens=related_tokens,
             error_code=error_code,
             doc_link=doc_link,
             suggestion=suggestion
@@ -77,25 +68,22 @@ class ValidationContext(BaseModel):
         self,
         stage: IssueStage,
         message: str,
-        position: int = 0,
-        end_position: Optional[int] = None,
-        token_index: Optional[int] = None,
         token_text: Optional[str] = None,
         error_code: Optional[str] = None,
         doc_link: Optional[str] = None,
-        suggestion: Optional[str] = None,
-        related_tokens: Optional[List[int]] = None
+        suggestion: Optional[str] = None
     ) -> None:
-        """Add a warning-level issue with rich diagnostic information."""
+        """
+        Add a warning-level issue with diagnostic information.
+        
+        Position information is resolved lazily when displaying errors.
+        Use token_text to provide context for position resolution.
+        """
         self.issues.append(ValidationIssue(
             stage=stage,
             severity=IssueSeverity.WARNING,
             message=message,
-            position=position,
-            end_position=end_position,
-            token_index=token_index,
             token_text=token_text,
-            related_tokens=related_tokens,
             error_code=error_code,
             doc_link=doc_link,
             suggestion=suggestion
@@ -105,25 +93,22 @@ class ValidationContext(BaseModel):
         self,
         stage: IssueStage,
         message: str,
-        position: int = 0,
-        end_position: Optional[int] = None,
-        token_index: Optional[int] = None,
         token_text: Optional[str] = None,
         error_code: Optional[str] = None,
         doc_link: Optional[str] = None,
-        suggestion: Optional[str] = None,
-        related_tokens: Optional[List[int]] = None
+        suggestion: Optional[str] = None
     ) -> None:
-        """Add an info-level issue with rich diagnostic information."""
+        """
+        Add an info-level issue with diagnostic information.
+        
+        Position information is resolved lazily when displaying errors.
+        Use token_text to provide context for position resolution.
+        """
         self.issues.append(ValidationIssue(
             stage=stage,
             severity=IssueSeverity.INFO,
             message=message,
-            position=position,
-            end_position=end_position,
-            token_index=token_index,
             token_text=token_text,
-            related_tokens=related_tokens,
             error_code=error_code,
             doc_link=doc_link,
             suggestion=suggestion
@@ -139,21 +124,14 @@ class ValidationContext(BaseModel):
         **kwargs
     ) -> None:
         """
-        Add error using token's position metadata.
+        Add error using token's text for position resolution.
         
-        Use this for token-level validation to automatically extract position
-        metadata from tokens. This method provides precise error locations
-        with character positions, token indices, and token text.
-        
-        Convenience method that extracts position info from token automatically,
-        including token_index for rich diagnostics.
+        Convenience method that extracts token text for lazy position resolution.
+        Position is resolved only when displaying errors to users.
         """
         self.add_error(
             stage=stage,
             message=message,
-            position=token.char_start,
-            end_position=token.char_end,
-            token_index=token.token_index,
             token_text=token.text,
             error_code=error_code,
             suggestion=suggestion,
@@ -170,17 +148,14 @@ class ValidationContext(BaseModel):
         **kwargs
     ) -> None:
         """
-        Add warning using token's position metadata.
+        Add warning using token's text for position resolution.
         
-        Convenience method that extracts position info from token automatically,
-        including token_index for rich diagnostics.
+        Convenience method that extracts token text for lazy position resolution.
+        Position is resolved only when displaying errors to users.
         """
         self.add_warning(
             stage=stage,
             message=message,
-            position=token.char_start,
-            end_position=token.char_end,
-            token_index=token.token_index,
             token_text=token.text,
             error_code=error_code,
             suggestion=suggestion,
@@ -197,17 +172,14 @@ class ValidationContext(BaseModel):
         **kwargs
     ) -> None:
         """
-        Add info using token's position metadata.
+        Add info using token's text for position resolution.
         
-        Convenience method that extracts position info from token automatically,
-        including token_index for rich diagnostics.
+        Convenience method that extracts token text for lazy position resolution.
+        Position is resolved only when displaying errors to users.
         """
         self.add_info(
             stage=stage,
             message=message,
-            position=token.char_start,
-            end_position=token.char_end,
-            token_index=token.token_index,
             token_text=token.text,
             error_code=error_code,
             suggestion=suggestion,

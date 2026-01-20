@@ -178,8 +178,7 @@ class Splitter:
                         error_code="vlmx::splitter::nested_brackets",
                         message="Nested filter brackets are not supported",
                         suggestion="Use only one filter section with logical operators (and/or) instead of nesting",
-                        position=token.char_start,
-                        token_index=token.token_index
+                        token_text=token.text
                     )
                     return
             
@@ -193,7 +192,6 @@ class Splitter:
                         error_code="vlmx::splitter::multiple_filters",
                         message="Multiple filter sections are not supported",
                         suggestion="Combine filters into one section using logical operators (and/or)",
-                        position=token.char_start,
-                        token_index=token.token_index
+                        token_text=token.text
                     )
                     return

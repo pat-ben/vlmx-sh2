@@ -1,7 +1,7 @@
 """
 PARSING STAGE 1/8: Tokenization
 
-Extracts raw text blocks with position metadata. Delegates validation to Validator.
+Extracts raw text blocks without position metadata. Delegates validation to Validator.
 """
 
 from typing import List
@@ -13,7 +13,7 @@ from ..diagnostics import Validator
 
 
 class Tokenizer:
-    """Token extraction with position metadata."""
+    """Simple token extraction without position tracking."""
  
      # =============================================================================
      # CLASS CONSTANTS
@@ -29,7 +29,7 @@ class Tokenizer:
     @classmethod
     def tokenize(cls, normalized_text: str, context: ValidationContext) -> List[Token]:
         """Tokenize normalized input with validation. Returns list of Token objects."""
-        # Extract tokens with position metadata (positions relative to normalized_text)
+        # Extract tokens without position metadata
         tokens = cls._extract_tokens(normalized_text)
 
         # Validate tokens (non-blocking, collect all errors)
@@ -44,7 +44,7 @@ class Tokenizer:
 
     @classmethod
     def _extract_tokens(cls, text: str) -> List[Token]:
-        """Extract tokens with position metadata."""
+        """Extract tokens without position tracking."""
         tokens = []
         current_pos = 0
         
@@ -60,19 +60,14 @@ class Tokenizer:
                 break
                 
             # Extract next token
-            char_pos = current_pos
             token_text, char_end = cls._extract_next_token(text, current_pos)
             
             if token_text:
                 # Check for operators and split if needed
-                split_tokens = cls._split_operators(token_text, char_pos)
+                split_tokens = cls._split_operators(token_text)
                 tokens.extend(split_tokens)
             
             current_pos = char_end
-        
-        # Post-processing: assign token indices
-        for token_index, token in enumerate(tokens):
-            token.token_index = token_index
         
         return tokens
 
@@ -142,12 +137,12 @@ class Tokenizer:
         return None
 
     @classmethod  
-    def _split_operators(cls, token_text: str, char_pos: int) -> List[Token]:
+    def _split_operators(cls, token_text: str) -> List[Token]:
         """Split token on operators if present."""
         # Don't split if quoted
         has_quotes, _ = cls._has_quotes(token_text)
         if has_quotes:
-            return [cls._create_token(token_text, char_pos)]
+            return [cls._create_token(token_text)]
         
         # Look for operators using helper method
         operator_match = cls._find_operator(token_text)
@@ -155,26 +150,19 @@ class Tokenizer:
             key, operator, value = operator_match
             tokens = []
             
-            # Find operator position in original token_text
-            operator_index = token_text.index(operator)
-            
-            # Create tokens with explicit position calculations:
-            # - key: starts at char_pos, length = len(key)
+            # Create tokens without position calculations
             if key:
-                tokens.append(cls._create_token(key, char_pos))
+                tokens.append(cls._create_token(key))
             
-            # - operator: starts at char_pos + operator_index, length = len(operator)
-            tokens.append(cls._create_token(operator, char_pos + operator_index))
+            tokens.append(cls._create_token(operator))
             
-            # - value: starts at char_pos + operator_index + len(operator), length = len(value)
             if value:
-                value_start = char_pos + operator_index + len(operator)
-                tokens.append(cls._create_token(value, value_start))
+                tokens.append(cls._create_token(value))
             
             return tokens
         
         # No operators - single token
-        return [cls._create_token(token_text, char_pos)]
+        return [cls._create_token(token_text)]
 
 
     # =============================================================================
@@ -211,11 +199,6 @@ class Tokenizer:
         return False, None
 
     @classmethod
-    def _create_token(cls, text: str, char_pos: int) -> Token:
-        """Create Token with position metadata."""
-        return Token(
-            text=text,
-            char_start=char_pos,
-            char_end=char_pos + len(text),
-            token_index=0  # Placeholder, will be set in post-processing
-        )
+    def _create_token(cls, text: str) -> Token:
+        """Create Token without position metadata."""
+        return Token(text=text)

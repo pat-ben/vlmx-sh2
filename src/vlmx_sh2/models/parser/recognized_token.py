@@ -15,10 +15,8 @@ class RecognizedToken(BaseModel):
     """
     Recognized token with semantic classification.
     
-    Position metadata (char_start, char_end) reference the NORMALIZED text
-    (after macro expansion), not the original user input.
-    
     Contains both structural (from classifier) and semantic (from recognizer) classification.
+    Contains NO position metadata - that is resolved lazily only when displaying errors.
     Single model that represents all token types (WORD, VALUE, UNKNOWN).
     Fields are populated based on token_type:
     - WORD tokens: word field is set
@@ -27,9 +25,6 @@ class RecognizedToken(BaseModel):
     
     Fields:
         text: Token text (quotes stripped by classifier)
-        char_start: Character position where token starts in NORMALIZED text
-        char_end: Character position where token ends in NORMALIZED text (exclusive)
-        token_index: Position in token array (0-indexed)
         was_quoted: True if originally in quotes (from classifier)
         token_type: Semantic classification (WORD, VALUE, or UNKNOWN)
         word: Complete Word object from registry (only for WORD tokens)
@@ -44,7 +39,6 @@ class RecognizedToken(BaseModel):
         # WORD token
         >>> RecognizedToken(
         ...     text="create",
-        ...     char_start=0, char_end=6, token_index=0,
         ...     token_type=TokenType.WORD,
         ...     word=ActionWord(id="create", ...)
         ... )
@@ -52,7 +46,6 @@ class RecognizedToken(BaseModel):
         # VALUE token (schema)
         >>> RecognizedToken(
         ...     text="ACME",
-        ...     char_start=15, char_end=19, token_index=2,
         ...     was_quoted=False,
         ...     token_type=TokenType.VALUE,
         ...     value_context=ValueContext.SCHEMA
@@ -61,7 +54,6 @@ class RecognizedToken(BaseModel):
         # UNKNOWN token
         >>> RecognizedToken(
         ...     text="xyz123",
-        ...     char_start=20, char_end=26, token_index=3,
         ...     token_type=TokenType.UNKNOWN,
         ...     suggestions=["Corp", "Inc"]
         ... )
@@ -70,17 +62,6 @@ class RecognizedToken(BaseModel):
     # Token data
     text: str = Field(
         description="Token text (quotes stripped by classifier)"
-    )
-    
-    # Position metadata (inherited/preserved from Token)
-    char_start: int = Field(
-        description="Character position where token starts in NORMALIZED text (0-indexed)"
-    )
-    char_end: int = Field(
-        description="Character position where token ends in NORMALIZED text (exclusive)"
-    )
-    token_index: int = Field(
-        description="Position in token array (0-indexed)"
     )
     
     # Structural classification (inherited from classifier)
@@ -131,16 +112,6 @@ class RecognizedToken(BaseModel):
         arbitrary_types_allowed=True,
         frozen=False
     )
-    
-    @property
-    def char_length(self) -> int:
-        """Return the character length of the token."""
-        return self.char_end - self.char_start
-    
-    @property
-    def position(self) -> int:
-        """Alias for char_start (backward compatibility)."""
-        return self.char_start
     
     @property
     def is_word(self) -> bool:

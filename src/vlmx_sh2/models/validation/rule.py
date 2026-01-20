@@ -19,18 +19,17 @@ class ValidationRule(BaseModel):
     
     1. Text-Level Validation (Pre-tokenization):
        - Input: Raw text string
-       - Position: Always 0 (no tokens exist yet)
        - Blocking: Always True (fundamental failures that prevent parsing)
        - Examples: empty command, max length exceeded, invalid encoding
        - Philosophy: "Fail fast" - can't proceed if we can't even read the input
     
     2. Token-Level Validation (Post-tokenization):
-       - Input: List of tokens with position metadata
-       - Position: Extracted from token.char_start, token.char_end, token.token_index
+       - Input: List of tokens
        - Blocking: Default False (collect ALL errors for comprehensive diagnostics)
        - Examples: unclosed quotes, mismatched brackets, unrecognized words
        - Philosophy: "Collect all errors" - show user everything wrong in one go
     
+    Position information is resolved lazily only when displaying errors to users.
     The validation_level field determines which validation tier this rule belongs to.
     """
     rule_id: str = Field(..., description="Unique identifier (e.g., 'empty_command')")
@@ -43,10 +42,6 @@ class ValidationRule(BaseModel):
     error_code: str = Field(..., description="Structured error code (e.g., 'vlmx::tokenizer::empty_command')")
     message: Union[str, Callable[..., str]] = Field(..., description="Human-readable error message or function that generates one")
     suggestion: Union[str, Callable[..., str]] = Field(default="", description="Optional suggestion for fixing or function that generates one")
-    position: int = Field(
-        default=0, 
-        description="Default character position for error (used only for text-level validation)"
-    )
     blocking: bool = Field(
         default=None, 
         description="If True, stage MUST stop on this error. Auto-set based on validation_level if None"

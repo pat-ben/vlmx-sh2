@@ -116,12 +116,9 @@ class Classifier:
         text: str | None = None,
         **extra_fields
     ) -> ClassifiedToken:
-        """Create ClassifiedToken with common fields pre-filled."""
+        """Create ClassifiedToken without position metadata."""
         return ClassifiedToken(
             text=text if text is not None else token.text,
-            char_start=token.char_start,
-            char_end=token.char_end,
-            token_index=token.token_index,
             token_class=token_class,
             **extra_fields
         )
