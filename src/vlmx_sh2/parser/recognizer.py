@@ -144,7 +144,7 @@ class Recognizer:
         """
         # OPERATORS and BRACKETS: Pass through structural info
         if classified_token.token_class in (TokenClass.OPERATOR, TokenClass.BRACKET):
-            return self._pass_through_structural_token(classified_token)
+            return self._create_structural_token(classified_token)
         
         # TEXT tokens: Perform semantic classification
         # Try VALUE classification first (context-dependent)
@@ -155,27 +155,15 @@ class Recognizer:
         )
         
         if value_context:
-            return self._create_recognized_token(
-                classified_token,
-                token_type=TokenType.VALUE,
-                value_context=value_context
-            )
+            return self._create_value_token(classified_token, value_context)
         
         # Not a value, try WORD recognition
         word = self.recognize_word(classified_token.text)
         
         if word:
-            return self._create_recognized_token(
-                classified_token,
-                token_type=TokenType.WORD,
-                word=word
-            )
-        else:
-            return self._create_recognized_token(
-                classified_token,
-                token_type=TokenType.UNKNOWN
-                # No suggestions passed - will be added by validator
-            )
+            return self._create_word_token(classified_token, word)
+        
+        return self._create_unknown_token(classified_token)
     
     def recognize_word(self, token_text: str) -> Optional[Word]:
         """
@@ -216,6 +204,14 @@ class Recognizer:
            Examples: company "ACME", delete "ACME"
         2. Field value: Token after operator (quoted or not)
            Examples: currency=EUR, vision="Our vision"
+           
+        Examples of token sequences:
+            Input: "currency=EUR"
+            Tokens: ["currency", "=", "EUR"]
+            Classifications:
+                - "currency": WORD (FieldWord)
+                - "=": STRUCTURAL (OPERATOR)
+                - "EUR": VALUE (FIELD context) ← detected by this rule
         
         Args:
             classified_token: Current token being classified
@@ -225,75 +221,93 @@ class Recognizer:
         Returns:
             ValueContext if token is a value, None otherwise
         """
+        # Guard clause: First token cannot be a value
         if current_position == 0:
             return None
         
         prev_token = recognized_tokens[current_position - 1]
         
-        # Rule 1: Schema name (quoted token after schema/action word)
-        if (classified_token.was_quoted and 
-            prev_token.is_word and 
-            (prev_token.is_schema_word or prev_token.is_action_word)):
+        # Rule 1: Schema name detection
+        # Must be quoted and follow a schema or action word
+        if self._is_schema_name_value(classified_token, prev_token):
             return ValueContext.SCHEMA
         
-        # Rule 2: Field value (token after operator)
-        # NEW: Check if previous token's token_class is OPERATOR
-        # (operators are separate tokens now, not a field on the token)
-        if hasattr(prev_token, 'token_class') and prev_token.token_class == TokenClass.OPERATOR:
+        # Rule 2: Field value detection  
+        # Any token following an operator
+        if self._is_field_value(prev_token):
             return ValueContext.FIELD
         
         return None
     
+    def _is_schema_name_value(self, token: ClassifiedToken, prev_token: RecognizedToken) -> bool:
+        """Check if token is a schema name value (quoted token after schema/action word)."""
+        return (token.was_quoted and 
+                prev_token.is_word and 
+                (prev_token.is_schema_word or prev_token.is_action_word))
+    
+    def _is_field_value(self, prev_token: RecognizedToken) -> bool:
+        """Check if previous token indicates current token should be a field value."""
+        return prev_token.token_class == TokenClass.OPERATOR
+    
     # =============================================================================
-    # Token Creation Helpers
+    # Token Creation Methods
     # =============================================================================
     
-    def _base_fields_from_classified(self, classified_token: ClassifiedToken) -> dict:
+    def _create_word_token(self, classified_token: ClassifiedToken, word: Word) -> RecognizedToken:
         """
-        Extract common fields from ClassifiedToken for RecognizedToken creation.
-        
-        Returns base dictionary with structural fields that are common to all token types.
-        """
-        return {
-            "text": classified_token.text,
-            "token_class": classified_token.token_class,
-            "was_quoted": classified_token.was_quoted,
-            "operator": classified_token.operator,
-            "bracket": classified_token.bracket,
-        }
-    
-    def _create_recognized_token(
-        self,
-        classified_token: ClassifiedToken,
-        token_type: TokenType,
-        word: Optional[Word] = None,
-        value_context: Optional[ValueContext] = None
-    ) -> RecognizedToken:
-        """
-        Create RecognizedToken from ClassifiedToken with semantic classification.
-        
-        Combines structural fields from classifier with semantic classification.
+        Create RecognizedToken for a recognized word.
         """
         return RecognizedToken(
-            **self._base_fields_from_classified(classified_token),
-            token_type=token_type,
-            word=word,
+            text=classified_token.text,
+            token_class=classified_token.token_class,
+            was_quoted=classified_token.was_quoted,
+            operator=classified_token.operator,
+            bracket=classified_token.bracket,
+            token_type=TokenType.WORD,
+            word=word
+        )
+    
+    def _create_value_token(self, classified_token: ClassifiedToken, value_context: ValueContext) -> RecognizedToken:
+        """
+        Create RecognizedToken for a value with context.
+        """
+        return RecognizedToken(
+            text=classified_token.text,
+            token_class=classified_token.token_class,
+            was_quoted=classified_token.was_quoted,
+            operator=classified_token.operator,
+            bracket=classified_token.bracket,
+            token_type=TokenType.VALUE,
             value_context=value_context
         )
     
-    def _pass_through_structural_token(
-        self,
-        classified_token: ClassifiedToken
-    ) -> RecognizedToken:
+    def _create_unknown_token(self, classified_token: ClassifiedToken) -> RecognizedToken:
         """
-        Pass through structural tokens (OPERATOR/BRACKET) without semantic classification.
+        Create RecognizedToken for an unknown token.
+        """
+        return RecognizedToken(
+            text=classified_token.text,
+            token_class=classified_token.token_class,
+            was_quoted=classified_token.was_quoted,
+            operator=classified_token.operator,
+            bracket=classified_token.bracket,
+            token_type=TokenType.UNKNOWN
+        )
+    
+    def _create_structural_token(self, classified_token: ClassifiedToken) -> RecognizedToken:
+        """
+        Create RecognizedToken for structural tokens (OPERATOR/BRACKET).
         
         These tokens are already fully classified by the Classifier stage.
         Sets token_type to STRUCTURAL as these tokens have structural meaning only.
         """
         return RecognizedToken(
-            **self._base_fields_from_classified(classified_token),
-            token_type=TokenType.STRUCTURAL  # Structural tokens have no semantic word/value meaning
+            text=classified_token.text,
+            token_class=classified_token.token_class,
+            was_quoted=classified_token.was_quoted,
+            operator=classified_token.operator,
+            bracket=classified_token.bracket,
+            token_type=TokenType.STRUCTURAL
         )
     
     # =============================================================================
