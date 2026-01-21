@@ -17,7 +17,7 @@ Components:
 from .suggestions import SuggestionEngine
 from .validator import Validator, TokenLike, AnyToken
 from .rules import ValidationRule, VALIDATION_RULES, get_rules_for_stage
-from .position_resolver import PositionResolver
+from .resolver import PositionResolver
 
 __all__ = [
     "SuggestionEngine",

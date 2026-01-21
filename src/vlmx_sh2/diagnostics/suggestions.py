@@ -1,4 +1,4 @@
-# File: src/vlmx_sh2/diagnostics/suggestions.py
+
 """
 Centralized suggestion engine for diagnostics.
 
@@ -7,8 +7,7 @@ including token-level and command-level suggestions.
 """
 
 from typing import List
-from ..models.parser import ParseResult, TokenType, RecognizedToken
-from ..models.words import WordType
+from ..models.parser import ParseResult, TokenType
 
 
 class SuggestionEngine:

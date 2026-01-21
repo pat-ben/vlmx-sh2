@@ -2,7 +2,7 @@
 PARSING STAGE 0/8: Normalization
 
 Pre-tokenization text processing.
-Prepares raw input for tokenization by expanding macros and validating text.
+Prepares raw input for tokenization by expanding macros and validating command.
 
 This stage operates on raw strings and performs text-level transformations
 before the input is broken into tokens.
