@@ -72,13 +72,15 @@ class Interpreter:
             >>> # Fuzzy matching
             >>> interpret(["compny", "name", "=", "ACME"])
             ["company", "name", "=", "ACME"]  # Fixed typo
+       
         """
         # PLACEHOLDER: Pass through without modification
         # Future implementation will:
-        # 1. Call _infer_expressions(tokens)
-        # 2. Call _apply_fuzzy_matching(tokens)
+        # 1. interpreted_tokens = self._infer_expressions(recognized_tokens)
+        # 2. interpreted_tokens = self._apply_fuzzy_matching(interpreted_tokens)
         
-        return recognized_tokens
+        interpreted_tokens = recognized_tokens
+        return interpreted_tokens
     
     def _infer_expressions(
         self, 
