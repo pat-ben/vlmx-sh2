@@ -137,7 +137,7 @@ class Interpreter:
                 # If exactly 1 typo, correct it
                 if distance == 1:
                     # Get the Word object from registry
-                    word_obj = get_word(word_id)
+                    word_obj = self.word_registry.get(word_id)
                     if word_obj:
                         # Update token with correction
                         token.text = word_id
@@ -311,10 +311,10 @@ class Interpreter:
         
         if has_value_after:
             # field = value → infer "add"
-            return get_word("add")
+            return self.word_registry.get("add")
         else:
             # field = (no value) → infer "delete"  
-            return get_word("delete")
+            return self.word_registry.get("delete")
     
     # =============================================================================
     # Token Creation
