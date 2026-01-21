@@ -24,9 +24,15 @@ class Recognizer:
     """
     PARSING STAGE 3/8: Semantic Recognition
     
-    Recognizes words and classifies values from classifier output.
-    Converts ClassifiedToken objects to RecognizedToken objects with
-    full semantic classification.
+    Adds semantic meaning to TEXT tokens from Classifier.
+    OPERATOR/BRACKET tokens are passed through as STRUCTURAL tokens
+    (they were already fully classified by the Classifier).
+    
+    Responsibilities:
+    - TEXT → WORD (if in registry)
+    - TEXT → VALUE (if in value context)  
+    - TEXT → UNKNOWN (if not recognized)
+    - OPERATOR/BRACKET → STRUCTURAL (pass through)
     """
     
     
@@ -131,8 +137,8 @@ class Recognizer:
         """
         Recognize a single token from classifier output.
         
-        For TEXT tokens: attempts value classification, then word recognition.
-        For OPERATOR/BRACKET tokens: passes through structural classification.
+        Classifier has already done structural classification (TEXT/OPERATOR/BRACKET).
+        Recognizer only adds semantic meaning to TEXT tokens.
         
         Args:
             classified_token: Token from classifier
@@ -142,11 +148,33 @@ class Recognizer:
         Returns:
             RecognizedToken with semantic classification
         """
-        # OPERATORS and BRACKETS: Pass through structural info
-        if classified_token.token_class in (TokenClass.OPERATOR, TokenClass.BRACKET):
+        if classified_token.token_class == TokenClass.TEXT:
+            # TEXT tokens need semantic classification
+            return self._recognize_text_token(classified_token, recognized_tokens, current_position)
+        else:
+            # OPERATOR and BRACKET tokens are already complete
             return self._create_structural_token(classified_token)
+    
+    def _recognize_text_token(
+        self,
+        classified_token: ClassifiedToken,
+        recognized_tokens: List[RecognizedToken],
+        current_position: int
+    ) -> RecognizedToken:
+        """
+        Perform semantic recognition on TEXT tokens.
         
-        # TEXT tokens: Perform semantic classification
+        Attempts to classify TEXT tokens as VALUES or WORDS.
+        Falls back to UNKNOWN if no classification matches.
+        
+        Args:
+            classified_token: TEXT token from classifier
+            recognized_tokens: Previous tokens for context
+            current_position: Index in token array
+            
+        Returns:
+            RecognizedToken with semantic classification
+        """
         # Try VALUE classification first (context-dependent)
         value_context = self._determine_value_context(
             classified_token, 
