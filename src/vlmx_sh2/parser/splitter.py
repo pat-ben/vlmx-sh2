@@ -1,13 +1,13 @@
 """
 PARSING STAGE 5/8: Command/Filter Splitting
 
-Splits recognized tokens into command and filter portions based on bracket positions.
-Operates on semantically classified tokens from the Recognizer stage.
+Splits interpreted tokens into command and filter portions based on bracket positions.
+Operates on interpreted tokens from the Interpreter stage.
 
 Command tokens: Everything outside brackets [...]
 Filter tokens: Everything inside brackets [...] (excluding brackets themselves)
 
-Does NOT parse filter expressions (that's FilterParser's job in Stage 5).
+Does NOT parse filter expressions (that's FilterParser's job in Stage 6).
 """
 
 from typing import List, Optional
@@ -21,18 +21,25 @@ class Splitter:
     """
     PARSING STAGE 5/8: Command/Filter Splitting
     
-    Splits recognized tokens into command and filter portions based on
-    bracket positions. Operates on semantically classified tokens.
+    Splits interpreted tokens into command and filter portions based on
+    bracket positions. Operates on interpreted tokens from Interpreter stage.
+    
+    TODO: When Interpreter produces InterpretedToken objects (instead of
+    RecognizedToken), update type hints throughout this class.
     """
+    
+    # =============================================================================
+    # Public API - Main Entry Point
+    # =============================================================================
     
     @classmethod
     def split(
         cls, 
-        recognized_tokens: List[RecognizedToken], 
+        interpreted_tokens: List[RecognizedToken], 
         context: ValidationContext
     ) -> SplitResult:
         """
-        Split recognized tokens into command and filter portions.
+        Split interpreted tokens into command and filter portions.
         
         Processing:
         1. Find bracket positions ([ and ])
@@ -41,7 +48,7 @@ class Splitter:
         4. Return SplitResult with metadata
         
         Args:
-            recognized_tokens: Fully recognized tokens (semantic + structural)
+            interpreted_tokens: Interpreted tokens from Interpreter stage
             context: ValidationContext for error reporting
             
         Returns:
@@ -65,14 +72,14 @@ class Splitter:
         """
         # Step 1: Find bracket positions
         bracket_open_index, bracket_close_index = cls._find_bracket_positions(
-            recognized_tokens, 
+            interpreted_tokens, 
             context
         )
         
-        # Step 2: Validate bracket structure (splitter-specific validations)
-        # Note: General bracket balance already validated by Classifier
+        # Step 2: Validate bracket structure
+        # Note: General bracket balance already validated by Classifier stage
         cls._validate_bracket_structure(
-            recognized_tokens, 
+            interpreted_tokens, 
             bracket_open_index, 
             bracket_close_index, 
             context
@@ -82,19 +89,20 @@ class Splitter:
         if bracket_open_index is not None and bracket_close_index is not None:
             # Has filter: split into command and filter
             command_tokens = (
-                recognized_tokens[:bracket_open_index] +      # Before [
-                recognized_tokens[bracket_close_index + 1:]   # After ]
+                interpreted_tokens[:bracket_open_index] +      # Before [
+                interpreted_tokens[bracket_close_index + 1:]   # After ]
             )
-            filter_tokens = recognized_tokens[bracket_open_index + 1:bracket_close_index]
+            filter_tokens = interpreted_tokens[bracket_open_index + 1:bracket_close_index]
             has_filter = True
         else:
             # No filter: everything is command
-            command_tokens = recognized_tokens[:]
+            command_tokens = interpreted_tokens[:]
             filter_tokens = []
             has_filter = False
         
         # Step 4: Validate the split result
-        Validator.validate_tokens(IssueStage.SPLITTER, context, tokens=recognized_tokens)
+        # Checks for split-specific issues like nested brackets and multiple filter sections
+        Validator.validate_tokens(IssueStage.SPLITTER, context, tokens=interpreted_tokens)
         
         return SplitResult(
             command_tokens=command_tokens,
@@ -103,6 +111,10 @@ class Splitter:
             bracket_open_index=bracket_open_index,
             bracket_close_index=bracket_close_index
         )
+    
+    # =============================================================================
+    # Bracket Detection Methods
+    # =============================================================================
     
     @classmethod
     def _find_bracket_positions(
@@ -117,7 +129,7 @@ class Splitter:
         Only finds the first pair - multiple filter sections are not supported.
         
         Args:
-            tokens: List of recognized tokens
+            tokens: List of interpreted tokens
             context: ValidationContext for error reporting
             
         Returns:
@@ -142,6 +154,10 @@ class Splitter:
         
         return bracket_open_index, bracket_close_index
     
+    # =============================================================================
+    # Validation Methods
+    # =============================================================================
+    
     @classmethod
     def _validate_bracket_structure(
         cls,
@@ -161,7 +177,7 @@ class Splitter:
         by Classifier stage. This only checks splitter-specific rules.
         
         Args:
-            tokens: List of recognized tokens
+            tokens: List of interpreted tokens
             bracket_open_index: Position of opening bracket (or None)
             bracket_close_index: Position of closing bracket (or None)
             context: ValidationContext for error reporting
