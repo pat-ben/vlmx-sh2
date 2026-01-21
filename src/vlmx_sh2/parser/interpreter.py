@@ -16,7 +16,6 @@ from ..models.context import Context
 from ..enums.parser import TokenType, Operator
 from ..enums.core import ContextLevel
 from ..models.words import WordType, FieldWord, EntityWord, ActionWord, Word
-from ..words import get_word
 
 
 class Interpreter:
