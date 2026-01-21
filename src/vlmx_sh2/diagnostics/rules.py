@@ -38,7 +38,7 @@ from ..enums import IssueStage, TokenType, ValueContext, TokenClass
 
 VALIDATION_RULES: List[ValidationRule] = [
     
-    # ==================== TOKENIZER STAGE ====================
+    # ==================== NORMALIZER STAGE ====================
     
     # TEXT-LEVEL VALIDATION (Pre-tokenization)
     ValidationRule(
@@ -46,9 +46,9 @@ VALIDATION_RULES: List[ValidationRule] = [
         stage=IssueStage.NORMALIZER,
         validation_level="text",
         check=lambda text, **kwargs: bool(text and text.strip()),
-        error_code="vlmx::normalizer::empty_command",
+        error_code="normalizer::empty_command",
         message="Command cannot be empty",
-        suggestion="Try typing a command like 'create company' or 'show metadata'",
+        suggestion="Try typing a command like 'create company \"My Company\"' or 'show metadata'",
         blocking=True  # Text-level validation is always blocking
     ),
     
@@ -57,26 +57,25 @@ VALIDATION_RULES: List[ValidationRule] = [
         stage=IssueStage.NORMALIZER,
         validation_level="text",
         check=lambda text, **kwargs: len(text) <= 10000,
-        error_code="vlmx::normalizer::max_length",
+        error_code="normalizer::max_length",
         message="Command exceeds maximum length (10,000 characters)",
         suggestion="Break your command into smaller parts",
         blocking=True  # Text-level validation is always blocking
     ),
-    #
-    # ValidationRule(
-    #     rule_id="invalid_encoding",
-    #     stage=IssueStage.TOKENIZER,
-    #     validation_level="text", 
-    #     check=lambda text, **kwargs: all(ord(c) < 127 for c in text),
-    #     error_code="vlmx::input::invalid_encoding",
-    #     message="Command contains non-ASCII characters",
-    #     suggestion="Use only ASCII characters in commands",
-    #     blocking=True  # Text-level validation is always blocking
-    # ),
+
+    # ==================== TOKENIZER STAGE ====================
     
-    # TOKEN-LEVEL VALIDATION (Post-tokenization)
-    # Example token-level rules (not yet implemented):
-    #
+    ValidationRule(
+        rule_id="invalid_encoding",
+        stage=IssueStage.TOKENIZER,
+        validation_level="text", 
+        check=lambda text, **kwargs: all(ord(c) < 127 for c in text),
+        error_code="vlmx::input::invalid_encoding",
+        message="Command contains non-ASCII characters",
+        suggestion="Use only ASCII characters in commands",
+        blocking=True  # Text-level validation is always blocking
+    ),    
+
     # ValidationRule(
     #     rule_id="unclosed_quote",
     #     stage=IssueStage.TOKENIZER,
