@@ -43,8 +43,8 @@ class Splitter:
         
         Processing:
         1. Find bracket positions ([ and ])
-        2. Validate bracket structure (no nesting, only one filter section)
-        3. Slice tokens into command and filter lists
+        2. Slice tokens into command and filter lists
+        3. Validate using diagnostic rules (nested brackets, multiple sections, empty filters)
         4. Return SplitResult with metadata
         
         Args:
@@ -76,16 +76,7 @@ class Splitter:
             context
         )
         
-        # Step 2: Validate bracket structure
-        # Note: General bracket balance already validated by Classifier stage
-        cls._validate_bracket_structure(
-            interpreted_tokens, 
-            bracket_open_index, 
-            bracket_close_index, 
-            context
-        )
-        
-        # Step 3: Slice tokens based on bracket positions
+        # Step 2: Slice tokens based on bracket positions
         if bracket_open_index is not None and bracket_close_index is not None:
             # Has filter: split into command and filter
             command_tokens = (
@@ -100,8 +91,11 @@ class Splitter:
             filter_tokens = []
             has_filter = False
         
-        # Step 4: Validate the split result
-        # Checks for split-specific issues like nested brackets and multiple filter sections
+        # Step 3: Validate the split result
+        # Runs all SPLITTER stage validation rules from diagnostics module:
+        # - nested_brackets: Checks for [[...]]
+        # - multiple_filter_sections: Checks for [...] [...]
+        # - empty_filter: Checks for []
         Validator.validate_tokens(IssueStage.SPLITTER, context, tokens=interpreted_tokens)
         
         return SplitResult(
@@ -154,60 +148,3 @@ class Splitter:
         
         return bracket_open_index, bracket_close_index
     
-    # =============================================================================
-    # Validation Methods
-    # =============================================================================
-    
-    @classmethod
-    def _validate_bracket_structure(
-        cls,
-        tokens: List[RecognizedToken],
-        bracket_open_index: Optional[int],
-        bracket_close_index: Optional[int],
-        context: ValidationContext
-    ) -> None:
-        """
-        Validate splitter-specific bracket rules.
-        
-        Checks for:
-        1. Nested brackets: [[...]] is not allowed
-        2. Multiple filter sections: [...] [...] is not allowed
-        
-        Note: General bracket balance (mismatched brackets) already validated
-        by Classifier stage. This only checks splitter-specific rules.
-        
-        Args:
-            tokens: List of interpreted tokens
-            bracket_open_index: Position of opening bracket (or None)
-            bracket_close_index: Position of closing bracket (or None)
-            context: ValidationContext for error reporting
-        """
-        # If we have brackets, check for nested brackets
-        if bracket_open_index is not None and bracket_close_index is not None:
-            # Check for nested opening brackets between the pair
-            for i in range(bracket_open_index + 1, bracket_close_index):
-                token = tokens[i]
-                if hasattr(token, 'bracket') and token.bracket == Bracket.BRACKET_OPEN:
-                    # Found nested opening bracket
-                    context.add_error(
-                        stage=IssueStage.SPLITTER,
-                        error_code="vlmx::splitter::nested_brackets",
-                        message="Nested filter brackets are not supported",
-                        suggestion="Use only one filter section with logical operators (and/or) instead of nesting",
-                        token_text=token.text
-                    )
-                    return
-            
-            # Check for multiple filter sections (another [ after ])
-            for i in range(bracket_close_index + 1, len(tokens)):
-                token = tokens[i]
-                if hasattr(token, 'bracket') and token.bracket == Bracket.BRACKET_OPEN:
-                    # Found second opening bracket
-                    context.add_error(
-                        stage=IssueStage.SPLITTER,
-                        error_code="vlmx::splitter::multiple_filters",
-                        message="Multiple filter sections are not supported",
-                        suggestion="Combine filters into one section using logical operators (and/or)",
-                        token_text=token.text
-                    )
-                    return
