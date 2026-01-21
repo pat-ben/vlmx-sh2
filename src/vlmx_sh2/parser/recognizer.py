@@ -14,10 +14,10 @@ Does NOT handle command/filter splitting (that's Splitter's job).
 from typing import Dict, List, Optional
 from ..models.parser import ClassifiedToken, RecognizedToken
 from ..models.validation import ValidationContext
-from ..models.words import Word, WordType, ActionWord
+from ..models.words import Word, WordType
 from ..words import get_all_words, get_word
 from ..diagnostics import Validator
-from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage
+from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage, QueryWord
 
 
 class Recognizer:
@@ -35,6 +35,13 @@ class Recognizer:
     - OPERATOR/BRACKET → STRUCTURAL (pass through)
     """
     
+    
+    # Query keywords (already normalized by Classifier)
+    # Classifier handles symbol normalization: & → and, | → or
+    _QUERY_WORDS = {
+        "and": QueryWord.AND,
+        "or": QueryWord.OR,
+    }
     
     def __init__(self):
         """Initialize recognizer with registry and alias mappings."""
@@ -185,7 +192,13 @@ class Recognizer:
         if value_context:
             return self._create_value_token(classified_token, value_context)
         
-        # Not a value, try WORD recognition
+        # Try QUERY keyword recognition
+        query_keyword = self._is_query_keyword(classified_token.text)
+        
+        if query_keyword:
+            return self._create_query_token(classified_token, query_keyword)
+        
+        # Not a value or query, try WORD recognition
         word = self.recognize_word(classified_token.text)
         
         if word:
@@ -213,6 +226,24 @@ class Recognizer:
         
         # No match
         return None
+    
+    def _is_query_keyword(self, text: str) -> Optional[QueryWord]:
+        """
+        Check if text is a query keyword (and/or).
+        
+        The Classifier has already normalized symbols to words:
+        - & → and
+        - | → or
+        
+        So we only check for the word forms.
+        
+        Args:
+            text: Token text to check (already normalized by Classifier)
+            
+        Returns:
+            QueryKeyword enum value if matched, None otherwise
+        """
+        return self._QUERY_WORDS.get(text.lower())
     
     # =============================================================================
     # Value Context Classification
@@ -320,6 +351,20 @@ class Recognizer:
             operator=classified_token.operator,
             bracket=classified_token.bracket,
             token_type=TokenType.UNKNOWN
+        )
+    
+    def _create_query_token(self, classified_token: ClassifiedToken, query_word: QueryWord) -> RecognizedToken:
+        """
+        Create RecognizedToken for query keywords (and/or).
+        """
+        return RecognizedToken(
+            text=classified_token.text,
+            token_class=classified_token.token_class,
+            was_quoted=classified_token.was_quoted,
+            operator=classified_token.operator,
+            bracket=classified_token.bracket,
+            token_type=TokenType.QUERY,
+            query_word=query_word
         )
     
     def _create_structural_token(self, classified_token: ClassifiedToken) -> RecognizedToken:

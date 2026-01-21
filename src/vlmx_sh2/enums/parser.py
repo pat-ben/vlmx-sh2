@@ -17,8 +17,8 @@ class Operator(str, Enum):
     NOT_EQUAL = "!="
 
 
-class QueryKeyword(str, Enum):
-    """Query keywords for filtering"""
+class QueryWord(str, Enum):
+    """Query words for filtering"""
     AND = "and"
     OR = "or"
 
@@ -43,6 +43,7 @@ class TokenType(str, Enum):
     WORD = "word"           # Token that matches a Word in the registry
     VALUE = "value"         # Token representing a value (company name, etc.)
     STRUCTURAL = "structural"  # Structural tokens (operators, brackets) - no semantic meaning
+    QUERY = "query"         # Query keywords (and, or) for filter expressions
     UNKNOWN = "unknown"     # Token that doesn't match any known pattern
 
 

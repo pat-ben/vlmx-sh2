@@ -34,7 +34,7 @@ from .core import (
 # Parser ENUMs (parsing pipeline)
 from .parser import (
     Operator,
-    QueryKeyword,
+    QueryWord,
     Bracket,
     TokenClass,
     TokenType,
@@ -68,7 +68,7 @@ __all__ = [
     
     # Parser ENUMs
     'Operator',
-    'QueryKeyword',
+    'QueryWord',
     'Bracket',
     'TokenClass',
     'TokenType',
