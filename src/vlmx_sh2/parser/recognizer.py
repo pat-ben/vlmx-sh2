@@ -11,7 +11,7 @@ Converts ClassifiedToken objects to RecognizedToken objects by:
 Does NOT handle command/filter splitting (that's Splitter's job).
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from ..models.parser import ClassifiedToken, RecognizedToken
 from ..models.validation import ValidationContext
 from ..models.words import Word, WordType, ActionWord
@@ -29,10 +29,6 @@ class Recognizer:
     full semantic classification.
     """
     
-    # Confidence scores for recognition
-    _CONFIDENCE_EXACT_MATCH = 100.0
-    _CONFIDENCE_VALUE = 50.0
-    _CONFIDENCE_UNKNOWN = 0.0
     
     def __init__(self):
         """Initialize recognizer with registry and alias mappings."""
@@ -162,29 +158,26 @@ class Recognizer:
             return self._create_recognized_token(
                 classified_token,
                 token_type=TokenType.VALUE,
-                value_context=value_context,
-                confidence=self._CONFIDENCE_VALUE
+                value_context=value_context
             )
         
         # Not a value, try WORD recognition
-        word, confidence = self.recognize_word(classified_token.text)
+        word = self.recognize_word(classified_token.text)
         
         if word:
             return self._create_recognized_token(
                 classified_token,
                 token_type=TokenType.WORD,
-                word=word,
-                confidence=confidence
+                word=word
             )
         else:
             return self._create_recognized_token(
                 classified_token,
-                token_type=TokenType.UNKNOWN,
-                confidence=confidence
+                token_type=TokenType.UNKNOWN
                 # No suggestions passed - will be added by validator
             )
     
-    def recognize_word(self, token_text: str) -> Tuple[Optional[Word], float]:
+    def recognize_word(self, token_text: str) -> Optional[Word]:
         """
         Recognize token as word from registry, handling aliases automatically.
         
@@ -192,7 +185,7 @@ class Recognizer:
             token_text: Text to recognize
             
         Returns:
-            (word, confidence): Word object and score (100.0 if matched, 0.0 otherwise)
+            Word object if matched, None otherwise
         """
         token_lower = token_text.lower()
         
@@ -200,10 +193,10 @@ class Recognizer:
         if token_lower in self.alias_to_word:
             word_id = self.alias_to_word[token_lower]
             word = get_word(word_id)
-            return word, self._CONFIDENCE_EXACT_MATCH
+            return word
         
         # No match
-        return None, self._CONFIDENCE_UNKNOWN
+        return None
     
     # =============================================================================
     # Value Context Classification
@@ -274,8 +267,7 @@ class Recognizer:
         classified_token: ClassifiedToken,
         token_type: TokenType,
         word: Optional[Word] = None,
-        value_context: Optional[ValueContext] = None,
-        confidence: float = 0.0
+        value_context: Optional[ValueContext] = None
     ) -> RecognizedToken:
         """
         Create RecognizedToken from ClassifiedToken with semantic classification.
@@ -286,8 +278,7 @@ class Recognizer:
             **self._base_fields_from_classified(classified_token),
             token_type=token_type,
             word=word,
-            value_context=value_context,
-            confidence=confidence
+            value_context=value_context
         )
     
     def _pass_through_structural_token(
@@ -302,8 +293,7 @@ class Recognizer:
         """
         return RecognizedToken(
             **self._base_fields_from_classified(classified_token),
-            token_type=TokenType.STRUCTURAL,  # Structural tokens have no semantic word/value meaning
-            confidence=100.0
+            token_type=TokenType.STRUCTURAL  # Structural tokens have no semantic word/value meaning
         )
     
     # =============================================================================
