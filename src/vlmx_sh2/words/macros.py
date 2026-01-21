@@ -4,6 +4,14 @@ Command macros and shortcuts.
 Provides command abbreviations and expansion functionality to allow
 users to use short forms like 'cc' for 'create company' or 'sb' 
 for 'show brand'. Helps improve command line efficiency.
+
+Macro Design Guidelines:
+- Length: Macros must be 2-3 characters
+- Structure: Must expand to ActionWord + SchemaWord OR ActionWord + EntityWord (2 words)
+- Position: Only expands at the very beginning of input (position 0)
+- Case: Case-insensitive matching
+
+These are guidelines for developers adding new macros, not runtime validation.
 """
 
 from typing import Dict, List
@@ -12,9 +20,9 @@ from typing import Dict, List
 # ==================== SHORTCUTS SYSTEM ====================
 
 MACROS: Dict[str, List[str]] = {
-    "cc": ["create", "company"],
-    "dc": ["delete", "company"],
-    "org": ["organization"]
+    "cc": ["create", "company"],   # ActionWord + SchemaWord
+    "dc": ["delete", "company"],   # ActionWord + SchemaWord
+    # Add new macros following the pattern: 2-3 chars → [ActionWord, SchemaWord/EntityWord]
 }
 
 
@@ -23,7 +31,8 @@ def expand_macros(input_text: str) -> str:
     Expand command macros in user input before parsing.
     
     Handles multi-word command macros (cc → create company, dc → delete company).
-    Command macros are only expanded at the beginning of the input.
+    Only the first token is checked for macro expansion. Macros appearing
+    elsewhere in input are ignored and treated as regular text.
     
     Args:
         input_text: Original user input

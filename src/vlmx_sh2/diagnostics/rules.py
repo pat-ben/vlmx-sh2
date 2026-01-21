@@ -76,44 +76,20 @@ VALIDATION_RULES: List[ValidationRule] = [
         blocking=True  # Text-level validation is always blocking
     ),    
 
-    # ValidationRule(
-    #     rule_id="unclosed_quote",
-    #     stage=IssueStage.TOKENIZER,
-    #     validation_level="token",
-    #     check=lambda token, **kwargs: not (
-    #         token.text.startswith('"') and not token.text.endswith('"')
-    #     ),
-    #     error_code="vlmx::tokenizer::unclosed_quote",
-    #     message="Quote opened but not closed",
-    #     suggestion="Add closing quote",
-    #     blocking=False  # Token-level validation is non-blocking by default
-    # ),
-    # 
-    # ValidationRule(
-    #     rule_id="mismatched_brackets",
-    #     stage=IssueStage.TOKENIZER,
-    #     validation_level="token",
-    #     check=lambda token, tokens, **kwargs: _check_balanced_brackets(tokens),
-    #     error_code="vlmx::tokenizer::mismatched_brackets",
-    #     message="Opening bracket without closing bracket",
-    #     suggestion="Add closing bracket ]",
-    #     blocking=False  # Token-level validation is non-blocking by default
-    # ),
-    
-    
-    # ==================== CLASSIFIER STAGE ====================
-    
-    # TOKEN-LEVEL VALIDATION (Post-classification)
     ValidationRule(
         rule_id="unclosed_quote",
-        stage=IssueStage.CLASSIFIER,
+        stage=IssueStage.TOKENIZER,
         validation_level="token",
-        check=lambda token, **kwargs: not _has_unclosed_quote(token),
-        error_code="vlmx::classifier::unclosed_quote",
+        check=lambda token, **kwargs: not (token.text.startswith('"') and not token.text.endswith('"')),
+        error_code="vlmx::tokenizer::unclosed_quote",
         message="Quote opened but not closed",
-        suggestion="Add closing quote to match the opening quote",
-        blocking=False  # Non-blocking - collect all errors
+        suggestion="Add closing quote",
+        blocking=False  # Token-level validation is non-blocking by default
     ),
+        
+    
+    # ==================== CLASSIFIER STAGE ====================
+   
     
     ValidationRule(
         rule_id="mismatched_brackets",
@@ -166,16 +142,6 @@ VALIDATION_RULES: List[ValidationRule] = [
         blocking=True  # Blocking - unclear what field this value belongs to
     ),
 
-    ValidationRule(
-        rule_id="low_confidence_word",
-        stage=IssueStage.RECOGNIZER,
-        validation_level="token",
-        check=lambda token, **kwargs: token.confidence >= 50.0 or token.token_type == TokenType.UNKNOWN,
-        error_code="vlmx::recognizer::low_confidence",
-        message=lambda token, **kwargs: f"Low confidence recognizing '{token.text}' as {token.word.id if token.word else 'value'}",
-        suggestion="Consider being more specific or checking spelling",
-        blocking=False  # Non-blocking - informational
-    ),
 
     ValidationRule(
         rule_id="value_without_context",
@@ -187,6 +153,13 @@ VALIDATION_RULES: List[ValidationRule] = [
         suggestion="This indicates a parser bug - please report with the command you used",
         blocking=False  # Non-blocking - but indicates parser issue
     ),
+
+
+    # ==================== INTERPRETER STAGE ====================
+    
+    # TOKEN-LEVEL VALIDATION (Post-recognition)
+
+
     
     
     # ==================== SPLITTER STAGE ====================

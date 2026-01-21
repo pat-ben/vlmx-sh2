@@ -26,6 +26,7 @@ class Tokenizer:
     # =============================================================================
     # PUBLIC API
     # =============================================================================
+    
     @classmethod
     def tokenize(cls, normalized_text: str, context: ValidationContext) -> List[Token]:
         """Tokenize normalized input with validation. Returns list of Token objects."""

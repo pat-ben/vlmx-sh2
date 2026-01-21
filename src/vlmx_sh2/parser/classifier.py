@@ -61,12 +61,6 @@ class Classifier:
         
         Converts symbols like & and | to their keyword forms (and, or)
         to ensure consistent handling throughout the parsing pipeline.
-        
-        Args:
-            text: Token text to potentially normalize
-            
-        Returns:
-            Normalized text if it's a query symbol, otherwise original text            
 
         """
         return cls._QUERY_SYMBOLS.get(text, text)
