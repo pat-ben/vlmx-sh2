@@ -31,14 +31,14 @@ class Recognizer:
     Responsibilities:
     - TEXT → WORD (if in registry)
     - TEXT → VALUE (if in value context)  
+    - TEXT → QUERY (if query keyword)
     - TEXT → UNKNOWN (if not recognized)
     - OPERATOR/BRACKET → STRUCTURAL (pass through)
     """
     
-    
     # Query keywords (already normalized by Classifier)
     # Classifier handles symbol normalization: & → and, | → or
-    _QUERY_WORDS = {
+    _QUERY_WORDS: Dict[str, QueryWord] = {
         "and": QueryWord.AND,
         "or": QueryWord.OR,
     }
@@ -50,7 +50,65 @@ class Recognizer:
         self.words_by_type = self._group_words_by_type()
     
     # =============================================================================
-    # Initialization & Setup
+    # Public API - Main Entry Point
+    # =============================================================================
+    
+    def recognize(
+        self, 
+        classified_tokens: List[ClassifiedToken], 
+        context: ValidationContext
+    ) -> List[RecognizedToken]:
+        """
+        Recognize words and classify values from classified tokens.
+        
+        Example transformation:
+            Input:  "create company ACME currency=EUR"
+            
+            Classified tokens:
+                [ClassifiedToken(text="create", token_class=TEXT),
+                 ClassifiedToken(text="company", token_class=TEXT),
+                 ClassifiedToken(text="ACME", token_class=TEXT, was_quoted=False),
+                 ClassifiedToken(text="=", token_class=OPERATOR, operator=EQUALS),
+                 ClassifiedToken(text="EUR", token_class=TEXT)]
+            
+            Recognized tokens:
+                [RecognizedToken(text="create", token_type=WORD, word=ActionWord(...)),
+                 RecognizedToken(text="company", token_type=WORD, word=SchemaWord(...)),
+                 RecognizedToken(text="ACME", token_type=VALUE, value_context=SCHEMA),
+                 RecognizedToken(text="=", token_type=STRUCTURAL, operator=EQUALS),
+                 RecognizedToken(text="EUR", token_type=VALUE, value_context=FIELD)]
+        
+        Processing:
+        1. For TEXT tokens: Try word recognition, then value classification
+        2. For OPERATOR/BRACKET tokens: Copy structural info as-is
+        3. Provide suggestions for UNKNOWN tokens
+        
+        Args:
+            classified_tokens: List of ClassifiedToken from classifier
+            context: ValidationContext for error reporting
+            
+        Returns:
+            List of RecognizedToken objects with semantic classification
+        """
+        recognized_tokens = []
+        
+        for i, classified_token in enumerate(classified_tokens):
+            recognized_token = self._recognize_single_token(
+                classified_token, 
+                recognized_tokens, 
+                i
+            )
+            recognized_tokens.append(recognized_token)
+        
+        # Token-level validation
+        # - Validates semantic issues (unknown words, invalid values)
+        # - Non-blocking by default (collect ALL errors)
+        Validator.validate_tokens(IssueStage.RECOGNIZER, context, tokens=recognized_tokens)
+        
+        return recognized_tokens
+    
+    # =============================================================================
+    # Initialization Helpers
     # =============================================================================
     
     def _build_alias_map(self) -> Dict[str, str]:
@@ -91,48 +149,7 @@ class Recognizer:
         return groups
     
     # =============================================================================
-    # Public API
-    # =============================================================================
-    
-    def recognize(
-        self, 
-        classified_tokens: List[ClassifiedToken], 
-        context: ValidationContext
-    ) -> List[RecognizedToken]:
-        """
-        Recognize words and classify values from classified tokens.
-        
-        Processing:
-        1. For TEXT tokens: Try word recognition, then value classification
-        2. For OPERATOR/BRACKET tokens: Copy structural info as-is
-        3. Provide suggestions for UNKNOWN tokens
-        
-        Args:
-            classified_tokens: List of ClassifiedToken from classifier
-            context: ValidationContext for error reporting
-            
-        Returns:
-            List of RecognizedToken objects with semantic classification
-        """
-        recognized_tokens = []
-        
-        for i, classified_token in enumerate(classified_tokens):
-            recognized_token = self._recognize_single_token(
-                classified_token, 
-                recognized_tokens, 
-                i
-            )
-            recognized_tokens.append(recognized_token)
-        
-        # Token-level validation
-        # - Validates semantic issues (unknown words, invalid values)
-        # - Non-blocking by default (collect ALL errors)
-        Validator.validate_tokens(IssueStage.RECOGNIZER, context, tokens=recognized_tokens)
-        
-        return recognized_tokens
-    
-    # =============================================================================
-    # Core Recognition
+    # Token Recognition Dispatch
     # =============================================================================
     
     def _recognize_single_token(
@@ -160,7 +177,7 @@ class Recognizer:
             return self._recognize_text_token(classified_token, recognized_tokens, current_position)
         else:
             # OPERATOR and BRACKET tokens are already complete
-            return self._create_structural_token(classified_token)
+            return self._create_token(classified_token, TokenType.STRUCTURAL)
     
     def _recognize_text_token(
         self,
@@ -182,7 +199,7 @@ class Recognizer:
         Returns:
             RecognizedToken with semantic classification
         """
-        # Try VALUE classification first (context-dependent)
+        # Priority 1: Check if it's a value (context-dependent)
         value_context = self._determine_value_context(
             classified_token, 
             recognized_tokens, 
@@ -190,23 +207,28 @@ class Recognizer:
         )
         
         if value_context:
-            return self._create_value_token(classified_token, value_context)
+            return self._create_token(classified_token, TokenType.VALUE, value_context=value_context)
         
-        # Try QUERY keyword recognition
-        query_word = self._is_query_word(classified_token.text)
+        # Priority 2: Check if it's a query keyword (and/or)
+        query_word = self.match_query_keyword(classified_token.text)
         
         if query_word:
-            return self._create_query_token(classified_token, query_word)
+            return self._create_token(classified_token, TokenType.QUERY, query_word=query_word)
         
-        # Not a value or query, try WORD recognition
-        word = self.recognize_word(classified_token.text)
+        # Priority 3: Try word registry lookup
+        word = self.match_word_in_registry(classified_token.text)
         
         if word:
-            return self._create_word_token(classified_token, word)
+            return self._create_token(classified_token, TokenType.WORD, word=word)
         
-        return self._create_unknown_token(classified_token)
+        # Fallback: Unknown token
+        return self._create_token(classified_token, TokenType.UNKNOWN)
     
-    def recognize_word(self, token_text: str) -> Optional[Word]:
+    # =============================================================================
+    # Recognition Methods - Token Type Matching
+    # =============================================================================
+    
+    def match_word_in_registry(self, token_text: str) -> Optional[Word]:
         """
         Recognize token as word from registry, handling aliases automatically.
         
@@ -227,7 +249,7 @@ class Recognizer:
         # No match
         return None
     
-    def _is_query_word(self, text: str) -> Optional[QueryWord]:
+    def match_query_keyword(self, text: str) -> Optional[QueryWord]:
         """
         Check if text is a query keyword (and/or).
         
@@ -309,70 +331,29 @@ class Recognizer:
         return prev_token.token_class == TokenClass.OPERATOR
     
     # =============================================================================
-    # Token Creation Methods
+    # Token Factory - RecognizedToken Construction
     # =============================================================================
     
-    def _create_word_token(self, classified_token: ClassifiedToken, word: Word) -> RecognizedToken:
+    def _create_token(
+        self,
+        classified_token: ClassifiedToken,
+        token_type: TokenType,
+        word: Optional[Word] = None,
+        value_context: Optional[ValueContext] = None,
+        query_word: Optional[QueryWord] = None
+    ) -> RecognizedToken:
         """
-        Create RecognizedToken for a recognized word.
-        """
-        return RecognizedToken(
-            text=classified_token.text,
-            token_class=classified_token.token_class,
-            was_quoted=classified_token.was_quoted,
-            operator=classified_token.operator,
-            bracket=classified_token.bracket,
-            token_type=TokenType.WORD,
-            word=word
-        )
-    
-    def _create_value_token(self, classified_token: ClassifiedToken, value_context: ValueContext) -> RecognizedToken:
-        """
-        Create RecognizedToken for a value with context.
-        """
-        return RecognizedToken(
-            text=classified_token.text,
-            token_class=classified_token.token_class,
-            was_quoted=classified_token.was_quoted,
-            operator=classified_token.operator,
-            bracket=classified_token.bracket,
-            token_type=TokenType.VALUE,
-            value_context=value_context
-        )
-    
-    def _create_unknown_token(self, classified_token: ClassifiedToken) -> RecognizedToken:
-        """
-        Create RecognizedToken for an unknown token.
-        """
-        return RecognizedToken(
-            text=classified_token.text,
-            token_class=classified_token.token_class,
-            was_quoted=classified_token.was_quoted,
-            operator=classified_token.operator,
-            bracket=classified_token.bracket,
-            token_type=TokenType.UNKNOWN
-        )
-    
-    def _create_query_token(self, classified_token: ClassifiedToken, query_word: QueryWord) -> RecognizedToken:
-        """
-        Create RecognizedToken for query keywords (and/or).
-        """
-        return RecognizedToken(
-            text=classified_token.text,
-            token_class=classified_token.token_class,
-            was_quoted=classified_token.was_quoted,
-            operator=classified_token.operator,
-            bracket=classified_token.bracket,
-            token_type=TokenType.QUERY,
-            query_word=query_word
-        )
-    
-    def _create_structural_token(self, classified_token: ClassifiedToken) -> RecognizedToken:
-        """
-        Create RecognizedToken for structural tokens (OPERATOR/BRACKET).
+        Unified factory for creating RecognizedToken objects.
         
-        These tokens are already fully classified by the Classifier stage.
-        Sets token_type to STRUCTURAL as these tokens have structural meaning only.
+        Args:
+            classified_token: Input token from classifier
+            token_type: Semantic type (WORD, VALUE, QUERY, STRUCTURAL, UNKNOWN)
+            word: Word object (for WORD tokens only)
+            value_context: Value context (for VALUE tokens only)
+            query_word: Query keyword (for QUERY tokens only)
+            
+        Returns:
+            RecognizedToken with appropriate fields populated
         """
         return RecognizedToken(
             text=classified_token.text,
@@ -380,7 +361,10 @@ class Recognizer:
             was_quoted=classified_token.was_quoted,
             operator=classified_token.operator,
             bracket=classified_token.bracket,
-            token_type=TokenType.STRUCTURAL
+            token_type=token_type,
+            word=word,
+            value_context=value_context,
+            query_word=query_word
         )
     
     # =============================================================================
