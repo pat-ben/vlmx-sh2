@@ -31,6 +31,7 @@ def normalize(input_text: str, context: ValidationContext) -> str:
         context.input_text = input_text
     
     # Step 1: Expand command macros    
+    # onyl happens at position 0 to cover edge cases
     normalized_text = expand_macros(input_text)
     
     # Step 2: Store normalized text in context

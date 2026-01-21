@@ -52,7 +52,7 @@ class EntityModel(SQLModel):
         return cls.__name__.replace("Entity", "").lower()
     
     @classmethod
-    def get_word_aliases(cls) -> List[str]:
+    def get_entity_aliases(cls) -> List[str]:
         """
         Get word aliases for this entity.
         Override in subclasses to provide custom aliases.

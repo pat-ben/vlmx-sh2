@@ -55,11 +55,11 @@ def generate_entity_words(schema: Type[SchemaModel]) -> Dict[str, EntityWord]:
     
     for entity_cls in schema.tables:
         # Get aliases if entity defines them
-        # NOTE: Aliases can be added via get_word_aliases() class method
-        # Example: OrganizationEntity.get_word_aliases() → ["org", "o"]
+        # NOTE: Aliases can be added via get_entity_aliases() class method
+        # Example: OrganizationEntity.get_entity_aliases() → ["org", "o"]
         aliases = []
-        if hasattr(entity_cls, 'get_word_aliases'):
-            aliases = entity_cls.get_word_aliases()
+        if hasattr(entity_cls, 'get_entity_aliases'):
+            aliases = entity_cls.get_entity_aliases()
         
         entity_words[entity_cls.get_entity_word_id()] = EntityWord(
             id=entity_cls.get_entity_word_id(),

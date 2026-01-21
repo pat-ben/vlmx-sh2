@@ -118,10 +118,9 @@ class Recognizer:
         Now handles aliases from ALL word types (ACTION, SCHEMA, ENTITY, FIELD).
         
         Example: {
-            "delete": "delete", "del": "delete", "rm": "delete",  # ActionWord
-            "org": "organization",                                  # EntityWord
+            "delete": "delete", "del": "delete", "rm": "delete",    # ActionWord
             "co": "company",                                        # SchemaWord
-            "curr": "currency"                                      # FieldWord
+            "org": "organization",                                  # EntityWord
         }
         """
         alias_map = {}

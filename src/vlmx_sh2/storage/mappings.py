@@ -29,8 +29,8 @@ def _generate_mappings() -> Dict[str, str]:
             mappings[entity_name] = json_filename
             
             # Add aliases if available
-            if hasattr(entity_class, 'get_word_aliases'):
-                for alias in entity_class.get_word_aliases():
+            if hasattr(entity_class, 'get_entity_aliases'):
+                for alias in entity_class.get_entity_aliases():
                     mappings[alias] = json_filename
         
         return mappings
