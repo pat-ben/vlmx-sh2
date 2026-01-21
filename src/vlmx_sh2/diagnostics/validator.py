@@ -6,13 +6,26 @@ Supports both text-level (pre-tokenization) and token-level (post-tokenization)
 validation with fine-grained position tracking.
 """
 
-from typing import Any, List, Union, Protocol, overload
+from typing import Any, List, Union, Protocol, TypeVar, TypedDict, TYPE_CHECKING
 from ..models.validation import ValidationContext
 from ..models.parser.token import Token
 from ..models.parser.classified_token import ClassifiedToken
 from ..models.parser.recognized_token import RecognizedToken
 from ..enums import IssueStage
 from .rules import get_text_rules_for_stage, get_token_rules_for_stage
+
+if TYPE_CHECKING:
+    from .suggestions import SuggestionEngine
+    from ..models.context import Context
+    from ..models.validation.rule import ValidationRule
+
+
+class ValidationInputs(TypedDict, total=False):
+    """Common validation input parameters."""
+    text: str
+    tokens: List[Union[Token, ClassifiedToken, RecognizedToken]]
+    suggestion_engine: 'SuggestionEngine'
+    context: 'Context'
 
 
 class TokenLike(Protocol):
@@ -22,6 +35,9 @@ class TokenLike(Protocol):
 
 # Type alias for any token type used in the pipeline
 AnyToken = Union[Token, ClassifiedToken, RecognizedToken]
+
+# TypeVar for bounded token types
+TokenType = TypeVar('TokenType', bound=TokenLike)
 
 
 class Validator:
@@ -114,38 +130,53 @@ class Validator:
         # Return False immediately on first failure (text-level is fail fast)
         return not has_blocking_error
     
-    @overload
     @staticmethod
-    def validate_tokens(
-        stage: IssueStage,
-        context: ValidationContext,
-        tokens: List[Token],
-        **kwargs: Any
-    ) -> bool: ...
-    
-    @overload
-    @staticmethod
-    def validate_tokens(
-        stage: IssueStage,
-        context: ValidationContext,
-        tokens: List[ClassifiedToken],
-        **kwargs: Any
-    ) -> bool: ...
-    
-    @overload
-    @staticmethod
-    def validate_tokens(
-        stage: IssueStage,
-        context: ValidationContext,
-        tokens: List[RecognizedToken],
-        **kwargs: Any
-    ) -> bool: ...
+    def _get_or_create_suggestion_engine(**kwargs: Any) -> 'SuggestionEngine':
+        """
+        Get suggestion engine from kwargs or create a new one.
+        
+        Args:
+            **kwargs: May contain 'suggestion_engine' key
+            
+        Returns:
+            SuggestionEngine instance
+        """
+        suggestion_engine = kwargs.get('suggestion_engine')
+        if not suggestion_engine:
+            from .suggestions import SuggestionEngine
+            suggestion_engine = SuggestionEngine()
+        return suggestion_engine
     
     @staticmethod
+    def _build_error_context(
+        rule: 'ValidationRule',
+        token: TokenLike,
+        position: int,
+        **kwargs: Any
+    ) -> dict:
+        """
+        Build error context dictionary for validation failures.
+        
+        Args:
+            rule: The validation rule that failed
+            token: The token that failed validation
+            position: Token position in the command
+            **kwargs: Additional context for error messages
+            
+        Returns:
+            Dictionary with error context data
+        """
+        return {
+            'token': token,
+            'position': position,
+            **kwargs
+        }
+    
+    @staticmethod
     def validate_tokens(
         stage: IssueStage,
         context: ValidationContext,
-        tokens: List[TokenLike],
+        tokens: List[TokenType],
         **kwargs: Any
     ) -> bool:
         """
@@ -173,11 +204,8 @@ class Validator:
         """
         # Create suggestion engine once for this validation pass
         # This avoids recreating it for each unknown token
-        suggestion_engine = kwargs.get('suggestion_engine')
-        if not suggestion_engine:
-            from .suggestions import SuggestionEngine
-            suggestion_engine = SuggestionEngine()
-            kwargs['suggestion_engine'] = suggestion_engine
+        suggestion_engine = Validator._get_or_create_suggestion_engine(**kwargs)
+        kwargs['suggestion_engine'] = suggestion_engine
         
         rules = get_token_rules_for_stage(stage)
         has_blocking_error = False
@@ -216,61 +244,3 @@ class Validator:
         # Return False only if a rare blocking token error was found
         return not has_blocking_error
     
-    @staticmethod
-    def validate(
-        stage: IssueStage,
-        context: ValidationContext,
-        **inputs: Any
-    ) -> bool:
-        """
-        Legacy method for backward compatibility.
-        
-        This method is deprecated in favor of validate_text() and validate_tokens().
-        It automatically determines which validation type to use based on inputs.
-        
-        Args:
-            stage: Which parsing stage to validate
-            context: ValidationContext for logging issues
-            **inputs: Inputs required by validation rules
-            
-        Returns:
-            True if no blocking errors found (processing can continue)
-            False if any blocking error found (processing must stop)
-        """
-        # Auto-detect validation type based on inputs
-        if 'text' in inputs and 'tokens' not in inputs:
-            # Text-level validation
-            return Validator.validate_text(stage, context, **inputs)
-        elif 'tokens' in inputs:
-            # Token-level validation
-            return Validator.validate_tokens(stage, context, **inputs)
-        else:
-            # Fall back to old behavior - get all rules regardless of level
-            from .rules import get_rules_for_stage
-            rules = get_rules_for_stage(stage)
-            has_blocking_error = False
-            
-            for rule in rules:
-                try:
-                    is_valid = rule.check(**inputs)
-                    
-                    if not is_valid:
-                        context.add_error(
-                            stage=stage,
-                            message=rule.message,
-                            error_code=rule.error_code,
-                            suggestion=rule.suggestion
-                        )
-                        
-                        if rule.blocking:
-                            has_blocking_error = True
-                            
-                except Exception as e:
-                    context.add_error(
-                        stage=stage,
-                        message=f"Validation rule '{rule.rule_id}' failed: {str(e)}",
-                        error_code=f"vlmx::{stage.value}::validation_error"
-                    )
-                    has_blocking_error = True
-            
-            return not has_blocking_error

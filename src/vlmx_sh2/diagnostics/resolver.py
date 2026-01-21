@@ -1,4 +1,8 @@
+
 """
+
+PLACEHOLDER
+
 Position resolver for lazy error position resolution.
 
 Provides on-demand position resolution for validation errors without

@@ -39,6 +39,7 @@ from ..enums import IssueStage, TokenType, ValueContext, TokenClass
 # =============================================================================
 
 VALIDATION_RULES: List[ValidationRule] = [
+    
     # ==================== TOKENIZER STAGE ====================
     
     # TEXT-LEVEL VALIDATION (Pre-tokenization)
