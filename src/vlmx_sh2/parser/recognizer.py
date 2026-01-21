@@ -193,10 +193,10 @@ class Recognizer:
             return self._create_value_token(classified_token, value_context)
         
         # Try QUERY keyword recognition
-        query_keyword = self._is_query_keyword(classified_token.text)
+        query_word = self._is_query_word(classified_token.text)
         
-        if query_keyword:
-            return self._create_query_token(classified_token, query_keyword)
+        if query_word:
+            return self._create_query_token(classified_token, query_word)
         
         # Not a value or query, try WORD recognition
         word = self.recognize_word(classified_token.text)
@@ -227,7 +227,7 @@ class Recognizer:
         # No match
         return None
     
-    def _is_query_keyword(self, text: str) -> Optional[QueryWord]:
+    def _is_query_word(self, text: str) -> Optional[QueryWord]:
         """
         Check if text is a query keyword (and/or).
         

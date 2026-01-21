@@ -7,7 +7,7 @@ Contains both structural (from classifier) and semantic (from recognizer) classi
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
 
-from vlmx_sh2.enums import TokenType, ValueContext, TokenClass, Operator, Bracket
+from vlmx_sh2.enums import TokenType, ValueContext, TokenClass, Operator, Bracket, QueryWord
 from ..words import Word, WordType
 
 
@@ -17,18 +17,21 @@ class RecognizedToken(BaseModel):
     
     Contains both structural (from classifier) and semantic (from recognizer) classification.
     Contains NO position metadata - that is resolved lazily only when displaying errors.
-    Single model that represents all token types (WORD, VALUE, UNKNOWN).
+    Single model that represents all token types (WORD, VALUE, QUERY, STRUCTURAL, UNKNOWN).
     Fields are populated based on token_type:
     - WORD tokens: word field is set
     - VALUE tokens: value_context field is set
+    - QUERY tokens: query_word field is set
+    - STRUCTURAL tokens: operator/bracket fields are set
     - UNKNOWN tokens: suggestions may be provided
     
     Fields:
         text: Token text (quotes stripped by classifier)
         was_quoted: True if originally in quotes (from classifier)
-        token_type: Semantic classification (WORD, VALUE, or UNKNOWN)
+        token_type: Semantic classification (WORD, VALUE, QUERY, STRUCTURAL, or UNKNOWN)
         word: Complete Word object from registry (only for WORD tokens)
         value_context: Context for VALUE tokens (SCHEMA, ENTITY, or FIELD)
+        query_word: Query keyword enum (only for QUERY tokens)
         confidence: Recognition confidence score (0-100)
         suggestions: Suggestions for unrecognized tokens
     
@@ -85,7 +88,7 @@ class RecognizedToken(BaseModel):
     # Semantic classification (added by recognizer)
     token_type: TokenType = Field(
         default=TokenType.UNKNOWN,
-        description="Semantic classification: WORD, VALUE, or UNKNOWN"
+        description="Semantic classification: WORD, VALUE, QUERY, STRUCTURAL, or UNKNOWN"
     )
     
     word: Optional[Word] = Field(
@@ -96,6 +99,11 @@ class RecognizedToken(BaseModel):
     value_context: Optional[ValueContext] = Field(
         default=None,
         description="Context for VALUE tokens: ENTITY or FIELD"
+    )
+    
+    query_word: Optional[QueryWord] = Field(
+        default=None,
+        description="Query keyword enum (only for QUERY tokens)"
     )
     
     confidence: float = Field(
@@ -122,6 +130,16 @@ class RecognizedToken(BaseModel):
     def is_value(self) -> bool:
         """True if this is a value token."""
         return self.token_type == TokenType.VALUE
+    
+    @property
+    def is_query_token(self) -> bool:
+        """True if this is a query keyword token (and/or)."""
+        return self.token_type == TokenType.QUERY
+    
+    @property
+    def is_structural_token(self) -> bool:
+        """True if this is a structural token (operator/bracket)."""
+        return self.token_type == TokenType.STRUCTURAL
     
     @property
     def is_unknown(self) -> bool:
