@@ -210,7 +210,7 @@ class Recognizer:
             return self._create_token(classified_token, TokenType.VALUE, value_context=value_context)
         
         # Priority 2: Check if it's a query keyword (and/or)
-        query_word = self.match_query_keyword(classified_token.text)
+        query_word = self.match_query_word(classified_token.text)
         
         if query_word:
             return self._create_token(classified_token, TokenType.QUERY, query_word=query_word)
@@ -249,7 +249,7 @@ class Recognizer:
         # No match
         return None
     
-    def match_query_keyword(self, text: str) -> Optional[QueryWord]:
+    def match_query_word(self, text: str) -> Optional[QueryWord]:
         """
         Check if text is a query keyword (and/or).
         
@@ -322,9 +322,9 @@ class Recognizer:
     
     def _is_schema_name_value(self, token: ClassifiedToken, prev_token: RecognizedToken) -> bool:
         """Check if token is a schema name value (quoted token after schema/action word)."""
-        return (token.was_quoted and 
-                prev_token.is_word and 
-                (prev_token.is_schema_word or prev_token.is_action_word))
+        return (bool(token.was_quoted) and 
+                bool(prev_token.is_word) and 
+                bool(prev_token.is_schema_word or prev_token.is_action_word))
     
     def _is_field_value(self, prev_token: RecognizedToken) -> bool:
         """Check if previous token indicates current token should be a field value."""
@@ -358,7 +358,7 @@ class Recognizer:
         return RecognizedToken(
             text=classified_token.text,
             token_class=classified_token.token_class,
-            was_quoted=classified_token.was_quoted,
+            was_quoted=bool(classified_token.was_quoted),
             operator=classified_token.operator,
             bracket=classified_token.bracket,
             token_type=token_type,
