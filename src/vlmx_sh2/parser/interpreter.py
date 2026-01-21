@@ -5,16 +5,49 @@ Post-recognition intelligence layer.
 Interprets user intent and corrects/infers missing information.
 
 This stage operates on recognized tokens and makes the DSL "smart" by:
-- Inferring missing words from context
 - Correcting typos with fuzzy matching
+- Inferring missing words from context
 - Making the command interface more forgiving
-
-Currently a placeholder - will be implemented in future phases.
 """
 
 from typing import List
 from ..models.parser import RecognizedToken
 from ..models.validation import ValidationContext
+from ..enums.parser import TokenType
+from ..words import get_word
+
+
+def _levenshtein_distance(s1: str, s2: str) -> int:
+    """
+    Calculate Levenshtein distance between two strings.
+    
+    Uses dynamic programming approach to find minimum edit distance.
+    
+    Args:
+        s1: First string
+        s2: Second string
+        
+    Returns:
+        Integer distance (number of single-character edits needed)
+    """
+    if len(s1) < len(s2):
+        return _levenshtein_distance(s2, s1)
+    
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            # Cost of insertions, deletions, or substitutions
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
 
 
 class Interpreter:
@@ -22,16 +55,17 @@ class Interpreter:
     Intelligence layer for interpreting user intent.
     
     Operates on recognized tokens to make the DSL more intelligent:
-    - Expression inference: Adds missing words based on context
     - Fuzzy matching: Corrects typos and spelling mistakes
+    - Expression inference: Adds missing words based on context
     
     This stage bridges the gap between what users type and what
     the system needs to execute commands successfully.
     
-    CURRENT STATUS: Placeholder implementation
+    CURRENT STATUS: Partial implementation
+    Implemented:
+    - Phase 1: Fuzzy matching (correct typos with Levenshtein distance)
     Future phases will add:
-    - Phase 1: Expression inference (add missing action/entity words)
-    - Phase 2: Fuzzy matching (correct typos with Levenshtein distance)
+    - Phase 2: Expression inference (add missing action/entity words)
     """
     
     def __init__(self, word_registry: dict, context: ValidationContext):
@@ -52,11 +86,11 @@ class Interpreter:
         """
         Interpret recognized tokens with intelligence.
         
-        PLACEHOLDER: Currently returns tokens unchanged.
+        Applies fuzzy matching to correct typos in UNKNOWN tokens.
         
-        Future processing order:
-        1. Expression inference (inject missing words based on context)
-        2. Fuzzy matching (correct typos in UNKNOWN tokens)
+        Processing order:
+        1. Fuzzy matching (correct typos in UNKNOWN tokens)
+        2. Expression inference (inject missing words based on context) - FUTURE
         
         Args:
             recognized_tokens: Tokens from recognizer stage
@@ -74,12 +108,11 @@ class Interpreter:
             ["company", "name", "=", "ACME"]  # Fixed typo
        
         """
-        # PLACEHOLDER: Pass through without modification
-        # Future implementation will:
-        # 1. interpreted_tokens = self._infer_expressions(recognized_tokens)
-        # 2. interpreted_tokens = self._apply_fuzzy_matching(interpreted_tokens)
+        # Apply fuzzy matching to correct typos in UNKNOWN tokens
+        interpreted_tokens = self._apply_fuzzy_matching(recognized_tokens)
         
-        interpreted_tokens = recognized_tokens
+        # FUTURE: Add expression inference
+        # interpreted_tokens = self._infer_expressions(interpreted_tokens)
         return interpreted_tokens
     
     def _infer_expressions(
@@ -105,7 +138,7 @@ class Interpreter:
         Returns:
             Tokens with inferred words injected
         """
-        # TODO: Implement expression inference
+        # FUTURE: Implement expression inference
         # See design document for inference rules and patterns
         return tokens
     
@@ -116,26 +149,54 @@ class Interpreter:
         """
         Apply fuzzy matching to UNKNOWN tokens.
         
-        PLACEHOLDER: Future implementation will:
-        - Use Levenshtein distance algorithm
-        - Match against word registry
-        - Replace UNKNOWN tokens with close matches (distance ≤ 2)
-        - Update token confidence scores
+        Corrects typos in UNKNOWN tokens by matching against the word registry
+        using Levenshtein distance. Only applies to tokens > 3 characters with
+        exactly 1 character difference (distance == 1).
+        
+        Rules:
+        - Apply to UNKNOWN tokens only
+        - Skip words ≤ 3 characters 
+        - Tolerate exactly 1 typo (Levenshtein distance == 1)
+        - Case insensitive matching
+        - Match against word_registry.keys() only
         
         Args:
             tokens: Recognized tokens
             
         Returns:
-            Tokens with fuzzy-matched corrections
+            Tokens with fuzzy-matched corrections applied
         """
-        # TODO: Implement fuzzy matching
-        # Use library: rapidfuzz or python-Levenshtein
-        # For each UNKNOWN token:
-        #   1. Calculate distance to all words in registry
-        #   2. If closest match has distance ≤ 2:
-        #      - Replace token text
-        #      - Update token type to WORD
-        #      - Set confidence based on distance
+        for token in tokens:
+            # Skip non-UNKNOWN tokens
+            if token.token_type != TokenType.UNKNOWN:
+                continue
+                
+            # Skip short words (≤ 3 characters)
+            if len(token.text) <= 3:
+                continue
+            
+            token_text_lower = token.text.lower()
+            
+            # Check all words in registry for exact distance of 1
+            for word_id in self.word_registry.keys():
+                # Skip if length difference is too large (optimization)
+                if abs(len(token.text) - len(word_id)) > 1:
+                    continue
+                    
+                # Calculate case-insensitive Levenshtein distance
+                distance = _levenshtein_distance(token_text_lower, word_id.lower())
+                
+                # If exactly 1 typo, correct it
+                if distance == 1:
+                    # Get the Word object from registry
+                    word_obj = get_word(word_id)
+                    if word_obj:
+                        # Update token with correction
+                        token.text = word_id
+                        token.token_type = TokenType.WORD
+                        token.word = word_obj
+                        break  # Take first match
+        
         return tokens
 
 
@@ -157,16 +218,3 @@ class ExpressionInferencer:
     pass
 
 
-class FuzzyMatcher:
-    """
-    FUTURE: Applies fuzzy string matching for typo correction.
-    
-    Will use Levenshtein distance to match UNKNOWN tokens
-    against the word registry and suggest corrections.
-    
-    Max edit distance: 2 (configurable)
-    Confidence scoring based on distance:
-    - Distance 1: 90% confidence
-    - Distance 2: 70% confidence
-    """
-    pass
