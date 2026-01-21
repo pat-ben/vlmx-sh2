@@ -10,14 +10,12 @@ Two-Tier Validation Philosophy:
 1. TEXT-LEVEL VALIDATION (Pre-tokenization):
    - Validates raw input before parsing begins
    - Always blocking (fail fast on fundamental issues) 
-   - Position always 0 (no tokens exist yet)
    - Examples: empty command, max length, encoding issues
    - Philosophy: "Fail fast" - can't proceed if we can't read input
 
 2. TOKEN-LEVEL VALIDATION (Post-tokenization):  
-   - Validates individual tokens with position metadata
+   - Validates individual tokens
    - Non-blocking by default (collect ALL errors)
-   - Position extracted from token metadata
    - Examples: unclosed quotes, invalid syntax, unknown words
    - Philosophy: "Collect all errors" - show user everything wrong at once
 

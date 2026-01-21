@@ -6,8 +6,8 @@ Defines the ValidationRule Pydantic model for validation rules across parsing st
 Supports two-tier validation architecture for comprehensive diagnostics.
 """
 
-from typing import Callable, Any, Literal, Union
-from pydantic import BaseModel, Field, validator
+from typing import Callable, Literal, Union, Optional
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 from vlmx_sh2.enums import IssueStage
 
 
@@ -34,26 +34,21 @@ class ValidationRule(BaseModel):
     """
     rule_id: str = Field(..., description="Unique identifier (e.g., 'empty_command')")
     stage: IssueStage = Field(..., description="Which stage this rule applies to")
-    validation_level: Literal["text", "token"] = Field(
-        default="text", 
-        description="Validation tier: 'text' for pre-tokenization, 'token' for post-tokenization"
-    )
+    validation_level: Literal["text", "token"] = Field(default="token", description="Validation tier: 'text' for pre-tokenization, 'token' for post-tokenization")
     check: Callable[..., bool] = Field(..., description="Validation function - returns True if valid")
     error_code: str = Field(..., description="Structured error code (e.g., 'vlmx::tokenizer::empty_command')")
     message: Union[str, Callable[..., str]] = Field(..., description="Human-readable error message or function that generates one")
     suggestion: Union[str, Callable[..., str]] = Field(default="", description="Optional suggestion for fixing or function that generates one")
-    blocking: bool = Field(
-        default=None, 
-        description="If True, stage MUST stop on this error. Auto-set based on validation_level if None"
-    )
+    blocking: Optional[bool] = Field(default=None, description="If True, stage MUST stop on this error. Auto-set based on validation_level if None")
 
-    @validator('blocking', always=True)
-    def set_blocking_default(cls, v, values):
+    @field_validator('blocking', mode='before')
+    @classmethod
+    def set_blocking_default(cls, v, info: ValidationInfo):
         """Set blocking default based on validation level if not explicitly provided."""
         if v is None:
             # Text-level validation is always blocking (fail fast)
             # Token-level validation is non-blocking by default (collect all errors)
-            validation_level = values.get('validation_level', 'text')
+            validation_level = info.data.get('validation_level', 'token')
             return validation_level == 'text'
         return v
 
