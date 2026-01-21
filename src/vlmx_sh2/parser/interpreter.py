@@ -11,7 +11,7 @@ This stage operates on recognized tokens and makes the DSL "smart" by:
 """
 
 from typing import List, Optional, Tuple
-from ..models.parser import RecognizedToken
+from ..models.parser import RecognizedToken, InterpretedToken
 from ..models.context import Context
 from ..enums.parser import TokenType, Operator
 from ..enums.core import ContextLevel
@@ -52,7 +52,7 @@ class Interpreter:
     def interpret(
         self, 
         recognized_tokens: List[RecognizedToken]
-    ) -> List[RecognizedToken]:
+    ) -> List[InterpretedToken]:
         """
         Interpret recognized tokens with intelligence.
         
@@ -66,7 +66,7 @@ class Interpreter:
             recognized_tokens: Tokens from recognizer stage
             
         Returns:
-            Interpreted tokens (potentially modified with corrections/additions)
+            InterpretedToken list with correction/inference metadata
             
         Examples:
             >>> # Expression inference
@@ -78,8 +78,14 @@ class Interpreter:
             ["company", "name", "=", "ACME"]  # Fixed typo
        
         """
+        # Convert to InterpretedToken (preserves all fields, adds new defaults)
+        interpreted_tokens = [
+            InterpretedToken(**token.model_dump()) 
+            for token in recognized_tokens
+        ]
+        
         # Apply fuzzy matching to correct typos in UNKNOWN tokens
-        interpreted_tokens = self._correct_typos(recognized_tokens)
+        interpreted_tokens = self._correct_typos(interpreted_tokens)
         
         # Apply expression inference to add missing words
         interpreted_tokens = self._inject_missing_words(interpreted_tokens)
@@ -91,8 +97,8 @@ class Interpreter:
     
     def _correct_typos(
         self, 
-        tokens: List[RecognizedToken]
-    ) -> List[RecognizedToken]:
+        tokens: List[InterpretedToken]
+    ) -> List[InterpretedToken]:
         """
         Apply fuzzy matching to UNKNOWN tokens.
         
@@ -138,7 +144,11 @@ class Interpreter:
                     # Get the Word object from registry
                     word_obj = self.word_registry.get(word_id)
                     if word_obj:
-                        # Update token with correction
+                        # Store original before correction
+                        token.original_text = token.text
+                        token.was_corrected = True
+                        
+                        # Apply correction
                         token.text = word_id
                         token.token_type = TokenType.WORD
                         token.word = word_obj
@@ -148,8 +158,8 @@ class Interpreter:
     
     def _inject_missing_words(
         self, 
-        tokens: List[RecognizedToken]
-    ) -> List[RecognizedToken]:
+        tokens: List[InterpretedToken]
+    ) -> List[InterpretedToken]:
         """
         Infer missing words based on patterns and context.
         
@@ -206,7 +216,7 @@ class Interpreter:
     # Analysis Helpers - Token Inspection
     # =============================================================================
     
-    def _analyze_token_types(self, tokens: List[RecognizedToken]) -> Tuple[bool, bool, bool]:
+    def _analyze_token_types(self, tokens: List[InterpretedToken]) -> Tuple[bool, bool, bool]:
         """
         Analyze tokens to determine what word types are present.
         
@@ -233,7 +243,7 @@ class Interpreter:
         
         return has_field, has_entity, has_action
     
-    def _find_first_field_word(self, tokens: List[RecognizedToken]) -> Optional[FieldWord]:
+    def _find_first_field_word(self, tokens: List[InterpretedToken]) -> Optional[FieldWord]:
         """
         Find the first FieldWord in the token list.
         
@@ -278,7 +288,7 @@ class Interpreter:
                 return word
         return None
     
-    def _infer_action_from_operator(self, tokens: List[RecognizedToken]) -> Optional[ActionWord]:
+    def _infer_action_from_operator(self, tokens: List[InterpretedToken]) -> Optional[ActionWord]:
         """
         Infer ActionWord from operator patterns.
         
@@ -319,20 +329,21 @@ class Interpreter:
     # Token Creation
     # =============================================================================
     
-    def _create_inferred_token(self, word: Word) -> RecognizedToken:
+    def _create_inferred_token(self, word: Word) -> InterpretedToken:
         """
-        Create a RecognizedToken for an inferred word.
+        Create an InterpretedToken for an inferred word.
         
         Args:
             word: Word object to create token for
             
         Returns:
-            RecognizedToken representing the inferred word
+            InterpretedToken marked as inferred
         """
-        return RecognizedToken(
+        return InterpretedToken(
             text=word.id,
             token_type=TokenType.WORD,
-            word=word
+            word=word,
+            was_inferred=True  # Mark as inferred
         )
     
     # =============================================================================

@@ -11,7 +11,7 @@ Does NOT parse filter expressions (that's FilterParser's job in Stage 6).
 """
 
 from typing import List, Optional
-from ..models.parser import RecognizedToken, SplitResult
+from ..models.parser import InterpretedToken, SplitResult
 from ..models.validation import ValidationContext
 from vlmx_sh2.enums import IssueStage, Bracket
 from ..diagnostics import Validator
@@ -24,8 +24,7 @@ class Splitter:
     Splits interpreted tokens into command and filter portions based on
     bracket positions. Operates on interpreted tokens from Interpreter stage.
     
-    TODO: When Interpreter produces InterpretedToken objects (instead of
-    RecognizedToken), update type hints throughout this class.
+    Operates on InterpretedToken objects from the Interpreter stage.
     """
     
     # =============================================================================
@@ -35,7 +34,7 @@ class Splitter:
     @classmethod
     def split(
         cls, 
-        interpreted_tokens: List[RecognizedToken], 
+        interpreted_tokens: List[InterpretedToken], 
         context: ValidationContext
     ) -> SplitResult:
         """
@@ -57,13 +56,13 @@ class Splitter:
         Examples:
             >>> # Input: show company [currency=EUR]
             >>> tokens = [
-            ...     RecognizedToken(text="show", ...),
-            ...     RecognizedToken(text="company", ...),
-            ...     RecognizedToken(text="[", bracket=BRACKET_OPEN, ...),
-            ...     RecognizedToken(text="currency", ...),
-            ...     RecognizedToken(text="=", ...),
-            ...     RecognizedToken(text="EUR", ...),
-            ...     RecognizedToken(text="]", bracket=BRACKET_CLOSE, ...),
+            ...     InterpretedToken(text="show", ...),
+            ...     InterpretedToken(text="company", ...),
+            ...     InterpretedToken(text="[", bracket=BRACKET_OPEN, ...),
+            ...     InterpretedToken(text="currency", ...),
+            ...     InterpretedToken(text="=", ...),
+            ...     InterpretedToken(text="EUR", ...),
+            ...     InterpretedToken(text="]", bracket=BRACKET_CLOSE, ...),
             ... ]
             >>> result = Splitter.split(tokens, context)
             >>> result.command_tokens  # [show, company]
@@ -113,7 +112,7 @@ class Splitter:
     @classmethod
     def _find_bracket_positions(
         cls,
-        tokens: List[RecognizedToken],
+        tokens: List[InterpretedToken],
         context: ValidationContext
     ) -> tuple[Optional[int], Optional[int]]:
         """
