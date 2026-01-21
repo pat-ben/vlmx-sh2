@@ -10,10 +10,13 @@ This stage operates on recognized tokens and makes the DSL "smart" by:
 - Making the command interface more forgiving
 """
 
-from typing import List
+from typing import List, Optional, Tuple
 from ..models.parser import RecognizedToken
 from ..models.validation import ValidationContext
-from ..enums.parser import TokenType
+from ..models.context import Context
+from ..enums.parser import TokenType, Operator
+from ..enums.core import ContextLevel
+from ..models.words import WordType, FieldWord, EntityWord, ActionWord
 from ..words import get_word
 
 
@@ -61,20 +64,19 @@ class Interpreter:
     This stage bridges the gap between what users type and what
     the system needs to execute commands successfully.
     
-    CURRENT STATUS: Partial implementation
-    Implemented:
-    - Phase 1: Fuzzy matching (correct typos with Levenshtein distance)
-    Future phases will add:
-    - Phase 2: Expression inference (add missing action/entity words)
+    CURRENT STATUS: Fully implemented
+    Implemented features:
+    - Fuzzy matching: Corrects typos with Levenshtein distance 
+    - Expression inference: Adds missing action/entity words in ORG context
     """
     
-    def __init__(self, word_registry: dict, context: ValidationContext):
+    def __init__(self, word_registry: dict, context: Context):
         """
         Initialize interpreter with word registry and context.
         
         Args:
             word_registry: Complete word registry for lookups
-            context: Validation context with current context level (SYS/ORG/APP)
+            context: Navigation context with current context level (SYS/ORG/APP)
         """
         self.word_registry = word_registry
         self.context = context
@@ -86,11 +88,11 @@ class Interpreter:
         """
         Interpret recognized tokens with intelligence.
         
-        Applies fuzzy matching to correct typos in UNKNOWN tokens.
+        Applies fuzzy matching and expression inference for intelligent parsing.
         
         Processing order:
         1. Fuzzy matching (correct typos in UNKNOWN tokens)
-        2. Expression inference (inject missing words based on context) - FUTURE
+        2. Expression inference (inject missing words in ORG context)
         
         Args:
             recognized_tokens: Tokens from recognizer stage
@@ -111,8 +113,8 @@ class Interpreter:
         # Apply fuzzy matching to correct typos in UNKNOWN tokens
         interpreted_tokens = self._apply_fuzzy_matching(recognized_tokens)
         
-        # FUTURE: Add expression inference
-        # interpreted_tokens = self._infer_expressions(interpreted_tokens)
+        # Apply expression inference to add missing words
+        interpreted_tokens = self._infer_expressions(interpreted_tokens)
         return interpreted_tokens
     
     def _infer_expressions(
@@ -122,24 +124,53 @@ class Interpreter:
         """
         Infer missing words based on patterns and context.
         
-        PLACEHOLDER: Future implementation will detect patterns like:
-        - field=value without action → infer "add" or "update" based on context
-        - entity without action → infer "create" or "show" based on context
-        - Bare values → infer entity and action
+        Analyzes tokens to detect missing ActionWord and EntityWord, then injects
+        them based on field patterns and operator context. Only operates in ORG
+        context level.
         
         Context-aware rules:
-        - At SYS level: "field=value" → "create company field=value"
-        - At ORG level: "field=value" → "add organization field=value"
-        - At APP level: Different inference rules
+        - At ORG level only: "field=value" → "add entity field=value"
+        - Field lookup: Uses field.entity_models[0] to find corresponding entity
+        - Action inference: field=value → "add", field= → "delete"
         
         Args:
             tokens: Recognized tokens
             
         Returns:
-            Tokens with inferred words injected
+            Tokens with inferred words injected at the beginning
         """
-        # FUTURE: Implement expression inference
-        # See design document for inference rules and patterns
+        # 1. Check context — only ORG level
+        if self.context.level != ContextLevel.ORG:
+            return tokens
+        
+        # 2. Analyze tokens — what do we have?
+        has_field, has_entity, has_action = self._analyze_token_types(tokens)
+        first_field_word = self._find_first_field_word(tokens)
+        
+        # 3. Nothing to infer if no field word
+        if not has_field or first_field_word is None:
+            return tokens
+        
+        # 4. Build list of words to inject
+        words_to_inject = []
+        
+        # 4a. Infer EntityWord if missing
+        if not has_entity:
+            entity_word = self._infer_entity_from_field(first_field_word)
+            if entity_word:
+                words_to_inject.append(entity_word)
+        
+        # 4b. Infer ActionWord if missing
+        if not has_action:
+            action_word = self._infer_action_from_operator(tokens)
+            if action_word:
+                words_to_inject.insert(0, action_word)  # Action goes first
+        
+        # 5. Create tokens and prepend
+        if words_to_inject:
+            inferred_tokens = [self._create_inferred_token(word) for word in words_to_inject]
+            return inferred_tokens + tokens
+        
         return tokens
     
     def _apply_fuzzy_matching(
@@ -198,23 +229,125 @@ class Interpreter:
                         break  # Take first match
         
         return tokens
-
-
-# =============================================================================
-# Future Sub-Components (Not Implemented Yet)
-# =============================================================================
-
-class ExpressionInferencer:
-    """
-    FUTURE: Infers missing words based on patterns and context.
     
-    Will analyze token patterns and inject missing words:
-    - Missing action words (create, add, show, delete)
-    - Missing entity words (company, organization, metadata)
-    - Missing schema context
+    def _analyze_token_types(self, tokens: List[RecognizedToken]) -> Tuple[bool, bool, bool]:
+        """
+        Analyze tokens to determine what word types are present.
+        
+        Args:
+            tokens: List of recognized tokens to analyze
+            
+        Returns:
+            Tuple of (has_field, has_entity, has_action)
+        """
+        has_field = False
+        has_entity = False
+        has_action = False
+        
+        for token in tokens:
+            if token.token_type == TokenType.WORD and token.word:
+                word_type = token.word.word_type
+                if word_type == WordType.FIELD:
+                    has_field = True
+                elif word_type == WordType.ENTITY:
+                    has_entity = True
+                elif word_type == WordType.ACTION:
+                    has_action = True
+        
+        return has_field, has_entity, has_action
     
-    Uses context level (SYS/ORG/APP) to make smart inferences.
-    """
-    pass
+    def _find_first_field_word(self, tokens: List[RecognizedToken]) -> Optional[FieldWord]:
+        """
+        Find the first FieldWord in the token list.
+        
+        Args:
+            tokens: List of recognized tokens
+            
+        Returns:
+            First FieldWord found, or None if none exist
+        """
+        for token in tokens:
+            if (token.token_type == TokenType.WORD and 
+                token.word and 
+                token.word.word_type == WordType.FIELD):
+                return token.word
+        return None
+    
+    def _infer_entity_from_field(self, field_word: FieldWord) -> Optional[EntityWord]:
+        """
+        Infer EntityWord from a FieldWord using its entity_models.
+        
+        Args:
+            field_word: FieldWord to infer entity from
+            
+        Returns:
+            Corresponding EntityWord, or None if not found
+        """
+        if not field_word.entity_models:
+            return None
+            
+        # Get the first entity model class this field belongs to
+        target_entity_model = field_word.entity_models[0]
+        
+        # Find matching EntityWord in registry
+        for word in self.word_registry.values():
+            if (word.word_type == WordType.ENTITY and 
+                hasattr(word, 'entity_model') and
+                word.entity_model == target_entity_model):
+                return word
+        return None
+    
+    def _infer_action_from_operator(self, tokens: List[RecognizedToken]) -> Optional[ActionWord]:
+        """
+        Infer ActionWord from operator patterns.
+        
+        Logic:
+        - field = value → infer "add"
+        - field = (no value) → infer "delete"
+        
+        Args:
+            tokens: List of recognized tokens
+            
+        Returns:
+            Inferred ActionWord, or None if cannot determine
+        """
+        # Find EQUALS operator
+        equals_index = None
+        for i, token in enumerate(tokens):
+            if (token.token_type == TokenType.STRUCTURAL and 
+                hasattr(token, 'operator') and
+                token.operator == Operator.EQUAL):
+                equals_index = i
+                break
+        
+        if equals_index is None:
+            return None
+        
+        # Check if there's a value after the equals
+        has_value_after = (equals_index + 1 < len(tokens) and 
+                          tokens[equals_index + 1].token_type == TokenType.VALUE)
+        
+        if has_value_after:
+            # field = value → infer "add"
+            return get_word("add")
+        else:
+            # field = (no value) → infer "delete"  
+            return get_word("delete")
+    
+    def _create_inferred_token(self, word) -> RecognizedToken:
+        """
+        Create a RecognizedToken for an inferred word.
+        
+        Args:
+            word: Word object to create token for
+            
+        Returns:
+            RecognizedToken representing the inferred word
+        """
+        return RecognizedToken(
+            text=word.id,
+            token_type=TokenType.WORD,
+            word=word
+        )
 
 
