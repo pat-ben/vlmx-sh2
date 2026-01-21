@@ -12,45 +12,11 @@ This stage operates on recognized tokens and makes the DSL "smart" by:
 
 from typing import List, Optional, Tuple
 from ..models.parser import RecognizedToken
-from ..models.validation import ValidationContext
 from ..models.context import Context
 from ..enums.parser import TokenType, Operator
 from ..enums.core import ContextLevel
-from ..models.words import WordType, FieldWord, EntityWord, ActionWord
+from ..models.words import WordType, FieldWord, EntityWord, ActionWord, Word
 from ..words import get_word
-
-
-def _levenshtein_distance(s1: str, s2: str) -> int:
-    """
-    Calculate Levenshtein distance between two strings.
-    
-    Uses dynamic programming approach to find minimum edit distance.
-    
-    Args:
-        s1: First string
-        s2: Second string
-        
-    Returns:
-        Integer distance (number of single-character edits needed)
-    """
-    if len(s1) < len(s2):
-        return _levenshtein_distance(s2, s1)
-    
-    if len(s2) == 0:
-        return len(s1)
-    
-    previous_row = range(len(s2) + 1)
-    for i, c1 in enumerate(s1):
-        current_row = [i + 1]
-        for j, c2 in enumerate(s2):
-            # Cost of insertions, deletions, or substitutions
-            insertions = previous_row[j + 1] + 1
-            deletions = current_row[j] + 1
-            substitutions = previous_row[j] + (c1 != c2)
-            current_row.append(min(insertions, deletions, substitutions))
-        previous_row = current_row
-    
-    return previous_row[-1]
 
 
 class Interpreter:
@@ -59,16 +25,15 @@ class Interpreter:
     
     Operates on recognized tokens to make the DSL more intelligent:
     - Fuzzy matching: Corrects typos and spelling mistakes
-    - Expression inference: Adds missing words based on context
+    - Expression inference: Adds missing action/entity words in ORG context
     
     This stage bridges the gap between what users type and what
     the system needs to execute commands successfully.
-    
-    CURRENT STATUS: Fully implemented
-    Implemented features:
-    - Fuzzy matching: Corrects typos with Levenshtein distance 
-    - Expression inference: Adds missing action/entity words in ORG context
     """
+    
+    # =============================================================================
+    # Initialization
+    # =============================================================================
     
     def __init__(self, word_registry: dict, context: Context):
         """
@@ -80,6 +45,10 @@ class Interpreter:
         """
         self.word_registry = word_registry
         self.context = context
+    
+    # =============================================================================
+    # Public API - Main Entry Point
+    # =============================================================================
     
     def interpret(
         self, 
@@ -100,7 +69,7 @@ class Interpreter:
         Returns:
             Interpreted tokens (potentially modified with corrections/additions)
             
-        Examples (future):
+        Examples:
             >>> # Expression inference
             >>> interpret(["currency", "=", "EUR"])  # At ORG level
             ["add", "organization", "currency", "=", "EUR"]
@@ -111,13 +80,74 @@ class Interpreter:
        
         """
         # Apply fuzzy matching to correct typos in UNKNOWN tokens
-        interpreted_tokens = self._apply_fuzzy_matching(recognized_tokens)
+        interpreted_tokens = self._correct_typos(recognized_tokens)
         
         # Apply expression inference to add missing words
-        interpreted_tokens = self._infer_expressions(interpreted_tokens)
+        interpreted_tokens = self._inject_missing_words(interpreted_tokens)
         return interpreted_tokens
     
-    def _infer_expressions(
+    # =============================================================================
+    # Core Processing - Typo Correction & Word Injection
+    # =============================================================================
+    
+    def _correct_typos(
+        self, 
+        tokens: List[RecognizedToken]
+    ) -> List[RecognizedToken]:
+        """
+        Apply fuzzy matching to UNKNOWN tokens.
+        
+        Corrects typos in UNKNOWN tokens by matching against the word registry
+        using Levenshtein distance. Only applies to tokens > 3 characters with
+        exactly 1 character difference (distance == 1).
+        
+        Rules:
+        - Apply to UNKNOWN tokens only
+        - Skip words ≤ 3 characters 
+        - Tolerate exactly 1 typo (Levenshtein distance == 1)
+        - Case insensitive matching
+        - Match against word_registry.keys() only
+        
+        Args:
+            tokens: Recognized tokens
+            
+        Returns:
+            Tokens with fuzzy-matched corrections applied
+        """
+        for token in tokens:
+            # Skip non-UNKNOWN tokens
+            if token.token_type != TokenType.UNKNOWN:
+                continue
+                
+            # Skip short words (≤ 3 characters)
+            if len(token.text) <= 3:
+                continue
+            
+            token_text_lower = token.text.lower()
+            
+            # Check all words in registry for exact distance of 1
+            for word_id in self.word_registry.keys():
+                # Skip if length difference is too large (optimization)
+                if abs(len(token.text) - len(word_id)) > 1:
+                    continue
+                    
+                # Calculate case-insensitive Levenshtein distance
+                distance = self._levenshtein_distance(token_text_lower, word_id.lower())
+                
+                # If exactly 1 typo, correct it
+                if distance == 1:
+                    # Get the Word object from registry
+                    word_obj = get_word(word_id)
+                    if word_obj:
+                        # Update token with correction
+                        token.text = word_id
+                        token.token_type = TokenType.WORD
+                        token.word = word_obj
+                        break  # Take first match
+        
+        return tokens
+    
+    def _inject_missing_words(
         self, 
         tokens: List[RecognizedToken]
     ) -> List[RecognizedToken]:
@@ -173,62 +203,9 @@ class Interpreter:
         
         return tokens
     
-    def _apply_fuzzy_matching(
-        self, 
-        tokens: List[RecognizedToken]
-    ) -> List[RecognizedToken]:
-        """
-        Apply fuzzy matching to UNKNOWN tokens.
-        
-        Corrects typos in UNKNOWN tokens by matching against the word registry
-        using Levenshtein distance. Only applies to tokens > 3 characters with
-        exactly 1 character difference (distance == 1).
-        
-        Rules:
-        - Apply to UNKNOWN tokens only
-        - Skip words ≤ 3 characters 
-        - Tolerate exactly 1 typo (Levenshtein distance == 1)
-        - Case insensitive matching
-        - Match against word_registry.keys() only
-        
-        Args:
-            tokens: Recognized tokens
-            
-        Returns:
-            Tokens with fuzzy-matched corrections applied
-        """
-        for token in tokens:
-            # Skip non-UNKNOWN tokens
-            if token.token_type != TokenType.UNKNOWN:
-                continue
-                
-            # Skip short words (≤ 3 characters)
-            if len(token.text) <= 3:
-                continue
-            
-            token_text_lower = token.text.lower()
-            
-            # Check all words in registry for exact distance of 1
-            for word_id in self.word_registry.keys():
-                # Skip if length difference is too large (optimization)
-                if abs(len(token.text) - len(word_id)) > 1:
-                    continue
-                    
-                # Calculate case-insensitive Levenshtein distance
-                distance = _levenshtein_distance(token_text_lower, word_id.lower())
-                
-                # If exactly 1 typo, correct it
-                if distance == 1:
-                    # Get the Word object from registry
-                    word_obj = get_word(word_id)
-                    if word_obj:
-                        # Update token with correction
-                        token.text = word_id
-                        token.token_type = TokenType.WORD
-                        token.word = word_obj
-                        break  # Take first match
-        
-        return tokens
+    # =============================================================================
+    # Analysis Helpers - Token Inspection
+    # =============================================================================
     
     def _analyze_token_types(self, tokens: List[RecognizedToken]) -> Tuple[bool, bool, bool]:
         """
@@ -245,14 +222,15 @@ class Interpreter:
         has_action = False
         
         for token in tokens:
-            if token.token_type == TokenType.WORD and token.word:
-                word_type = token.word.word_type
-                if word_type == WordType.FIELD:
-                    has_field = True
-                elif word_type == WordType.ENTITY:
-                    has_entity = True
-                elif word_type == WordType.ACTION:
-                    has_action = True
+            if token.token_type != TokenType.WORD or not token.word:
+                continue
+            word_type = token.word.word_type
+            if word_type == WordType.FIELD:
+                has_field = True
+            elif word_type == WordType.ENTITY:
+                has_entity = True
+            elif word_type == WordType.ACTION:
+                has_action = True
         
         return has_field, has_entity, has_action
     
@@ -267,11 +245,15 @@ class Interpreter:
             First FieldWord found, or None if none exist
         """
         for token in tokens:
-            if (token.token_type == TokenType.WORD and 
-                token.word and 
-                token.word.word_type == WordType.FIELD):
+            if token.token_type != TokenType.WORD or not token.word:
+                continue
+            if token.word.word_type == WordType.FIELD:
                 return token.word
         return None
+    
+    # =============================================================================
+    # Inference Helpers - Word Resolution
+    # =============================================================================
     
     def _infer_entity_from_field(self, field_word: FieldWord) -> Optional[EntityWord]:
         """
@@ -334,7 +316,11 @@ class Interpreter:
             # field = (no value) → infer "delete"  
             return get_word("delete")
     
-    def _create_inferred_token(self, word) -> RecognizedToken:
+    # =============================================================================
+    # Token Creation
+    # =============================================================================
+    
+    def _create_inferred_token(self, word: Word) -> RecognizedToken:
         """
         Create a RecognizedToken for an inferred word.
         
@@ -349,5 +335,40 @@ class Interpreter:
             token_type=TokenType.WORD,
             word=word
         )
-
-
+    
+    # =============================================================================
+    # Utility Methods
+    # =============================================================================
+    
+    @staticmethod
+    def _levenshtein_distance(s1: str, s2: str) -> int:
+        """
+        Calculate Levenshtein distance between two strings.
+        
+        Uses dynamic programming approach to find minimum edit distance.
+        
+        Args:
+            s1: First string
+            s2: Second string
+            
+        Returns:
+            Integer distance (number of single-character edits needed)
+        """
+        if len(s1) < len(s2):
+            return Interpreter._levenshtein_distance(s2, s1)
+        
+        if len(s2) == 0:
+            return len(s1)
+        
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                # Cost of insertions, deletions, or substitutions
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+        
+        return previous_row[-1]
