@@ -19,6 +19,7 @@ from .classifier import Classifier     # Stage 2
 from .recognizer import Recognizer     # Stage 3
 from .interpreter import Interpreter   # NEW - Stage 4
 from .splitter import Splitter         # Stage 5
+from .filter import FilterParser       # Stage 6
 # from .builder import Builder         # Future - Stage 7
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     'Recognizer',      # Stage 3
     'Interpreter',     # NEW - Stage 4
     'Splitter',        # Stage 5
+    'FilterParser',    # Stage 6
     # 'Builder',       # Future - Stage 7
 ]
 
