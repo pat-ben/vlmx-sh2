@@ -1,5 +1,5 @@
 """
-PARSING STAGE 2/8: Classification
+PARSING STAGE 2/6: Classification
 
 Structural classification of tokens into TEXT, OPERATOR, and BRACKET categories.
 """

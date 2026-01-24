@@ -19,8 +19,8 @@ from .classifier import Classifier     # Stage 2
 from .recognizer import Recognizer     # Stage 3
 from .interpreter import Interpreter   # NEW - Stage 4
 from .splitter import Splitter         # Stage 5
-from .filter import FilterParser       # Stage 6
-# from .builder import Builder         # Future - Stage 7
+from .filter import Filter       # Stage 6
+from .parser import Builder           # Pipeline Orchestrator
 
 __all__ = [
     'normalize',       # NEW - Stage 0
@@ -29,8 +29,8 @@ __all__ = [
     'Recognizer',      # Stage 3
     'Interpreter',     # NEW - Stage 4
     'Splitter',        # Stage 5
-    'FilterParser',    # Stage 6
-    # 'Builder',       # Future - Stage 7
+    'Filter',    # Stage 6
+    'Builder',         # Pipeline Orchestrator
 ]
 
 # Note: VLMXParser is available in DEPRECATED folder but not imported here

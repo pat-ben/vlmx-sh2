@@ -1,5 +1,5 @@
 """
-PARSING STAGE 6/8: Filter Expression Parser
+PARSING STAGE 6/6: Filter Expression Parser
 
 Builds an AST (Abstract Syntax Tree) from filter tokens using recursive descent parsing.
 Operates on filter tokens from the Splitter stage (Stage 5).
@@ -23,7 +23,7 @@ from typing import List, Optional
 from ..models.parser import InterpretedToken, SplitResult
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
 from ..models.validation import ValidationContext
-from vlmx_sh2.enums import IssueStage, Operator, QueryWord, Bracket
+from vlmx_sh2.enums import IssueStage, QueryWord, Bracket
 from ..diagnostics import Validator
 
 
@@ -32,9 +32,9 @@ class FilterParseError(Exception):
     pass
 
 
-class FilterParser:
+class Filter:
     """
-    PARSING STAGE 6/8: Filter Expression Parser
+    PARSING STAGE 6/6: Filter Expression Parser
     
     Builds an AST (Abstract Syntax Tree) from filter tokens using recursive descent parsing.
     Operates on InterpretedToken objects from the Splitter stage.
@@ -59,7 +59,7 @@ class FilterParser:
         context: ValidationContext
     ) -> Optional[FilterExpression]:
         """
-        PARSING STAGE 6/8: Build Filter AST from Splitter output.
+        PARSING STAGE 6/6: Build Filter AST from Splitter output.
         
         Processing:
         1. Check if filter exists in split_result
@@ -86,7 +86,7 @@ class FilterParser:
             ...     InterpretedToken(text="2025", token_type=TokenType.VALUE, ...)
             ... ]
             >>> split_result = SplitResult(filter_tokens=filter_tokens, has_filter=True, ...)
-            >>> result = FilterParser.parse(split_result, context)
+            >>> result = Filter.parse(split_result, context)
             >>> # Returns: FilterExpression with AND of two conditions
         """
         # Step 1: Check if filter exists
