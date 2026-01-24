@@ -374,7 +374,7 @@ class Interpreter:
             Integer distance (number of single-character edits needed)
         """
         if len(s1) < len(s2):
-            return cls._levenshtein_distance(s2, s1)
+            return Interpreter._levenshtein_distance(s2, s1)
         
         if len(s2) == 0:
             return len(s1)

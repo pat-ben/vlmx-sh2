@@ -67,7 +67,7 @@ class Parser:
         Interpreter  | Continue (collect)| Continue  
         Splitter     | Stop if brackets | Continue
         Filter       | Continue (optional)| Continue
-        Command Build| Mark as invalid  | N/A
+        Parser Build | Mark as invalid  | N/A
     """
     
     @classmethod

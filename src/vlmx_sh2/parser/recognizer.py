@@ -294,7 +294,7 @@ class Recognizer:
         Returns:
             QueryKeyword enum value if matched, None otherwise
         """
-        return self._QUERY_WORDS.get(text.lower())
+        return cls._QUERY_WORDS.get(text.lower())
     
     
     # =============================================================================

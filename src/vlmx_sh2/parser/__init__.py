@@ -13,26 +13,23 @@ Provides modular parsing functionality with clean separation of concerns:
 The parsing pipeline consists of 7 stages, each with specific responsibilities.
 """
 
-from .normalizer import normalize     # NEW - Stage 0
+from .normalizer import normalize      # Stage 0
 from .tokenizer import Tokenizer       # Stage 1
 from .classifier import Classifier     # Stage 2
 from .recognizer import Recognizer     # Stage 3
-from .interpreter import Interpreter   # NEW - Stage 4
+from .interpreter import Interpreter   # Stage 4
 from .splitter import Splitter         # Stage 5
-from .filter import Filter       # Stage 6
-from .parser import Parser           # Pipeline Orchestrator
+from .filter import Filter             # Stage 6
+from .parser import Parser             # Pipeline Orchestrator
 
 __all__ = [
-    'normalize',       # NEW - Stage 0
+    'normalize',       # Stage 0
     'Tokenizer',       # Stage 1
     'Classifier',      # Stage 2
     'Recognizer',      # Stage 3
-    'Interpreter',     # NEW - Stage 4
+    'Interpreter',     # Stage 4
     'Splitter',        # Stage 5
-    'Filter',    # Stage 6
-    'Parser',         # Pipeline Orchestrator
+    'Filter',          # Stage 6
+    'Parser',          # Pipeline Orchestrator
 ]
 
-# Note: VLMXParser is available in DEPRECATED folder but not imported here
-# to avoid import issues. It can be imported directly if needed:
-# from vlmx_sh2.parser.DEPRECATED.parser_DEPRECATED import VLMXParser
