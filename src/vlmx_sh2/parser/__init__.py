@@ -10,7 +10,7 @@ Provides modular parsing functionality with clean separation of concerns:
 - Splitting: Command/Filter separation
 - Parsing: Building final command structures
 
-The parsing pipeline consists of 8 stages, each with specific responsibilities.
+The parsing pipeline consists of 7 stages, each with specific responsibilities.
 """
 
 from .normalizer import normalize     # NEW - Stage 0
@@ -20,7 +20,7 @@ from .recognizer import Recognizer     # Stage 3
 from .interpreter import Interpreter   # NEW - Stage 4
 from .splitter import Splitter         # Stage 5
 from .filter import Filter       # Stage 6
-from .parser import Builder           # Pipeline Orchestrator
+from .parser import Parser           # Pipeline Orchestrator
 
 __all__ = [
     'normalize',       # NEW - Stage 0
@@ -30,7 +30,7 @@ __all__ = [
     'Interpreter',     # NEW - Stage 4
     'Splitter',        # Stage 5
     'Filter',    # Stage 6
-    'Builder',         # Pipeline Orchestrator
+    'Parser',         # Pipeline Orchestrator
 ]
 
 # Note: VLMXParser is available in DEPRECATED folder but not imported here

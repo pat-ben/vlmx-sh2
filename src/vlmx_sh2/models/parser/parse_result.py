@@ -21,7 +21,8 @@ class ParseResult(BaseModel):
     
     Fields:
         input_text: Original user input
-        tokens: All recognized tokens from parsing
+        command_tokens: Tokens from command portion (outside [ ])
+        filter_tokens: Tokens from filter portion (inside [ ])
         command: Structured command object (None if parse failed)
         is_valid: Whether parsing succeeded
         errors: List of error messages
@@ -33,12 +34,8 @@ class ParseResult(BaseModel):
         description="Original user input text"
     )
     
-    tokens: List[RecognizedToken] = Field(
-        default_factory=list,
-        description="All recognized tokens from parsing (command tokens for backward compatibility)"
-    )
     
-    # New separate token lists
+    # Token lists (split by command vs filter)
     command_tokens: List[RecognizedToken] = Field(
         default_factory=list,
         description="Recognized tokens from command parsing (outside [ ])"
@@ -79,8 +76,8 @@ class ParseResult(BaseModel):
     
     @property
     def recognized_words(self) -> List[Word]:
-        """Get all successfully recognized words from tokens."""
-        return [t.word for t in self.tokens if t.word]
+        """Get all successfully recognized words from command tokens."""
+        return [t.word for t in self.command_tokens if t.word]
     
     @property
     def action_words(self) -> List[Word]:
@@ -120,10 +117,6 @@ class ParseResult(BaseModel):
         """Get entity model class from command."""
         return self.command.entity_model if self.command else None
     
-    @property
-    def attributes(self):
-        """Deprecated: Get field_values dictionary from command."""
-        return self.command.field_values if self.command else {}
     
     
     @property

@@ -7,8 +7,9 @@ Extracts raw text blocks without position metadata. Delegates validation to Vali
 from typing import List
 from ..models.parser import Token
 from ..models.validation import ValidationContext
-from vlmx_sh2.enums import Operator, IssueStage, Bracket
+from vlmx_sh2.enums import IssueStage
 from ..diagnostics import Validator
+from .constants import BRACKET_VALUES, OPERATORS_BY_LENGTH
 
 
 
@@ -20,8 +21,6 @@ class Tokenizer:
      # =============================================================================   
 
     _QUOTE_CHARS = {'"', "'"}
-    _BRACKET_VALUES = {bracket.value for bracket in Bracket}    
-    _OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)
 
     # =============================================================================
     # PUBLIC API
@@ -89,7 +88,7 @@ class Tokenizer:
         text_length = len(text)
         
         # Handle brackets as individual tokens
-        if text[start] in cls._BRACKET_VALUES:
+        if text[start] in BRACKET_VALUES:
             return text[start], start + 1
         
         # Handle quoted strings
@@ -100,7 +99,7 @@ class Tokenizer:
         end = start
         while end < text_length:
             char = text[end]
-            if char.isspace() or char in cls._BRACKET_VALUES or char in cls._QUOTE_CHARS:
+            if char.isspace() or char in BRACKET_VALUES or char in cls._QUOTE_CHARS:
                 break
             end += 1
         
@@ -145,7 +144,7 @@ class Tokenizer:
     @classmethod
     def _find_operator(cls, token_text: str) -> tuple[str, str, str] | None:
         """Find operator in token. Returns (key, operator, value) or None."""
-        for operator in cls._OPERATORS_BY_LENGTH:
+        for operator in OPERATORS_BY_LENGTH:
             if operator in token_text:
                 parts = token_text.split(operator, 1)
                 if len(parts) == 2 and parts[0]:  # Valid split with non-empty key

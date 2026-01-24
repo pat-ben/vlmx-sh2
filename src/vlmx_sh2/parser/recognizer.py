@@ -17,6 +17,7 @@ from ..models.validation import ValidationContext
 from ..models.words import Word, WordType
 from ..words import get_all_words, get_word
 from ..diagnostics import Validator
+from .value_context_classifier import ValueContextClassifier
 from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage, QueryWord
 
 
@@ -43,18 +44,39 @@ class Recognizer:
         "or": QueryWord.OR,
     }
     
-    def __init__(self):
-        """Initialize recognizer with registry and alias mappings."""
-        self.word_registry = get_all_words()
-        self.alias_to_word = self._build_alias_map()
-        self.words_by_type = self._group_words_by_type()
+    # Lazy-loaded class-level cache
+    _word_registry: Optional[Dict[str, Word]] = None
+    _alias_to_word: Optional[Dict[str, str]] = None
+    _words_by_type: Optional[Dict[WordType, List[Word]]] = None
+    
+    @classmethod
+    def _get_word_registry(cls) -> Dict[str, Word]:
+        """Get word registry with lazy loading."""
+        if cls._word_registry is None:
+            cls._word_registry = get_all_words()
+        return cls._word_registry
+    
+    @classmethod
+    def _get_alias_map(cls) -> Dict[str, str]:
+        """Get alias map with lazy loading."""
+        if cls._alias_to_word is None:
+            cls._alias_to_word = cls._build_alias_map()
+        return cls._alias_to_word
+    
+    @classmethod
+    def _get_words_by_type(cls) -> Dict[WordType, List[Word]]:
+        """Get words by type with lazy loading."""
+        if cls._words_by_type is None:
+            cls._words_by_type = cls._group_words_by_type()
+        return cls._words_by_type
     
     # =============================================================================
     # Public API - Main Entry Point
     # =============================================================================
     
+    @classmethod
     def recognize(
-        self, 
+        cls, 
         classified_tokens: List[ClassifiedToken], 
         context: ValidationContext
     ) -> List[RecognizedToken]:
@@ -93,7 +115,7 @@ class Recognizer:
         recognized_tokens = []
         
         for i, classified_token in enumerate(classified_tokens):
-            recognized_token = self._recognize_single_token(
+            recognized_token = cls._recognize_single_token(
                 classified_token, 
                 recognized_tokens, 
                 i
@@ -111,7 +133,8 @@ class Recognizer:
     # Initialization Helpers
     # =============================================================================
     
-    def _build_alias_map(self) -> Dict[str, str]:
+    @classmethod
+    def _build_alias_map(cls) -> Dict[str, str]:
         """
         Build mapping from lowercase aliases to canonical word IDs.
         
@@ -124,7 +147,8 @@ class Recognizer:
         }
         """
         alias_map = {}
-        for word_id, word in self.word_registry.items():
+        word_registry = cls._get_word_registry()
+        for word_id, word in word_registry.items():
             # Add word ID itself
             alias_map[word_id.lower()] = word_id
             
@@ -135,7 +159,8 @@ class Recognizer:
         
         return alias_map
     
-    def _group_words_by_type(self) -> Dict[WordType, List[Word]]:
+    @classmethod
+    def _group_words_by_type(cls) -> Dict[WordType, List[Word]]:
         """
         Group words by their type for quick access.
         
@@ -143,7 +168,8 @@ class Recognizer:
             Dictionary mapping WordType → List of Words
         """
         groups = {wt: [] for wt in WordType}
-        for word in self.word_registry.values():
+        word_registry = cls._get_word_registry()
+        for word in word_registry.values():
             groups[word.word_type].append(word)
         return groups
     
@@ -151,8 +177,9 @@ class Recognizer:
     # Token Recognition Dispatch
     # =============================================================================
     
+    @classmethod
     def _recognize_single_token(
-        self,
+        cls,
         classified_token: ClassifiedToken,
         recognized_tokens: List[RecognizedToken],
         current_position: int
@@ -173,13 +200,14 @@ class Recognizer:
         """
         if classified_token.token_class == TokenClass.TEXT:
             # TEXT tokens need semantic classification
-            return self._recognize_text_token(classified_token, recognized_tokens, current_position)
+            return cls._recognize_text_token(classified_token, recognized_tokens, current_position)
         else:
             # OPERATOR and BRACKET tokens are already complete
-            return self._create_token(classified_token, TokenType.STRUCTURAL)
+            return cls._create_token(classified_token, TokenType.STRUCTURAL)
     
+    @classmethod
     def _recognize_text_token(
-        self,
+        cls,
         classified_token: ClassifiedToken,
         recognized_tokens: List[RecognizedToken],
         current_position: int
@@ -199,35 +227,36 @@ class Recognizer:
             RecognizedToken with semantic classification
         """
         # Priority 1: Check if it's a value (context-dependent)
-        value_context = self._determine_value_context(
+        value_context = ValueContextClassifier.determine_value_context(
             classified_token, 
             recognized_tokens, 
             current_position
         )
         
         if value_context:
-            return self._create_token(classified_token, TokenType.VALUE, value_context=value_context)
+            return cls._create_token(classified_token, TokenType.VALUE, value_context=value_context)
         
         # Priority 2: Check if it's a query keyword (and/or)
-        query_word = self.match_query_word(classified_token.text)
+        query_word = cls._match_query_word(classified_token.text)
         
         if query_word:
-            return self._create_token(classified_token, TokenType.QUERY, query_word=query_word)
+            return cls._create_token(classified_token, TokenType.QUERY, query_word=query_word)
         
         # Priority 3: Try word registry lookup
-        word = self.match_word_in_registry(classified_token.text)
+        word = cls._match_word_in_registry(classified_token.text)
         
         if word:
-            return self._create_token(classified_token, TokenType.WORD, word=word)
+            return cls._create_token(classified_token, TokenType.WORD, word=word)
         
         # Fallback: Unknown token
-        return self._create_token(classified_token, TokenType.UNKNOWN)
+        return cls._create_token(classified_token, TokenType.UNKNOWN)
     
     # =============================================================================
     # Recognition Methods - Token Type Matching
     # =============================================================================
     
-    def match_word_in_registry(self, token_text: str) -> Optional[Word]:
+    @classmethod
+    def _match_word_in_registry(cls, token_text: str) -> Optional[Word]:
         """
         Recognize token as word from registry, handling aliases automatically.
         
@@ -238,17 +267,19 @@ class Recognizer:
             Word object if matched, None otherwise
         """
         token_lower = token_text.lower()
+        alias_map = cls._get_alias_map()
         
         # Try exact match (including aliases)
-        if token_lower in self.alias_to_word:
-            word_id = self.alias_to_word[token_lower]
+        if token_lower in alias_map:
+            word_id = alias_map[token_lower]
             word = get_word(word_id)
             return word
         
         # No match
         return None
     
-    def match_query_word(self, text: str) -> Optional[QueryWord]:
+    @classmethod
+    def _match_query_word(cls, text: str) -> Optional[QueryWord]:
         """
         Check if text is a query keyword (and/or).
         
@@ -266,75 +297,14 @@ class Recognizer:
         """
         return self._QUERY_WORDS.get(text.lower())
     
-    # =============================================================================
-    # Value Context Classification
-    # =============================================================================
-    
-    def _determine_value_context(
-        self,
-        classified_token: ClassifiedToken,
-        recognized_tokens: List[RecognizedToken],
-        current_position: int
-    ) -> Optional[ValueContext]:
-        """
-        Determine if a token is a value and what context it has.
-        
-        Rules:
-        1. Schema name: Quoted token after schema/action word
-           Examples: company "ACME", delete "ACME"
-        2. Field value: Token after operator (quoted or not)
-           Examples: currency=EUR, vision="Our vision"
-           
-        Examples of token sequences:
-            Input: "currency=EUR"
-            Tokens: ["currency", "=", "EUR"]
-            Classifications:
-                - "currency": WORD (FieldWord)
-                - "=": STRUCTURAL (OPERATOR)
-                - "EUR": VALUE (FIELD context) ← detected by this rule
-        
-        Args:
-            classified_token: Current token being classified
-            recognized_tokens: Previously recognized tokens
-            current_position: Position in token array
-            
-        Returns:
-            ValueContext if token is a value, None otherwise
-        """
-        # Guard clause: First token cannot be a value
-        if current_position == 0:
-            return None
-        
-        prev_token = recognized_tokens[current_position - 1]
-        
-        # Rule 1: Schema name detection
-        # Must be quoted and follow a schema or action word
-        if self._is_schema_name_value(classified_token, prev_token):
-            return ValueContext.SCHEMA
-        
-        # Rule 2: Field value detection  
-        # Any token following an operator
-        if self._is_field_value(prev_token):
-            return ValueContext.FIELD
-        
-        return None
-    
-    def _is_schema_name_value(self, token: ClassifiedToken, prev_token: RecognizedToken) -> bool:
-        """Check if token is a schema name value (quoted token after schema/action word)."""
-        return (bool(token.was_quoted) and 
-                bool(prev_token.is_word) and 
-                bool(prev_token.is_schema_word or prev_token.is_action_word))
-    
-    def _is_field_value(self, prev_token: RecognizedToken) -> bool:
-        """Check if previous token indicates current token should be a field value."""
-        return prev_token.token_class == TokenClass.OPERATOR
     
     # =============================================================================
     # Token Factory - RecognizedToken Construction
     # =============================================================================
     
+    @classmethod
     def _create_token(
-        self,
+        cls,
         classified_token: ClassifiedToken,
         token_type: TokenType,
         word: Optional[Word] = None,
@@ -370,7 +340,8 @@ class Recognizer:
     # Utility Methods
     # =============================================================================
     
-    def get_words_by_type(self, word_type: WordType) -> List[Word]:
+    @classmethod
+    def get_words_by_type(cls, word_type: WordType) -> List[Word]:
         """
         Get all words of a specific type.
         
@@ -380,4 +351,5 @@ class Recognizer:
         Returns:
             List of words of the specified type
         """
-        return self.words_by_type.get(word_type, [])
+        words_by_type = cls._get_words_by_type()
+        return words_by_type.get(word_type, [])

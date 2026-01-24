@@ -13,7 +13,7 @@ Pipeline Flow:
     Stage 3: Recognizer     -> List[RecognizedToken]
     Stage 4: Interpreter    -> List[InterpretedToken]
     Stage 5: Splitter       -> SplitResult (command_tokens + filter_tokens)
-    Stage 6: Filter   -> FilterExpression (AST) or None
+    Stage 6: Filter         -> FilterExpression (AST) or None
     
     Output: ParseResult (with ParsedCommand + ValidationContext)
 
@@ -35,6 +35,9 @@ from ..models.parser import ParseResult, ParsedCommand
 from ..models.parser.filter import FilterExpression
 from ..models.validation import ValidationContext
 from ..models.words import ActionWord, SchemaWord, EntityWord
+from ..words.registry import WORD_REGISTRY
+from ..models.context import Context
+from ..enums.core import ContextLevel
 from vlmx_sh2.enums import TokenType, IssueStage
 
 # Import all pipeline stages
@@ -83,7 +86,6 @@ class Builder:
             - command: ParsedCommand (if valid)
             - is_valid: True if no blocking errors  
             - errors/warnings from ValidationContext
-            - tokens: For backward compatibility
         """
         # Step 1: Initialize ValidationContext
         context = ValidationContext(input_text=input_text)
@@ -147,17 +149,12 @@ class Builder:
             return None  # Stop on classification errors
         
         # Stage 3: Recognizer
-        recognizer = Recognizer()
-        recognized_tokens = recognizer.recognize(classified_tokens, context)
+        recognized_tokens = Recognizer.recognize(classified_tokens, context)
         
         # Continue even with recognition errors to collect all issues
         
         # Stage 4: Interpreter
         # Create default context and word registry for interpreter
-        from ..words.registry import WORD_REGISTRY
-        from ..models.context import Context
-        from ..enums.core import ContextLevel
-        
         default_context = Context(level=ContextLevel.SYS)
         interpreter = Interpreter(WORD_REGISTRY, default_context)
         interpreted_tokens = interpreter.interpret(recognized_tokens)
@@ -227,7 +224,7 @@ class Builder:
             
         except Exception as e:
             context.add_error(
-                stage=IssueStage.RECOGNIZER,  # Use existing stage name for command building errors
+                stage=IssueStage.RECOGNIZER,
                 message=f"Command building failed: {str(e)}"
             )
             return None
@@ -254,12 +251,11 @@ class Builder:
             errors=[issue.message for issue in context.errors],
             suggestions=[issue.suggestion for issue in context.errors if issue.suggestion],
             command_tokens=command_tokens,
-            filter_tokens=filter_tokens,
-            tokens=command_tokens,  # Backward compatibility
+            filter_tokens=filter_tokens
         )
     
     # =============================================================================
-    # Command Extraction Methods (adapted from DEPRECATED parser)
+    # Command Extraction Methods
     # =============================================================================
     
     @classmethod

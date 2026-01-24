@@ -24,5 +24,5 @@ class IssueStage(str, Enum):
     RECOGNIZER = "recognizer"      # Stage 3: Semantic classification
     INTERPRETER = "interpreter"    # Stage 4: Interpret command/filter
     SPLITTER = "splitter"          # Stage 5: Split command/filter    
-    FILTER = "filter_parser"       # Stage 6: Build filter AST
+    FILTER = "filter"              # Stage 6: Build filter AST
  

@@ -122,45 +122,15 @@ class ParsedCommand(BaseModel):
         """Get the handler function from the action word."""
         return self.action.handler
     
-    # ==================== BACKWARD COMPATIBILITY ====================
-    # These properties will be removed in Phase 5
-    
-    @property
-    def entity(self):
-        """Deprecated: use target instead."""
-        return self.target
-    
-    @property
-    def entity_name(self):
-        """Deprecated: use target_name instead."""
-        return self.target_name
-    
-    @property
-    def entity_model(self):
-        """Deprecated: use target_model instead."""
-        if isinstance(self.target, EntityWord):
-            return self.target.entity_model
-        return None
-    
     @property
     def has_target_name(self) -> bool:
         """True if a target name was provided."""
         return self.target_name is not None and len(self.target_name) > 0
     
     @property
-    def has_entity_name(self) -> bool:
-        """Deprecated: use has_target_name instead."""
-        return self.has_target_name
-    
-    @property
     def has_field_values(self) -> bool:
         """True if any field values were provided."""
         return len(self.field_values) > 0
-    
-    @property
-    def has_attributes(self) -> bool:
-        """Deprecated: use has_field_values instead."""
-        return self.has_field_values
     
     @property
     def has_filters(self) -> bool:
@@ -191,6 +161,3 @@ class ParsedCommand(BaseModel):
         
         return data
     
-    def get_entity_data(self) -> Dict[str, Any]:
-        """Deprecated: use get_target_data instead."""
-        return self.get_target_data()

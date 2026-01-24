@@ -10,6 +10,7 @@ from ..models.validation import ValidationContext
 from vlmx_sh2.enums import Operator, Bracket, TokenClass, IssueStage
 from ..diagnostics import Validator
 from .tokenizer import Tokenizer
+from .constants import BRACKET_VALUES
 
 
 class Classifier:
@@ -20,7 +21,6 @@ class Classifier:
     # =============================================================================
 
     _QUERY_SYMBOLS = {"&": "and", "&&": "and", "|": "or", "||": "or"}
-    _BRACKET_VALUES = {bracket.value for bracket in Bracket}
     _OPERATOR_VALUES = {op.value for op in Operator}  # Set for O(1) membership checks    
     
     # =============================================================================
@@ -110,7 +110,7 @@ class Classifier:
             )
         
         # Check for brackets using normalized text
-        if normalized_text in cls._BRACKET_VALUES:
+        if normalized_text in BRACKET_VALUES:
             return cls._create_classified_token(
                 text=normalized_text,
                 token_class=TokenClass.BRACKET,

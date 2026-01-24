@@ -245,7 +245,7 @@ def _has_unclosed_quote(token) -> bool:
     
     Works with both Token (pre-classification) and ClassifiedToken (post-classification) objects.
     For ClassifiedToken: If was_quoted=True, quotes were successfully matched and stripped.
-    For Token: Check if text has unmatched quotes.
+    For Token: Check if text has unmatched quotes, accounting for escaped quotes.
     
     Args:
         token: Token or ClassifiedToken object with .text attribute
@@ -261,6 +261,10 @@ def _has_unclosed_quote(token) -> bool:
         >>> classified_token = ClassifiedToken(text='hello', token_class=TokenClass.TEXT, was_quoted=True)
         >>> _has_unclosed_quote(classified_token)
         False  # Successfully matched quotes were stripped
+        
+        >>> token = Token(text='"hello world')  # Starts with quote but no closing quote
+        >>> _has_unclosed_quote(token)
+        True
     """
     # If it was classified with was_quoted=True, quotes were successfully matched and stripped
     if hasattr(token, 'was_quoted') and token.was_quoted:
@@ -268,15 +272,39 @@ def _has_unclosed_quote(token) -> bool:
     
     # Check if it looks like an unclosed quote in the text
     text = token.text
-    if len(text) < 2:
+    if len(text) < 1:
         return False
     
+    # Helper function to check for unclosed quotes with a specific quote character
+    def has_unclosed_quote_char(text: str, quote_char: str) -> bool:
+        if not text.startswith(quote_char):
+            return False
+        
+        # If it starts with a quote, scan for the matching closing quote
+        # accounting for escaped quotes
+        i = 1  # Start after opening quote
+        while i < len(text):
+            if text[i] == '\\' and i + 1 < len(text):
+                # Skip escaped character
+                i += 2
+                continue
+            
+            if text[i] == quote_char:
+                # Found closing quote - check if there's more text after it
+                # (which would mean it's not a proper quoted string)
+                return i != len(text) - 1
+            
+            i += 1
+        
+        # Reached end without finding closing quote
+        return True
+    
     # Check for unclosed double quotes
-    if text.startswith('"') and not text.endswith('"'):
+    if has_unclosed_quote_char(text, '"'):
         return True
     
     # Check for unclosed single quotes  
-    if text.startswith("'") and not text.endswith("'"):
+    if has_unclosed_quote_char(text, "'"):
         return True
     
     return False

@@ -20,16 +20,11 @@ Operator precedence (highest to lowest):
 """
 
 from typing import List, Optional
-from ..models.parser import InterpretedToken, SplitResult
+from ..models.parser import InterpretedToken, SplitResult, FilterParseError
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
 from ..models.validation import ValidationContext
 from vlmx_sh2.enums import IssueStage, QueryWord, Bracket
 from ..diagnostics import Validator
-
-
-class FilterParseError(Exception):
-    """Raised when filter parsing fails."""
-    pass
 
 
 class Filter:
