@@ -19,12 +19,17 @@ Operator precedence (highest to lowest):
     3. OR
 """
 
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from ..models.parser import InterpretedToken, SplitResult
 from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
 from ..models.validation import ValidationContext
 from vlmx_sh2.enums import IssueStage, Operator, QueryWord, Bracket
 from ..diagnostics import Validator
+
+
+class FilterParseError(Exception):
+    """Raised when filter parsing fails."""
+    pass
 
 
 class FilterParser:
@@ -105,20 +110,19 @@ class FilterParser:
             if parser_instance.position < len(filter_tokens):
                 remaining_tokens = filter_tokens[parser_instance.position:]
                 remaining_text = ' '.join(token.text for token in remaining_tokens)
-                context.add_issue(
+                context.add_error(
                     stage=IssueStage.FILTER,
                     message=f"Unexpected tokens after filter expression: {remaining_text}",
-                    position=remaining_tokens[0].position if remaining_tokens else 0
+                    token_text=remaining_tokens[0].text if remaining_tokens else ""
                 )
                 return None
             
             return expression
             
         except FilterParseError as e:
-            context.add_issue(
+            context.add_error(
                 stage=IssueStage.FILTER,
-                message=str(e),
-                position=0  # TODO: Get position from current token when error occurred
+                message=str(e)
             )
             return None
     
@@ -287,8 +291,8 @@ class FilterParser:
             FilterExpression with condition field set
         """
         # Need at least 3 tokens: field operator value
-        if self.position + 2 >= len(self.tokens):
-            available = len(self.tokens) - self.position
+        available = len(self.tokens) - self.position
+        if available < 3:
             raise FilterParseError(f"Condition requires field, operator, and value (found {available} tokens)")
         
         # Extract field, operator, value
@@ -324,27 +328,19 @@ class FilterParser:
     
     def _is_or_keyword(self, token: Optional[InterpretedToken]) -> bool:
         """Check if token is 'OR' keyword."""
-        if not token or not hasattr(token, 'query_word'):
-            return False
-        return token.query_word == QueryWord.OR
+        return token is not None and token.query_word == QueryWord.OR
     
     def _is_and_keyword(self, token: Optional[InterpretedToken]) -> bool:
         """Check if token is 'AND' keyword."""
-        if not token or not hasattr(token, 'query_word'):
-            return False
-        return token.query_word == QueryWord.AND
+        return token is not None and token.query_word == QueryWord.AND
     
     def _is_open_paren(self, token: Optional[InterpretedToken]) -> bool:
         """Check if token is opening parenthesis '('."""
-        if not token or not hasattr(token, 'bracket'):
-            return False
-        return token.bracket == Bracket.PAREN_OPEN
+        return token is not None and token.bracket == Bracket.PAREN_OPEN
     
     def _is_close_paren(self, token: Optional[InterpretedToken]) -> bool:
         """Check if token is closing parenthesis ')'."""
-        if not token or not hasattr(token, 'bracket'):
-            return False
-        return token.bracket == Bracket.PAREN_CLOSE
+        return token is not None and token.bracket == Bracket.PAREN_CLOSE
     
     def _is_condition_start(self) -> bool:
         """
@@ -372,8 +368,3 @@ class FilterParser:
             return True
         
         return False
-
-
-class FilterParseError(Exception):
-    """Raised when filter parsing fails."""
-    pass
