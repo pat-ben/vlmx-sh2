@@ -8,6 +8,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from .recognized_token import RecognizedToken
+from .interpreted_token import InterpretedToken
 
 
 class SplitResult(BaseModel):
@@ -44,10 +45,10 @@ class SplitResult(BaseModel):
         ... )
     """
     
-    command_tokens: List[RecognizedToken] = Field(
+    command_tokens: List[InterpretedToken] = Field(
         description="Tokens outside brackets (the main command)"
     )
-    filter_tokens: List[RecognizedToken] = Field(
+    filter_tokens: List[InterpretedToken] = Field(
         description="Tokens inside brackets (the filter expression)"
     )
     has_filter: bool = Field(

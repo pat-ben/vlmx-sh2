@@ -79,7 +79,8 @@
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "D:\\d\\Code"
+      "D:\\d\\Code",
+      "D:\\Code"
     ]
   }
 }
