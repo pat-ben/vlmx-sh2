@@ -9,7 +9,11 @@ from ..models.parser import Token
 from ..models.validation import ValidationContext
 from vlmx_sh2.enums import IssueStage
 from ..diagnostics import Validator
-from .constants import BRACKET_VALUES, OPERATORS_BY_LENGTH
+from vlmx_sh2.enums import Bracket, Operator
+
+# Shared constants (also used by Classifier)
+BRACKET_VALUES = {bracket.value for bracket in Bracket}
+OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)
 
 
 

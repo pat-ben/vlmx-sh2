@@ -1,8 +1,8 @@
 """
-PARSING ORCHESTRATOR: Builder
+PARSING ORCHESTRATOR: Parser
 
 Pipeline orchestrator that coordinates all parsing stages and assembles the final ParseResult.
-Important: Builder is NOT a parsing stage itself - it orchestrates stages 0-6.
+Important: Parser is NOT a parsing stage itself - it orchestrates stages 0-6.
 
 Pipeline Flow:
     Input: raw text (user input)
@@ -17,14 +17,14 @@ Pipeline Flow:
     
     Output: ParseResult (with ParsedCommand + ValidationContext)
 
-Builder Responsibilities:
+Parser Responsibilities:
 - Create ValidationContext for error tracking
 - Orchestrate stages 0-6 in sequence
 - Handle stage failures (stop on blocking errors, continue on warnings)
 - Build ParsedCommand from tokens + filter AST
 - Return ParseResult with everything packaged for caller
 
-What Builder Does NOT Do:
+What Parser Does NOT Do:
 - Route to handlers (caller's job)
 - Execute handlers (caller's job)  
 - Handle wizard flows (UI layer's job)
@@ -50,12 +50,12 @@ from .splitter import Splitter
 from .filter import Filter
 
 
-class Builder:
+class Parser:
     """
     Pipeline orchestrator for parsing user input into structured commands.
     
     Coordinates all parsing stages (0-6) and assembles the final ParseResult.
-    Builder is stateless - all state is maintained in ValidationContext.
+    Parser is stateless - all state is maintained in ValidationContext.
     
     Error Handling Strategy:
         Stage        | On Blocking Error | On Warning
@@ -71,7 +71,7 @@ class Builder:
     """
     
     @classmethod
-    def build(cls, input_text: str) -> ParseResult:
+    def parse(cls, input_text: str) -> ParseResult:
         """
         Orchestrate the parsing pipeline and build a ParseResult.
         
@@ -154,10 +154,9 @@ class Builder:
         # Continue even with recognition errors to collect all issues
         
         # Stage 4: Interpreter
-        # Create default context and word registry for interpreter
+        # Create default context for interpreter
         default_context = Context(level=ContextLevel.SYS)
-        interpreter = Interpreter(WORD_REGISTRY, default_context)
-        interpreted_tokens = interpreter.interpret(recognized_tokens)
+        interpreted_tokens = Interpreter.interpret(recognized_tokens, default_context)
         
         # Continue even with interpretation errors
         

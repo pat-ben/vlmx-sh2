@@ -10,7 +10,7 @@ from ..models.validation import ValidationContext
 from vlmx_sh2.enums import Operator, Bracket, TokenClass, IssueStage
 from ..diagnostics import Validator
 from .tokenizer import Tokenizer
-from .constants import BRACKET_VALUES
+from .tokenizer import BRACKET_VALUES
 
 
 class Classifier:

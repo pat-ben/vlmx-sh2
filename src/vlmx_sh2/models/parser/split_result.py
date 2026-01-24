@@ -16,7 +16,7 @@ class SplitResult(BaseModel):
     Result from splitting tokens into command and filter portions.
     
     Contains the separated token lists plus metadata about the split operation.
-    Used to pass data from Splitter to subsequent stages (FilterParser, Builder).
+    Used to pass data from Splitter to subsequent stages (FilterParser, Parser).
     
     Fields:
         command_tokens: Tokens outside brackets (the main command)

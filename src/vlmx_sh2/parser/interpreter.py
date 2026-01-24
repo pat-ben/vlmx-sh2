@@ -30,28 +30,26 @@ class Interpreter:
     the system needs to execute commands successfully.
     """
     
-    # =============================================================================
-    # Initialization
-    # =============================================================================
+    # Lazy-loaded class-level word registry cache
+    _word_registry: Optional[dict] = None
     
-    def __init__(self, word_registry: dict, context: Context):
-        """
-        Initialize interpreter with word registry and context.
-        
-        Args:
-            word_registry: Complete word registry for lookups
-            context: Navigation context with current context level (SYS/ORG/APP)
-        """
-        self.word_registry = word_registry
-        self.context = context
+    @classmethod
+    def _get_word_registry(cls) -> dict:
+        """Get word registry, loading it lazily if needed."""
+        if cls._word_registry is None:
+            from ..words.registry import WORD_REGISTRY
+            cls._word_registry = WORD_REGISTRY
+        return cls._word_registry
     
     # =============================================================================
     # Public API - Main Entry Point
     # =============================================================================
     
+    @classmethod
     def interpret(
-        self, 
-        recognized_tokens: List[RecognizedToken]
+        cls, 
+        recognized_tokens: List[RecognizedToken],
+        context: Context
     ) -> List[InterpretedToken]:
         """
         Interpret recognized tokens with intelligence.
@@ -85,18 +83,19 @@ class Interpreter:
         ]
         
         # Apply fuzzy matching to correct typos in UNKNOWN tokens
-        interpreted_tokens = self._correct_typos(interpreted_tokens)
+        interpreted_tokens = cls._correct_typos(interpreted_tokens)
         
         # Apply expression inference to add missing words
-        interpreted_tokens = self._inject_missing_words(interpreted_tokens)
+        interpreted_tokens = cls._inject_missing_words(interpreted_tokens, context)
         return interpreted_tokens
     
     # =============================================================================
     # Core Processing - Typo Correction & Word Injection
     # =============================================================================
     
+    @classmethod
     def _correct_typos(
-        self, 
+        cls, 
         tokens: List[InterpretedToken]
     ) -> List[InterpretedToken]:
         """
@@ -131,18 +130,19 @@ class Interpreter:
             token_text_lower = token.text.lower()
             
             # Check all words in registry for exact distance of 1
-            for word_id in self.word_registry.keys():
+            word_registry = cls._get_word_registry()
+            for word_id in word_registry.keys():
                 # Skip if length difference is too large (optimization)
                 if abs(len(token.text) - len(word_id)) > 1:
                     continue
                     
                 # Calculate case-insensitive Levenshtein distance
-                distance = self._levenshtein_distance(token_text_lower, word_id.lower())
+                distance = cls._levenshtein_distance(token_text_lower, word_id.lower())
                 
                 # If exactly 1 typo, correct it
                 if distance == 1:
                     # Get the Word object from registry
-                    word_obj = self.word_registry.get(word_id)
+                    word_obj = word_registry.get(word_id)
                     if word_obj:
                         # Store original before correction
                         token.original_text = token.text
@@ -156,9 +156,11 @@ class Interpreter:
         
         return tokens
     
+    @classmethod
     def _inject_missing_words(
-        self, 
-        tokens: List[InterpretedToken]
+        cls, 
+        tokens: List[InterpretedToken],
+        context: Context
     ) -> List[InterpretedToken]:
         """
         Infer missing words based on patterns and context.
@@ -179,12 +181,12 @@ class Interpreter:
             Tokens with inferred words injected at the beginning
         """
         # 1. Check context — only ORG level
-        if self.context.level != ContextLevel.ORG:
+        if context.level != ContextLevel.ORG:
             return tokens
         
         # 2. Analyze tokens — what do we have?
-        has_field, has_entity, has_action = self._analyze_token_types(tokens)
-        first_field_word = self._find_first_field_word(tokens)
+        has_field, has_entity, has_action = cls._analyze_token_types(tokens)
+        first_field_word = cls._find_first_field_word(tokens)
         
         # 3. Nothing to infer if no field word
         if not has_field or first_field_word is None:
@@ -195,19 +197,19 @@ class Interpreter:
         
         # 4a. Infer EntityWord if missing
         if not has_entity:
-            entity_word = self._infer_entity_from_field(first_field_word)
+            entity_word = cls._infer_entity_from_field(first_field_word)
             if entity_word:
                 words_to_inject.append(entity_word)
         
         # 4b. Infer ActionWord if missing
         if not has_action:
-            action_word = self._infer_action_from_operator(tokens)
+            action_word = cls._infer_action_from_operator(tokens)
             if action_word:
                 words_to_inject.insert(0, action_word)  # Action goes first
         
         # 5. Create tokens and prepend
         if words_to_inject:
-            inferred_tokens = [self._create_inferred_token(word) for word in words_to_inject]
+            inferred_tokens = [cls._create_inferred_token(word) for word in words_to_inject]
             return inferred_tokens + tokens
         
         return tokens
@@ -216,7 +218,8 @@ class Interpreter:
     # Analysis Helpers - Token Inspection
     # =============================================================================
     
-    def _analyze_token_types(self, tokens: List[InterpretedToken]) -> Tuple[bool, bool, bool]:
+    @classmethod
+    def _analyze_token_types(cls, tokens: List[InterpretedToken]) -> Tuple[bool, bool, bool]:
         """
         Analyze tokens to determine what word types are present.
         
@@ -243,7 +246,8 @@ class Interpreter:
         
         return has_field, has_entity, has_action
     
-    def _find_first_field_word(self, tokens: List[InterpretedToken]) -> Optional[FieldWord]:
+    @classmethod
+    def _find_first_field_word(cls, tokens: List[InterpretedToken]) -> Optional[FieldWord]:
         """
         Find the first FieldWord in the token list.
         
@@ -264,7 +268,8 @@ class Interpreter:
     # Inference Helpers - Word Resolution
     # =============================================================================
     
-    def _infer_entity_from_field(self, field_word: FieldWord) -> Optional[EntityWord]:
+    @classmethod
+    def _infer_entity_from_field(cls, field_word: FieldWord) -> Optional[EntityWord]:
         """
         Infer EntityWord from a FieldWord using its entity_models.
         
@@ -281,14 +286,16 @@ class Interpreter:
         target_entity_model = field_word.entity_models[0]
         
         # Find matching EntityWord in registry
-        for word in self.word_registry.values():
+        word_registry = cls._get_word_registry()
+        for word in word_registry.values():
             if (word.word_type == WordType.ENTITY and 
                 hasattr(word, 'entity_model') and
                 word.entity_model == target_entity_model):
                 return word
         return None
     
-    def _infer_action_from_operator(self, tokens: List[InterpretedToken]) -> Optional[ActionWord]:
+    @classmethod
+    def _infer_action_from_operator(cls, tokens: List[InterpretedToken]) -> Optional[ActionWord]:
         """
         Infer ActionWord from operator patterns.
         
@@ -318,18 +325,20 @@ class Interpreter:
         has_value_after = (equals_index + 1 < len(tokens) and 
                           tokens[equals_index + 1].token_type == TokenType.VALUE)
         
+        word_registry = cls._get_word_registry()
         if has_value_after:
             # field = value → infer "add"
-            return self.word_registry.get("add")
+            return word_registry.get("add")
         else:
             # field = (no value) → infer "delete"  
-            return self.word_registry.get("delete")
+            return word_registry.get("delete")
     
     # =============================================================================
     # Token Creation
     # =============================================================================
     
-    def _create_inferred_token(self, word: Word) -> InterpretedToken:
+    @classmethod
+    def _create_inferred_token(cls, word: Word) -> InterpretedToken:
         """
         Create an InterpretedToken for an inferred word.
         
@@ -365,7 +374,7 @@ class Interpreter:
             Integer distance (number of single-character edits needed)
         """
         if len(s1) < len(s2):
-            return Interpreter._levenshtein_distance(s2, s1)
+            return cls._levenshtein_distance(s2, s1)
         
         if len(s2) == 0:
             return len(s1)
