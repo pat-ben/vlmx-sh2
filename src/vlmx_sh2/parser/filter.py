@@ -268,7 +268,8 @@ class FilterParser:
         # Consume opening parenthesis
         open_paren = self._consume_token()
         if not self._is_open_paren(open_paren):
-            raise FilterParseError(f"Expected '(' but found '{open_paren.text}'")
+            token_text = open_paren.text if open_paren else "end of input"
+            raise FilterParseError(f"Expected '(' but found '{token_text}'")
         
         # Parse inner expression
         inner_expr = self._parse_expression()
@@ -343,15 +344,7 @@ class FilterParser:
         return token is not None and token.bracket == Bracket.PAREN_CLOSE
     
     def _is_condition_start(self) -> bool:
-        """
-        Check if current position starts a condition (field operator value pattern).
-        
-        Used to detect implicit AND conditions.
-        Looks ahead to see if we have field followed by operator.
-        
-        Returns:
-            True if current position starts a new condition
-        """
+        """Check if current position starts a condition (field operator value pattern)."""
         current = self._current_token()
         next_token = self._peek_token()
         
@@ -359,12 +352,8 @@ class FilterParser:
             return False
         
         # Skip if current token is a keyword or parenthesis
-        if (hasattr(current, 'query_word') and current.query_word) or \
-           (hasattr(current, 'bracket') and current.bracket):
+        if current.query_word or current.bracket:
             return False
         
         # Check if next token is an operator
-        if hasattr(next_token, 'operator') and next_token.operator:
-            return True
-        
-        return False
+        return next_token.operator is not None
