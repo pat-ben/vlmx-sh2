@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from ..models.context import Context
 from ..models.responses import CommandResult, ErrorResult, HandlerResult
-from ..models.parser.parsed_command import ParsedCommand
+from ..models.parser.command import ParsedCommand
 from ..models.words import SchemaWord, EntityWord, FieldWord
 from vlmx_sh2.enums import Cardinality
 from ..handlers.utils import (

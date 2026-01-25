@@ -8,7 +8,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from .recognition import RecognizedToken
-from .parsed_command import ParsedCommand
+from .command import ParsedCommand
 from ..words import WordType, Word
 
 

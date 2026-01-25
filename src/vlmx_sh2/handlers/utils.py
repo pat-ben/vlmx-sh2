@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from ..models.context import Context
 from ..enums.core import ContextLevel
 from ..models.responses import ErrorResult, CommandResult, HandlerResult, StorageResult
-from ..models.parser.parsed_command import ParsedCommand
+from ..models.parser.command import ParsedCommand
 from ..models.words import SchemaWord, EntityWord, FieldWord
 
 

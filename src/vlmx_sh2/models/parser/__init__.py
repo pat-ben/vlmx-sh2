@@ -15,7 +15,7 @@ from .classification import ClassifiedToken
 from .recognition import RecognizedToken
 from .interpretation import InterpretedToken
 from .parsing import ParseResult
-from .parsed_command import ParsedCommand
+from .command import ParsedCommand
 from .splitting import SplitResult
 from .exceptions import FilterParseError
 

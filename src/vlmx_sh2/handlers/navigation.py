@@ -8,7 +8,7 @@ of the application (SYS, ORG, APP).
 from typing import Optional
 from ..models.context import Context
 from ..models.responses import HandlerResult, CommandResult, ErrorResult
-from ..models.parser.parsed_command import ParsedCommand
+from ..models.parser.command import ParsedCommand
 from ..models.context import Context as NewContext
 from ..enums.core import ContextLevel
 from ..storage.database import find_company_by_name

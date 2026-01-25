@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from ..models.responses import FormRequest, PickerRequest, ErrorResult, HandlerResult
 from ..models.context import Context
 from vlmx_sh2.enums import Cardinality
-from ..models.parser.parsed_command import ParsedCommand
+from ..models.parser.command import ParsedCommand
 from ..handlers.utils import get_company_name_from_context
 from ..constants import SYSTEM_FIELDS
 from ..storage.database import StorageInterface, entity_exists, load_all_entities

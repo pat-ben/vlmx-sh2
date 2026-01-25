@@ -189,7 +189,7 @@ class MainScreen(Screen):
         try:
             from ....handlers.crud import add_handler
             from ....words import get_word, WordType
-            from ....models.parser.parsed_command import ParsedCommand
+            from ....models.parser.command import ParsedCommand
             
             # Get the entity model for the entity type
             entity_word = get_word(wizard_request.entity_id)
