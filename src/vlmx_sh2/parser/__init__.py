@@ -8,7 +8,8 @@ Provides modular parsing functionality with clean separation of concerns:
 - Recognition: Matching tokens to known words
 - Interpretation: Intelligence layer for user intent
 - Splitting: Command/Filter separation
-- Parsing: Building final command structures
+- Filtering: Filter expression parsing
+- Building: Command assembly from tokens
 
 The parsing pipeline consists of 7 stages, each with specific responsibilities.
 """
@@ -20,6 +21,7 @@ from .recognizer import Recognizer     # Stage 3
 from .interpreter import Interpreter   # Stage 4
 from .splitter import Splitter         # Stage 5
 from .filter import Filter             # Stage 6
+from .builder import Builder           # Stage 7
 from .parser import Parser             # Pipeline Orchestrator
 
 __all__ = [
@@ -30,6 +32,7 @@ __all__ = [
     'Interpreter',     # Stage 4
     'Splitter',        # Stage 5
     'Filter',          # Stage 6
+    'Builder',         # Stage 7
     'Parser',          # Pipeline Orchestrator
 ]
 

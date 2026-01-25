@@ -16,7 +16,7 @@ Grammar:
 Operator precedence (highest to lowest):
     1. Parentheses ( )
     2. AND (explicit or implicit)
-    3. OR
+    3. OR (always explicit)
 """
 
 from typing import List, Optional
@@ -29,8 +29,7 @@ from ..diagnostics import Validator
 
 class Filter:
     """
-    PARSING STAGE 6/6: Filter Expression Parser
-    
+   
     Builds an AST (Abstract Syntax Tree) from filter tokens using recursive descent parsing.
     Operates on InterpretedToken objects from the Splitter stage.
     
@@ -54,7 +53,6 @@ class Filter:
         context: ValidationContext
     ) -> Optional[FilterExpression]:
         """
-        PARSING STAGE 6/6: Build Filter AST from Splitter output.
         
         Processing:
         1. Check if filter exists in split_result

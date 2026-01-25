@@ -54,7 +54,7 @@ class Interpreter:
         
         # Convert to InterpretedToken (preserves all fields, adds new defaults)
         interpreted_tokens = [
-            InterpretedToken.model_validate(token)
+            InterpretedToken(**token.model_dump())
             for token in recognized_tokens
         ]
         
