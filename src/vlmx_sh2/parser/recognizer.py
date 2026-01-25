@@ -4,11 +4,10 @@ PARSING STAGE 3/6: Semantic Recognition
 Performs semantic classification of structurally classified tokens.
 Converts ClassifiedToken objects to RecognizedToken objects by:
 - Recognizing words from registry (actions, entities, fields, schemas)
-- Handling aliases (del → delete, rm → delete, etc.)
-- Classifying values based on context (schema names, field values)
+- Handling aliases (del → delete, etc.)
+- Classifying values based on context (schema name, field values)
 - Copying structural information (operators, brackets) from Classifier
 
-Does NOT handle command/filter splitting (that's Splitter's job).
 """
 
 from typing import Dict, List, Optional
@@ -22,8 +21,6 @@ from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage, Quer
 
 class Recognizer:
     """
-    PARSING STAGE 3/6: Semantic Recognition
-    
     Adds semantic meaning to TEXT tokens from Classifier.
     OPERATOR/BRACKET tokens are passed through as STRUCTURAL tokens
     (they were already fully classified by the Classifier).
@@ -47,27 +44,6 @@ class Recognizer:
     _word_registry: Optional[Dict[str, Word]] = None
     _alias_to_word: Optional[Dict[str, str]] = None
     _words_by_type: Optional[Dict[WordType, List[Word]]] = None
-    
-    @classmethod
-    def _get_word_registry(cls) -> Dict[str, Word]:
-        """Get word registry with lazy loading."""
-        if cls._word_registry is None:
-            cls._word_registry = get_all_words()
-        return cls._word_registry
-    
-    @classmethod
-    def _get_alias_map(cls) -> Dict[str, str]:
-        """Get alias map with lazy loading."""
-        if cls._alias_to_word is None:
-            cls._alias_to_word = cls._build_alias_map()
-        return cls._alias_to_word
-    
-    @classmethod
-    def _get_words_by_type(cls) -> Dict[WordType, List[Word]]:
-        """Get words by type with lazy loading."""
-        if cls._words_by_type is None:
-            cls._words_by_type = cls._group_words_by_type()
-        return cls._words_by_type
     
     # =============================================================================
     # Public API - Main Entry Point
@@ -114,7 +90,7 @@ class Recognizer:
         recognized_tokens = []
         
         for i, classified_token in enumerate(classified_tokens):
-            recognized_token = cls._recognize_single_token(
+            recognized_token = cls._recognize_token(
                 classified_token, 
                 recognized_tokens, 
                 i
@@ -128,6 +104,39 @@ class Recognizer:
         
         return recognized_tokens
     
+    @classmethod
+    def get_words_by_type(cls, word_type: WordType) -> List[Word]:
+        """
+        Get all words of a specific type.
+        """
+        words_by_type = cls._get_words_by_type()
+        return words_by_type.get(word_type, [])
+    
+    # =============================================================================
+    # Private Helpers - Lazy Loading
+    # =============================================================================
+    
+    @classmethod
+    def _get_word_registry(cls) -> Dict[str, Word]:
+        """Get word registry with lazy loading."""
+        if cls._word_registry is None:
+            cls._word_registry = get_all_words()
+        return cls._word_registry
+    
+    @classmethod
+    def _get_alias_map(cls) -> Dict[str, str]:
+        """Get alias map with lazy loading."""
+        if cls._alias_to_word is None:
+            cls._alias_to_word = cls._build_alias_map()
+        return cls._alias_to_word
+    
+    @classmethod
+    def _get_words_by_type(cls) -> Dict[WordType, List[Word]]:
+        """Get words by type with lazy loading."""
+        if cls._words_by_type is None:
+            cls._words_by_type = cls._group_words_by_type()
+        return cls._words_by_type
+    
     # =============================================================================
     # Initialization Helpers
     # =============================================================================
@@ -136,14 +145,8 @@ class Recognizer:
     def _build_alias_map(cls) -> Dict[str, str]:
         """
         Build mapping from lowercase aliases to canonical word IDs.
-        
         Now handles aliases from ALL word types (ACTION, SCHEMA, ENTITY, FIELD).
-        
-        Example: {
-            "delete": "delete", "del": "delete", "rm": "delete",    # ActionWord
-            "co": "company",                                        # SchemaWord
-            "org": "organization",                                  # EntityWord
-        }
+
         """
         alias_map = {}
         word_registry = cls._get_word_registry()
@@ -162,9 +165,6 @@ class Recognizer:
     def _group_words_by_type(cls) -> Dict[WordType, List[Word]]:
         """
         Group words by their type for quick access.
-        
-        Returns:
-            Dictionary mapping WordType → List of Words
         """
         groups = {wt: [] for wt in WordType}
         word_registry = cls._get_word_registry()
@@ -177,7 +177,7 @@ class Recognizer:
     # =============================================================================
     
     @classmethod
-    def _recognize_single_token(
+    def _recognize_token(
         cls,
         classified_token: ClassifiedToken,
         recognized_tokens: List[RecognizedToken],
@@ -185,17 +185,7 @@ class Recognizer:
     ) -> RecognizedToken:
         """
         Recognize a single token from classifier output.
-        
-        Classifier has already done structural classification (TEXT/OPERATOR/BRACKET).
         Recognizer only adds semantic meaning to TEXT tokens.
-        
-        Args:
-            classified_token: Token from classifier
-            recognized_tokens: Previous tokens for context
-            current_position: Index in token array
-            
-        Returns:
-            RecognizedToken with semantic classification
         """
         if classified_token.token_class == TokenClass.TEXT:
             # TEXT tokens need semantic classification
@@ -212,18 +202,9 @@ class Recognizer:
         current_position: int
     ) -> RecognizedToken:
         """
-        Perform semantic recognition on TEXT tokens.
-        
+        Perform semantic recognition on TEXT (only) tokens.
         Attempts to classify TEXT tokens as VALUES or WORDS.
         Falls back to UNKNOWN if no classification matches.
-        
-        Args:
-            classified_token: TEXT token from classifier
-            recognized_tokens: Previous tokens for context
-            current_position: Index in token array
-            
-        Returns:
-            RecognizedToken with semantic classification
         """
         # Priority 1: Check if it's a value (context-dependent)
         value_context = cls._determine_value_context(
@@ -258,12 +239,6 @@ class Recognizer:
     def _match_word_in_registry(cls, token_text: str) -> Optional[Word]:
         """
         Recognize token as word from registry, handling aliases automatically.
-        
-        Args:
-            token_text: Text to recognize
-            
-        Returns:
-            Word object if matched, None otherwise
         """
         token_lower = token_text.lower()
         alias_map = cls._get_alias_map()
@@ -281,18 +256,6 @@ class Recognizer:
     def _match_query_word(cls, text: str) -> Optional[QueryWord]:
         """
         Check if text is a query keyword (and/or).
-        
-        The Classifier has already normalized symbols to words:
-        - & → and
-        - | → or
-        
-        So we only check for the word forms.
-        
-        Args:
-            text: Token text to check (already normalized by Classifier)
-            
-        Returns:
-            QueryKeyword enum value if matched, None otherwise
         """
         return cls._QUERY_WORDS.get(text.lower())
     
@@ -335,26 +298,9 @@ class Recognizer:
             query_word=query_word
         )
     
-    # =============================================================================
-    # Utility Methods
-    # =============================================================================
-    
-    @classmethod
-    def get_words_by_type(cls, word_type: WordType) -> List[Word]:
-        """
-        Get all words of a specific type.
-        
-        Args:
-            word_type: Type of words to retrieve
-            
-        Returns:
-            List of words of the specified type
-        """
-        words_by_type = cls._get_words_by_type()
-        return words_by_type.get(word_type, [])
     
     # =============================================================================
-    # Value Context Classification (merged from ValueContextClassifier)
+    # Value Context Classification
     # =============================================================================
     
     @classmethod
@@ -365,7 +311,7 @@ class Recognizer:
         current_position: int
     ) -> Optional[ValueContext]:
         """
-        Determine if a token is a value and what context it has.
+        Determine if a token is a Schema Name or Field value and what context it has.
         
         Rules:
         1. Schema name: Quoted token after schema/action word
@@ -380,14 +326,6 @@ class Recognizer:
                 - "currency": WORD (FieldWord)
                 - "=": STRUCTURAL (OPERATOR)
                 - "EUR": VALUE (FIELD context) ← detected by this rule
-        
-        Args:
-            classified_token: Current token being classified
-            recognized_tokens: Previously recognized tokens
-            current_position: Position in token array
-            
-        Returns:
-            ValueContext if token is a value, None otherwise
         """
         # Guard clause: First token cannot be a value
         if current_position == 0:

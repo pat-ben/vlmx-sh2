@@ -129,7 +129,7 @@ class Classifier:
         **extra_fields
     ) -> ClassifiedToken:
         """
-        Create ClassifiedToken without position metadata.
+        Create ClassifiedToken.
         """
         return ClassifiedToken(
             text=text,
