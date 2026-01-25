@@ -29,7 +29,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     ActionWord(
         id="create",        
         description="Create a new entity (company, milestone, etc.)",
-        aliases=["c","post"],
+        aliases=["cre","post"],
         handler=create_handler,
         crud_operation=CRUDOperation.CREATE,
     ),
@@ -37,7 +37,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     ActionWord(
         id="delete",        
         description="Delete data (rows, fields, or all entity content)",
-        aliases=["d"],
+        aliases=["del"],
         handler=delete_handler,
         crud_operation=CRUDOperation.DELETE,        
         destructive=True,
@@ -47,7 +47,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     ActionWord(
         id="drop",
         description="Drop database or table structure",
-        aliases=["remove", "rm"],
+        aliases=["destroy"],
         handler=drop_handler,
         crud_operation=CRUDOperation.DELETE,
         destructive=True,
@@ -66,7 +66,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     ActionWord(
         id="add",
         description="Add or set field values to schemas",
-        aliases=["a","set"],
+        aliases=["set"],
         handler=add_handler,
         crud_operation=CRUDOperation.CREATE,
     ),
@@ -82,7 +82,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     ActionWord(
         id="show",
         description="Display data with optional field selection and filtering",
-        aliases=["s","read","get","l","ls","list","find"],
+        aliases=["read","get","list"],
         handler=show_handler,
         crud_operation=CRUDOperation.READ,
     ),
@@ -90,7 +90,7 @@ ACTION_WORDS_LIST: List[ActionWord] = [
     ActionWord(
         id="fill",
         description="displays an intermediate form for filling out",
-        aliases=["viz","wiz","f"],
+        aliases=["viz","wiz"],
         handler=fill_handler,
         execution_type=ExecutionType.WIZARD,
         crud_operation=CRUDOperation.UPDATE,

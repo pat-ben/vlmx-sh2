@@ -6,7 +6,7 @@ users to use short forms like 'cc' for 'create company' or 'sb'
 for 'show brand'. Helps improve command line efficiency.
 
 Macro Design Guidelines:
-- Length: Macros must be 2-3 characters
+- Length: Macros must be 2 characters
 - Structure: Must expand to ActionWord + SchemaWord OR ActionWord + EntityWord (2 words)
 - Position: Only expands at the very beginning of input (position 0)
 - Case: Case-insensitive matching
@@ -22,7 +22,7 @@ from typing import Dict, List
 MACROS: Dict[str, List[str]] = {
     "cc": ["create", "company"],   # ActionWord + SchemaWord
     "dc": ["delete", "company"],   # ActionWord + SchemaWord
-    # Add new macros following the pattern: 2-3 chars → [ActionWord, SchemaWord/EntityWord]
+    # Add new macros following the pattern: 2 chars → [ActionWord, SchemaWord/EntityWord]
 }
 
 

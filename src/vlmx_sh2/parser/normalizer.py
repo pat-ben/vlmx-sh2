@@ -26,12 +26,11 @@ def normalize(input_text: str, context: ValidationContext) -> str:
     Stores both original and normalized text in context.
     Returns empty string if validation fails.
     """
-    # Store original input (only if not already set)
-    if not context.input_text:
-        context.input_text = input_text
     
-    # Step 1: Expand command macros    
-    # onyl happens at position 0 to cover edge cases
+    # Store original input (not already set at this stage)
+    context.input_text = input_text
+    
+    # Step 1: Expand command macros (only happens at position 0 to cover edge cases)
     normalized_text = expand_macros(input_text)
     
     # Step 2: Store normalized text in context

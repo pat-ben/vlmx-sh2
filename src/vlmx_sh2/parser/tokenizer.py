@@ -11,7 +11,7 @@ from vlmx_sh2.enums import IssueStage
 from ..diagnostics import Validator
 from vlmx_sh2.enums import Bracket, Operator
 
-# Shared constants (also used by Classifier)
+# Shared constants (also used by Classifier, next stage)
 BRACKET_VALUES = {bracket.value for bracket in Bracket}
 OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)
 
@@ -33,8 +33,9 @@ class Tokenizer:
     @classmethod
     def tokenize(cls, normalized_text: str, context: ValidationContext) -> List[Token]:
         """Tokenize normalized input with validation. Returns list of Token objects."""
-        # Extract tokens without position metadata
-        tokens = cls._extract_tokens(normalized_text)
+        
+        # Extract tokens
+        tokens = cls._extract_all_tokens(normalized_text)
 
         # Validate tokens (non-blocking, collect all errors)
         Validator.validate_tokens(IssueStage.TOKENIZER, context, tokens=tokens)
@@ -47,8 +48,8 @@ class Tokenizer:
     # =============================================================================
 
     @classmethod
-    def _extract_tokens(cls, text: str) -> List[Token]:
-        """Extract tokens without position tracking."""
+    def _extract_all_tokens(cls, text: str) -> List[Token]:
+        """Extract all tokens without position tracking."""
         tokens = []
         cursor = 0  # Parsing cursor position in text
         text_length = len(text)
@@ -63,7 +64,7 @@ class Tokenizer:
                 break
                 
             # Extract next token (returns token text and new cursor position)
-            token_text, cursor = cls._extract_next_token(text, cursor)
+            token_text, cursor = cls._extract_single_token(text, cursor)
             
             if token_text:
                 # Check for operators and split if needed
@@ -78,9 +79,10 @@ class Tokenizer:
     # =============================================================================
 
     @classmethod
-    def _extract_next_token(cls, text: str, start: int) -> tuple[str, int]:
+    def _extract_single_token(cls, text: str, start: int) -> tuple[str, int]:
         """
-        Extract single token from current cursor position.
+        Extract / Scan single token text from current cursor position. 
+        That single token may be broken down into multiple other tokens.                
         
         Args:
             text: Input text to tokenize
@@ -159,7 +161,7 @@ class Tokenizer:
     def _split_operators(cls, token_text: str) -> List[Token]:
         """Split token on operators if present."""
         # Don't split if quoted
-        has_quotes, _ = cls._has_quotes(token_text)
+        has_quotes, _ = cls.has_quotes(token_text)
         if has_quotes:
             return [cls._create_token(token_text)]
         
@@ -189,7 +191,7 @@ class Tokenizer:
     # =============================================================================
 
     @classmethod
-    def _has_quotes(cls, text: str) -> tuple[bool, str | None]:
+    def has_quotes(cls, text: str) -> tuple[bool, str | None]:
         """
         Check if text has matching quotes and return quote character.
         

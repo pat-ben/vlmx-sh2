@@ -2,6 +2,7 @@
 PARSING STAGE 2/6: Classification
 
 Structural classification of tokens into TEXT, OPERATOR, and BRACKET categories.
+This stage does not look at semantic, only structure.
 """
 
 from typing import List
@@ -21,16 +22,14 @@ class Classifier:
     # =============================================================================
 
     _QUERY_SYMBOLS = {"&": "and", "&&": "and", "|": "or", "||": "or"}
-    _OPERATOR_VALUES = {op.value for op in Operator}  # Set for O(1) membership checks    
+    _OPERATOR_VALUES = {op.value for op in Operator}  # Set for membership checks    
     
     # =============================================================================
     # PUBLIC API
     # =============================================================================
     @classmethod
     def classify(cls, tokens: List[Token], context: ValidationContext) -> List[ClassifiedToken]:
-        """
-        Classify tokens structurally.
-        
+        """        
         Converts Token objects to ClassifiedToken objects with structural
         classification (TEXT, OPERATOR, BRACKET). Strips quotes and unescapes
         escaped quotes for TEXT tokens.
@@ -45,7 +44,6 @@ class Classifier:
         # Classify all tokens
         classified_tokens = [cls._classify_single_token(token) for token in tokens]
         
-        # Post-classification validation
         # Validates structural issues (unclosed quotes, mismatched brackets)
         Validator.validate_tokens(IssueStage.CLASSIFIER, context, tokens=classified_tokens)
         
@@ -68,17 +66,7 @@ class Classifier:
     @staticmethod
     def _unescape_quotes(text: str) -> str:
         """
-        Remove backslash escapes from quoted content.
-        
-        After stripping outer quotes, this unescapes any escaped quotes
-        that were inside the quoted string.
-        
-        Args:
-            text: Text with potential escaped quotes (after outer quotes stripped)
-            
-        Returns:
-            Text with escaped quotes unescaped            
-
+        Remove backslash escapes from quoted content.       
         """
         return text.replace('\\"', '"').replace("\\'", "'")
 
@@ -98,7 +86,6 @@ class Classifier:
         text = token.text
         
         # Normalize query keyword symbols to words before classification
-        # (& → and, | → or) - these will be TEXT tokens, recognized as words later
         normalized_text = cls._normalize_query_symbol(text)
         
         # Check for operators using normalized text
@@ -118,7 +105,7 @@ class Classifier:
             )
         
         # Check if original text is quoted using Tokenizer's method
-        has_quotes, _ = Tokenizer._has_quotes(text)
+        has_quotes, _ = Tokenizer.has_quotes(text)
         
         # Strip quotes and unescape if quoted
         if has_quotes:
@@ -143,14 +130,6 @@ class Classifier:
     ) -> ClassifiedToken:
         """
         Create ClassifiedToken without position metadata.
-        
-        Args:
-            text: Token text (quotes stripped if applicable)
-            token_class: Structural classification (TEXT, OPERATOR, or BRACKET)
-            **extra_fields: Additional fields (was_quoted, operator, bracket)
-            
-        Returns:
-            ClassifiedToken with structural classification
         """
         return ClassifiedToken(
             text=text,
