@@ -1,7 +1,7 @@
 """Filter application for dynamic table filtering."""
 
 from typing import List, Dict, Any, Union
-from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
+from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator
 from vlmx_sh2.enums import Operator
 
 

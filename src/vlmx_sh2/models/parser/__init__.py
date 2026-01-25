@@ -11,12 +11,12 @@ Provides stage-based models for the parsing pipeline:
 
 from vlmx_sh2.enums import Operator, QueryWord, Bracket, TokenClass, TokenType, ValueContext
 from .token import Token
-from .classified_token import ClassifiedToken
-from .recognized_token import RecognizedToken
-from .interpreted_token import InterpretedToken
-from .parse_result import ParseResult
+from .classification import ClassifiedToken
+from .recognition import RecognizedToken
+from .interpretation import InterpretedToken
+from .parsing import ParseResult
 from .parsed_command import ParsedCommand
-from .split_result import SplitResult
+from .splitting import SplitResult
 from .exceptions import FilterParseError
 
 __all__ = [

@@ -8,7 +8,7 @@ what modifications the Interpreter made (corrections, injections).
 from typing import Optional
 from pydantic import Field
 
-from .recognized_token import RecognizedToken
+from .recognition import RecognizedToken
 
 
 class InterpretedToken(RecognizedToken):

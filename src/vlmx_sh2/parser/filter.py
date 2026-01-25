@@ -21,7 +21,7 @@ Operator precedence (highest to lowest):
 
 from typing import List, Optional
 from ..models.parser import InterpretedToken, SplitResult, FilterParseError
-from ..models.parser.filter import FilterExpression, FilterCondition, LogicalOperator
+from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator
 from ..models.validation import ValidationContext
 from vlmx_sh2.enums import IssueStage, QueryWord, Bracket
 from ..diagnostics import Validator

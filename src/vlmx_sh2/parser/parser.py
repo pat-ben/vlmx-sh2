@@ -33,7 +33,7 @@ What Parser Does NOT Do:
 
 from typing import Optional, List
 from ..models.parser import ParseResult, ParsedCommand
-from ..models.parser.filter import FilterExpression
+from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
 from ..models.context import Context
 from ..enums.core import ContextLevel

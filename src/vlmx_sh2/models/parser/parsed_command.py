@@ -8,12 +8,12 @@ from typing import Optional, Dict, Any, List, Union, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from .recognized_token import RecognizedToken
-from .filter import FilterExpression
+from .recognition import RecognizedToken
+from .filtering import FilterExpression
 from ..words import ActionWord, SchemaWord, EntityWord, FieldWord
 
 if TYPE_CHECKING:
-    from .interpreted_token import InterpretedToken
+    from .interpretation import InterpretedToken
     from ..validation import ValidationContext
 
 

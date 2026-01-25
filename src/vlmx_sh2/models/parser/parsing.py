@@ -7,7 +7,7 @@ Contains the final result of the parsing pipeline with tokens and structured com
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from .recognized_token import RecognizedToken
+from .recognition import RecognizedToken
 from .parsed_command import ParsedCommand
 from ..words import WordType, Word
 

@@ -9,8 +9,8 @@ validation with fine-grained position tracking.
 from typing import Any, List, Union, Protocol, TypeVar, TypedDict, TYPE_CHECKING
 from ..models.validation import ValidationContext
 from ..models.parser.token import Token
-from ..models.parser.classified_token import ClassifiedToken
-from ..models.parser.recognized_token import RecognizedToken
+from ..models.parser.classification import ClassifiedToken
+from ..models.parser.recognition import RecognizedToken
 from ..enums import IssueStage
 from .rules import get_text_rules_for_stage, get_token_rules_for_stage
 

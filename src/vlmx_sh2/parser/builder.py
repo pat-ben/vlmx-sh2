@@ -14,7 +14,7 @@ This stage operates on interpreted tokens to extract command components:
 
 from typing import Optional, List
 from ..models.parser import ParsedCommand
-from ..models.parser.filter import FilterExpression
+from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
 
 

@@ -7,8 +7,8 @@ Contains command and filter token lists with split metadata.
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from .recognized_token import RecognizedToken
-from .interpreted_token import InterpretedToken
+from .recognition import RecognizedToken
+from .interpretation import InterpretedToken
 
 
 class SplitResult(BaseModel):
