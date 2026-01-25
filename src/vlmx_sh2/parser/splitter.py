@@ -88,22 +88,10 @@ class Splitter:
         context: ValidationContext
     ) -> tuple[Optional[int], Optional[int]]:
         """
-        Find positions of opening and closing filter brackets.
-        
+        Find positions of opening and closing filter brackets.      
         Looks for BRACKET tokens with bracket field set to BRACKET_OPEN or BRACKET_CLOSE.
         Only finds the first pair - multiple filter sections are not supported.
-        
-        Args:
-            tokens: List of interpreted tokens
-            context: ValidationContext for error reporting
-            
-        Returns:
-            Tuple of (bracket_open_index, bracket_close_index)
-            Both are None if no brackets found
-            
-        Note:
-            This method only FINDS brackets, it doesn't validate them.
-            Validation happens in _validate_bracket_structure.
+ 
         """
         bracket_open_index = None
         bracket_close_index = None
