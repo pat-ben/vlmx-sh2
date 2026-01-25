@@ -54,7 +54,7 @@ class Interpreter:
         
         # Convert to InterpretedToken (preserves all fields, adds new defaults)
         interpreted_tokens = [
-            InterpretedToken(**token.model_dump()) 
+            InterpretedToken.model_validate(token)
             for token in recognized_tokens
         ]
         
@@ -62,7 +62,8 @@ class Interpreter:
         interpreted_tokens = cls._correct_typos(interpreted_tokens)
         
         # Apply expression inference to add missing words
-        interpreted_tokens = cls._inject_missing_words(interpreted_tokens, context)
+        interpreted_tokens = cls._infer_missing_words(interpreted_tokens, context)
+        
         return interpreted_tokens
     
     # =============================================================================
@@ -87,25 +88,12 @@ class Interpreter:
         tokens: List[InterpretedToken]
     ) -> List[InterpretedToken]:
         """
-        Apply fuzzy matching to UNKNOWN tokens.
-        
+        Apply fuzzy matching to UNKNOWN tokens.     
         Corrects typos in UNKNOWN tokens by matching against the word registry
         using Levenshtein distance. Only applies to tokens > 3 characters with
         exactly 1 character difference (distance == 1).
-        
-        Rules:
-        - Apply to UNKNOWN tokens only
-        - Skip words ≤ 3 characters 
-        - Tolerate exactly 1 typo (Levenshtein distance == 1)
-        - Case insensitive matching
-        - Match against word_registry.keys() only
-        
-        Args:
-            tokens: Recognized tokens
-            
-        Returns:
-            Tokens with fuzzy-matched corrections applied
         """
+        
         for token in tokens:
             # Skip non-UNKNOWN tokens
             if token.token_type != TokenType.UNKNOWN:
@@ -145,28 +133,16 @@ class Interpreter:
         return tokens
     
     @classmethod
-    def _inject_missing_words(
+    def _infer_missing_words(
         cls, 
         tokens: List[InterpretedToken],
         context: Context
     ) -> List[InterpretedToken]:
         """
         Infer missing words based on patterns and context.
-        
         Analyzes tokens to detect missing ActionWord and EntityWord, then injects
         them based on field patterns and operator context. Only operates in ORG
         context level.
-        
-        Context-aware rules:
-        - At ORG level only: "field=value" → "add entity field=value"
-        - Field lookup: Uses field.entity_models[0] to find corresponding entity
-        - Action inference: field=value → "add", field= → "delete"
-        
-        Args:
-            tokens: Recognized tokens
-            
-        Returns:
-            Tokens with inferred words injected at the beginning
         """
         # 1. Check context — only ORG level
         if context.level != ContextLevel.ORG:
