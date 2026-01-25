@@ -1,5 +1,5 @@
 """
-PARSING STAGE 4/6: Interpretation
+PARSING STAGE 4/7: Interpretation
 
 Post-recognition intelligence layer.
 Interprets user intent and corrects/infers missing information.

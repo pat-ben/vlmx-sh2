@@ -1,5 +1,5 @@
 """
-PARSING STAGE 1/6: Tokenization
+PARSING STAGE 1/7: Tokenization
 
 Extracts raw text blocks without position metadata. Delegates validation to Validator.
 """

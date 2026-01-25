@@ -1,5 +1,5 @@
 """
-PARSING STAGE 3/6: Semantic Recognition
+PARSING STAGE 3/7: Semantic Recognition
 
 Performs semantic classification of structurally classified tokens.
 Converts ClassifiedToken objects to RecognizedToken objects by:

@@ -1,5 +1,5 @@
 """
-PARSING STAGE 6/6: Filter Expression Parser
+PARSING STAGE 6/7: Filter Expression Parser
 
 Builds an AST (Abstract Syntax Tree) from filter tokens using recursive descent parsing.
 Operates on filter tokens from the Splitter stage (Stage 5).

@@ -1,5 +1,5 @@
 """
-PARSING STAGE 0/6: Normalization
+PARSING STAGE 0/7: Normalization
 
 Pre-tokenization text processing.
 Prepares raw input for tokenization by expanding macros and validating command.

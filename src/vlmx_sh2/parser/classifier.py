@@ -1,5 +1,5 @@
 """
-PARSING STAGE 2/6: Classification
+PARSING STAGE 2/7: Classification
 
 Structural classification of tokens into TEXT, OPERATOR, and BRACKET categories.
 This stage does not look at semantic, only structure.
