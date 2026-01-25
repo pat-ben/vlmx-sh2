@@ -7,7 +7,6 @@ Operates on interpreted tokens from the Interpreter stage.
 Command tokens: Everything outside brackets [...]
 Filter tokens: Everything inside brackets [...] (excluding brackets themselves)
 
-Does NOT parse filter expressions (that's FilterParser's job in Stage 6).
 """
 
 from typing import List, Optional
@@ -19,12 +18,7 @@ from ..diagnostics import Validator
 
 class Splitter:
     """
-    PARSING STAGE 5/6: Command/Filter Splitting
-    
-    Splits interpreted tokens into command and filter portions based on
-    bracket positions. Operates on interpreted tokens from Interpreter stage.
-    
-    Operates on InterpretedToken objects from the Interpreter stage.
+    Splits interpreted tokens into command and filter portions.
     """
     
     # =============================================================================
@@ -45,29 +39,7 @@ class Splitter:
         2. Slice tokens into command and filter lists
         3. Validate using diagnostic rules (nested brackets, multiple sections, empty filters)
         4. Return SplitResult with metadata
-        
-        Args:
-            interpreted_tokens: Interpreted tokens from Interpreter stage
-            context: ValidationContext for error reporting
-            
-        Returns:
-            SplitResult with command_tokens, filter_tokens, and metadata
-            
-        Examples:
-            >>> # Input: show company [currency=EUR]
-            >>> tokens = [
-            ...     InterpretedToken(text="show", ...),
-            ...     InterpretedToken(text="company", ...),
-            ...     InterpretedToken(text="[", bracket=BRACKET_OPEN, ...),
-            ...     InterpretedToken(text="currency", ...),
-            ...     InterpretedToken(text="=", ...),
-            ...     InterpretedToken(text="EUR", ...),
-            ...     InterpretedToken(text="]", bracket=BRACKET_CLOSE, ...),
-            ... ]
-            >>> result = Splitter.split(tokens, context)
-            >>> result.command_tokens  # [show, company]
-            >>> result.filter_tokens   # [currency, =, EUR]
-            >>> result.has_filter      # True
+
         """
         # Step 1: Find bracket positions
         bracket_open_index, bracket_close_index = cls._find_bracket_positions(
