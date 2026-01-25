@@ -33,14 +33,6 @@ class Interpreter:
     # Lazy-loaded class-level word registry cache
     _word_registry: Optional[dict] = None
     
-    @classmethod
-    def _get_word_registry(cls) -> dict:
-        """Get word registry, loading it lazily if needed."""
-        if cls._word_registry is None:
-            from ..words.registry import WORD_REGISTRY
-            cls._word_registry = WORD_REGISTRY
-        return cls._word_registry
-    
     # =============================================================================
     # Public API - Main Entry Point
     # =============================================================================
@@ -51,31 +43,15 @@ class Interpreter:
         recognized_tokens: List[RecognizedToken],
         context: Context
     ) -> List[InterpretedToken]:
-        """
-        Interpret recognized tokens with intelligence.
-        
+        """        
         Applies fuzzy matching and expression inference for intelligent parsing.
         
         Processing order:
         1. Fuzzy matching (correct typos in UNKNOWN tokens)
-        2. Expression inference (inject missing words in ORG context)
-        
-        Args:
-            recognized_tokens: Tokens from recognizer stage
-            
-        Returns:
-            InterpretedToken list with correction/inference metadata
-            
-        Examples:
-            >>> # Expression inference
-            >>> interpret(["currency", "=", "EUR"])  # At ORG level
-            ["add", "organization", "currency", "=", "EUR"]
-            
-            >>> # Fuzzy matching
-            >>> interpret(["compny", "name", "=", "ACME"])
-            ["company", "name", "=", "ACME"]  # Fixed typo
+        2. Expression inference (inject missing words in ORG context)     
        
         """
+        
         # Convert to InterpretedToken (preserves all fields, adds new defaults)
         interpreted_tokens = [
             InterpretedToken(**token.model_dump()) 
@@ -88,6 +64,18 @@ class Interpreter:
         # Apply expression inference to add missing words
         interpreted_tokens = cls._inject_missing_words(interpreted_tokens, context)
         return interpreted_tokens
+    
+    # =============================================================================
+    # Private Helpers - Lazy Loading
+    # =============================================================================
+    
+    @classmethod
+    def _get_word_registry(cls) -> dict:
+        """Get word registry, loading it lazily if needed."""
+        if cls._word_registry is None:
+            from ..words.registry import WORD_REGISTRY
+            cls._word_registry = WORD_REGISTRY
+        return cls._word_registry
     
     # =============================================================================
     # Core Processing - Typo Correction & Word Injection

@@ -24,13 +24,6 @@ class Recognizer:
     Adds semantic meaning to TEXT tokens from Classifier.
     OPERATOR/BRACKET tokens are passed through as STRUCTURAL tokens
     (they were already fully classified by the Classifier).
-    
-    Responsibilities:
-    - TEXT → WORD (if in registry)
-    - TEXT → VALUE (if in value context)  
-    - TEXT → QUERY (if query keyword)
-    - TEXT → UNKNOWN (if not recognized)
-    - OPERATOR/BRACKET → STRUCTURAL (pass through)
     """
     
     # Query keywords (already normalized by Classifier)
