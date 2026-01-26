@@ -4,7 +4,7 @@ Command model for structured command representation (builder stage).
 Contains all information extracted from parsing, ready for handler execution.
 """
 
-from typing import Optional, Dict, Any, List, Union, TYPE_CHECKING
+from typing import Optional, Dict, Any, List, Union, TYPE_CHECKING, Sequence
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -81,7 +81,7 @@ class ParsedCommand(BaseModel):
     raw_input: str = Field(
         description="Original user input text"
     )
-    command_tokens: List[RecognizedToken] = Field(
+    command_tokens: List[Union[RecognizedToken, Any]] = Field(
         default_factory=list,
         description="All recognized tokens from parsing (command tokens)"
     )
@@ -117,6 +117,13 @@ class ParsedCommand(BaseModel):
         if isinstance(self.target, SchemaWord):
             return self.target.schema_class
         elif isinstance(self.target, EntityWord):
+            return self.target.entity_model
+        return None
+    
+    @property
+    def entity_model(self):
+        """Get the entity_model from target if it's an EntityWord."""
+        if isinstance(self.target, EntityWord):
             return self.target.entity_model
         return None
     
@@ -198,9 +205,30 @@ class ParsedCommand(BaseModel):
                 )
                 return None
             
+            # Ensure action_token.word is actually an ActionWord
+            if not isinstance(action_token.word, ActionWord):
+                from vlmx_sh2.enums import IssueStage
+                context.add_error(
+                    stage=IssueStage.RECOGNIZER,
+                    message=f"Expected ActionWord but got {type(action_token.word)}",
+                    error_code="invalid_action_type"
+                )
+                return None
+            
             # Extract optional components using token properties
             target_token = next((t for t in tokens if t.is_schema_word or t.is_entity_word), None)
-            target = target_token.word if target_token else None
+            target = None
+            if target_token:
+                # Ensure target is either SchemaWord or EntityWord
+                if isinstance(target_token.word, (SchemaWord, EntityWord)):
+                    target = target_token.word
+                else:
+                    from vlmx_sh2.enums import IssueStage
+                    context.add_error(
+                        stage=IssueStage.RECOGNIZER,
+                        message=f"Expected SchemaWord or EntityWord but got {type(target_token.word)}",
+                        error_code="invalid_target_type"
+                    )
             
             # Extract target name from VALUE or UNKNOWN tokens
             target_name_token = next((t for t in tokens if t.is_value or t.is_unknown), None)
@@ -211,6 +239,8 @@ class ParsedCommand(BaseModel):
             
             # Extract standalone field words (not part of assignments)
             field_words = cls._extract_standalone_field_words(tokens)
+            
+            # Store the tokens as-is (InterpretedToken should be compatible)
             
             return cls(
                 action=action_token.word,
