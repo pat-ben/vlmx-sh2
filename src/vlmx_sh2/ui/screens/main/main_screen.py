@@ -30,60 +30,34 @@ class MainScreen(Screen):
         """Handle command submission from CommandBlock."""
         command = message.command
         command_block = message.sender_widget
-        # if not command_block:
-        #     # Fallback: create a new command block for output
-        #     from ...widgets.command_block import CommandBlock
-        #     command_block = CommandBlock(context=self.context)
-        #     self.mount(command_block)
         
-        try:
-            # Parse the command
-            parse_result = self.parser.parse(command)
-            command_block.show_output(f"Command: {command}")
-            
-            # Handle parse errors
-            if parse_result.errors:
-                error_result = ErrorResult(
-                    errors=parse_result.errors,
-                    suggestions=parse_result.suggestions or []
-                )
-                await self._handle_error_result(error_result, command_block)
-                return
-            
-            # Validate handler exists
-            if not parse_result.action_handler:
-                error_result = ErrorResult(
-                    errors=["No action handler found"],
-                    suggestions=parse_result.suggestions or []
-                )
-                await self._handle_error_result(error_result, command_block)
-                return
-            
-            # Execute command
-            result = await self.parser.execute_parsed_command(parse_result, self.context)
-            
-            # Route result to appropriate handler
-            if result.type == 'form_wizard':
-                await self._handle_form_wizard(result, command_block)
-            elif result.type == 'record_picker':
-                await self._handle_record_picker(result, command_block)
-            elif result.type == 'query_wizard':
-                await self._handle_query_wizard(result, command_block)
-            elif result.type == 'command_result':
+        # Display the command
+        command_block.show_output(f"Command: {command}")
+        
+        # ONE LINE to execute - delegate everything to CommandExecutor
+        from ....core.executor import CommandExecutor
+        result = await CommandExecutor.execute(command, self.context)
+        
+        # Render based on result type
+        await self._render_result(result, command_block)
+
+
+    async def _render_result(self, result, command_block):
+        """Route result to appropriate rendering handler based on type."""
+        match result.type:
+            case 'command_result':
                 await self._handle_command_result(result, command_block)
-            elif result.type == 'error':
+            case 'error':
                 await self._handle_error_result(result, command_block)
-            else:
+            case 'form_wizard':
+                await self._handle_form_wizard(result, command_block)
+            case 'record_picker':
+                await self._handle_record_picker(result, command_block)
+            case 'query_wizard':
+                await self._handle_query_wizard(result, command_block)
+            case _:
                 command_block.show_output(f"Unknown result type: {result.type}", is_error=True)
                 self._create_new_command_block()
-                
-        except Exception as e:
-            # Catch ALL exceptions (parsing, execution, unexpected)
-            error_result = ErrorResult(
-                errors=[f"Error: {str(e)}"],
-                suggestions=["Please try again or check command syntax"]
-            )
-            await self._handle_error_result(error_result, command_block)
 
     def _create_new_command_block(self):
         """Create and mount a new command block."""

@@ -10,14 +10,39 @@ from typing import Dict, List, Any, Optional, Literal
 from pydantic import BaseModel
 
 
+class FieldSpec(BaseModel):
+    """Specification for a single form field with UI rendering metadata."""
+    name: str
+    label: str
+    field_type: Literal['text', 'number', 'date', 'select', 'boolean', 'textarea']
+    required: bool = False
+    default_value: Optional[Any] = None
+    placeholder: Optional[str] = None
+    options: Optional[List[str]] = None  # For select fields
+    help_text: Optional[str] = None
+    validation_pattern: Optional[str] = None
+    min_length: Optional[int] = None
+    max_length: Optional[int] = None
+
+
+class ColumnSpec(BaseModel):
+    """Specification for a table/picker column with display metadata."""
+    name: str
+    label: str
+    width: Optional[int] = None
+    sortable: bool = True
+
+
 class FormRequest(BaseModel):
     """Request to display a form wizard."""
     type: Literal['form_wizard'] = 'form_wizard'
     entity_id: str
     entity_name: Optional[str] = None
-    fields: List[str]
-    pre_filled_values: Dict[str, str] = {}
+    fields: List[FieldSpec]
+    pre_filled_values: Dict[str, Any] = {}
     title: str
+    submit_label: str = "Submit"
+    cancel_label: str = "Cancel"
     modal: bool = True
 
 
@@ -27,8 +52,9 @@ class PickerRequest(BaseModel):
     entity_id: str
     entity_name: Optional[str] = None
     records: List[Dict[str, Any]]
-    display_fields: List[str]
+    columns: List[ColumnSpec]
     show_add_new_option: bool = True
+    multi_select: bool = False
     title: str
     modal: bool = True
 

@@ -24,6 +24,9 @@ from .filter import Filter             # Stage 6
 from .builder import Builder           # Stage 7
 from .parser import Parser             # Pipeline Orchestrator
 
+# Legacy alias for compatibility
+VLMXParser = Parser
+
 __all__ = [
     'normalize',       # Stage 0
     'Tokenizer',       # Stage 1
@@ -34,5 +37,6 @@ __all__ = [
     'Filter',          # Stage 6
     'Builder',         # Stage 7
     'Parser',          # Pipeline Orchestrator
+    'VLMXParser',      # Legacy alias
 ]
 

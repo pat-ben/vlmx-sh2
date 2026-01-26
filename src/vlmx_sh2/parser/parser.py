@@ -201,3 +201,22 @@ class Parser:
             filter_tokens=filter_tokens
         )
     
+    @classmethod
+    async def execute_parsed_command(cls, parse_result: ParseResult, context: Context):
+        """
+        Legacy method for executing parsed commands.
+        
+        This method is kept for backward compatibility but delegates to the new
+        Router system for proper backend/UI separation.
+        
+        Args:
+            parse_result: Result from Parser.parse()
+            context: Current execution context
+            
+        Returns:
+            HandlerResult: Result from handler execution
+        """
+        # Delegate to the new Router system
+        from ..core.router import Router
+        return await Router.dispatch(parse_result, context)
+    

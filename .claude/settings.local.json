@@ -74,13 +74,15 @@
       "Bash(PYTHONPATH=src find D:Codevlmx-sh2src -name \"*.py\" -exec grep -l \"field_values\" {} ;)",
       "Bash(PYTHONPATH=src rg \"field_values\" .)",
       "Bash(PYTHONPATH=src find . -name \"*.py\" -exec grep -l \"Tokenizer\\|tokenizer\" {} ;)",
-      "Read(/D:\\/**)"
+      "Read(/D:\\/**)",
+      "Bash(PYTHONPATH=src find D:Codevlmx-sh2src -name \"*.py\" -exec grep -l \"VLMXParser\" {} ;)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
       "D:\\d\\Code",
-      "D:\\Code"
+      "D:\\Code",
+      "D:\\D\\Code"
     ]
   }
 }
