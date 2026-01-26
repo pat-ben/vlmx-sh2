@@ -5,7 +5,6 @@ Routes parsed commands to appropriate handlers and manages execution flow.
 Converts parser results into handler results while maintaining error isolation.
 """
 
-from typing import Optional
 from ..models.context import Context
 from ..models.parser import ParseResult
 from ..models.responses import HandlerResult, ErrorResult
@@ -85,19 +84,21 @@ class Router:
         This replaces the direct action_handler attribute lookup.
         """
         # Import handlers here to avoid circular imports
-        from ..handlers.crud import show_handler, create_handler, delete_handler, update_handler
-        from ..handlers.navigation import cd_handler, list_handler
+        from ..handlers.crud import show_handler, create_handler, delete_handler, add_handler, drop_handler, reset_handler
+        from ..handlers.navigation import navigate_handler
         from ..handlers.wizard import fill_handler
         
         # Map action IDs to handler functions
         handler_map = {
             'show': show_handler,
+            'list': show_handler,  # alias
             'create': create_handler,
             'delete': delete_handler,
-            'update': update_handler,
-            'cd': cd_handler,
-            'list': list_handler,
-            'ls': list_handler,  # alias
+            'add': add_handler,
+            'set': add_handler,  # alias
+            'drop': drop_handler,
+            'reset': reset_handler,
+            'cd': navigate_handler,
             'fill': fill_handler,
         }
         

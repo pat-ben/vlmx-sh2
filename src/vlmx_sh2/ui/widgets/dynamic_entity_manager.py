@@ -266,19 +266,19 @@ class DynamicEntityManager(Widget):
         if not self.data_table:
             return
         
-        # Add columns based on display fields with better formatting
-        for field in self.picker_request.display_fields:
-            # Create a nice column header
-            header = field.replace('_', ' ').title()
-            # Add icons for common field types
-            if 'date' in field.lower():
+        # Add columns based on ColumnSpec with better formatting
+        for column in self.picker_request.columns:
+            # Use the label from ColumnSpec
+            header = column.label
+            # Add icons based on column.name
+            if 'date' in column.name.lower():
                 header = f"📅 {header}"
-            elif field.lower() in ['name', 'title', 'headline']:
+            elif column.name.lower() in ['name', 'title', 'headline']:
                 header = f"📝 {header}"
-            elif field.lower() in ['category', 'type', 'status']:
+            elif column.name.lower() in ['category', 'type', 'status']:
                 header = f"🏷️ {header}"
             
-            self.data_table.add_column(header, key=field)
+            self.data_table.add_column(header, key=column.name)
         
         # Add records
         self._populate_table()
@@ -292,15 +292,14 @@ class DynamicEntityManager(Widget):
         
         for i, record in enumerate(self.filtered_records):
             row_data = []
-            for field in self.picker_request.display_fields:
-                value = record.get(field, "")
+            for column in self.picker_request.columns:
+                value = record.get(column.name, "")
                 # Truncate long values for display
                 if isinstance(value, str) and len(value) > 50:
                     value = value[:47] + "..."
                 row_data.append(str(value))
             
             # Use record index as row key
-
             self.data_table.add_row(*row_data, key=str(i))
     
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -314,9 +313,9 @@ class DynamicEntityManager(Widget):
                 # Filter records based on search term
                 self.filtered_records = []
                 for record in self.all_records:
-                    # Search in all display fields
-                    for field in self.picker_request.display_fields:
-                        value = str(record.get(field, "")).lower()
+                    # Search in all column fields
+                    for column in self.picker_request.columns:
+                        value = str(record.get(column.name, "")).lower()
                         if search_term in value:
                             self.filtered_records.append(record)
                             break
@@ -373,30 +372,36 @@ class DynamicEntityManager(Widget):
         try:
             from ...words import get_word
             from ...models.words import EntityWord
+            from ...handlers.wizard import _build_field_specs
             
             # Get entity model
             entity_word = get_word(self.picker_request.entity_id)
             if not entity_word or not isinstance(entity_word, EntityWord):
                 return
             
-            # Create form wizard request
+            # Get field names
             requested_fields = [
                 field for field in entity_word.entity_model.model_fields.keys() 
                 if field not in SYSTEM_FIELDS
             ]
             
-            # Extract pre-filled values
+            # Extract pre-filled values (maintain original types)
             pre_filled_values = {}
             for field in requested_fields:
                 if field in record_data and record_data[field] is not None:
-                    pre_filled_values[field] = str(record_data[field])
+                    pre_filled_values[field] = record_data[field]
+            
+            # Build field specifications using the wizard helper
+            field_specs = _build_field_specs(entity_word.entity_model, requested_fields, pre_filled_values)
             
             form_wizard_request = FormRequest(
                 entity_id=self.picker_request.entity_id,
                 entity_name=self.picker_request.entity_name,
-                fields=requested_fields,
+                fields=field_specs,
                 pre_filled_values=pre_filled_values,
-                title=f"Edit {self.picker_request.entity_id.title()} Record"
+                title=f"Edit {self.picker_request.entity_id.title()} Record",
+                submit_label="Save Changes",
+                cancel_label="Cancel"
             )
             
             # Create form widget without built-in buttons
@@ -418,24 +423,33 @@ class DynamicEntityManager(Widget):
         try:
             from ...words import get_word
             from ...models.words import EntityWord
+            from ...handlers.wizard import _build_field_specs
             
             # Get entity model
             entity_word = get_word(self.picker_request.entity_id)
             if not entity_word or not isinstance(entity_word, EntityWord):
                 return
             
-            # Create form wizard request for new record
+            # Get field names for new record
             requested_fields = [
                 field for field in entity_word.entity_model.model_fields.keys() 
                 if field not in SYSTEM_FIELDS
             ]
             
+            # Empty pre-filled values for new record
+            pre_filled_values = {}
+            
+            # Build field specifications using the wizard helper
+            field_specs = _build_field_specs(entity_word.entity_model, requested_fields, pre_filled_values)
+            
             form_wizard_request = FormRequest(
                 entity_id=self.picker_request.entity_id,
                 entity_name=self.picker_request.entity_name,
-                fields=requested_fields,
-                pre_filled_values={},  # Empty for new record
-                title=f"New {self.picker_request.entity_id.title()} Record"
+                fields=field_specs,
+                pre_filled_values=pre_filled_values,
+                title=f"New {self.picker_request.entity_id.title()} Record",
+                submit_label="Create",
+                cancel_label="Cancel"
             )
             
             # Create form widget without built-in buttons
