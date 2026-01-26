@@ -372,7 +372,7 @@ class DynamicEntityManager(Widget):
         try:
             from ...words import get_word
             from ...models.words import EntityWord
-            from ...handlers.wizard import _build_field_specs
+            from ...utils.field_specs import build_field_specs
             
             # Get entity model
             entity_word = get_word(self.picker_request.entity_id)
@@ -392,7 +392,7 @@ class DynamicEntityManager(Widget):
                     pre_filled_values[field] = record_data[field]
             
             # Build field specifications using the wizard helper
-            field_specs = _build_field_specs(entity_word.entity_model, requested_fields, pre_filled_values)
+            field_specs = build_field_specs(entity_word.entity_model, requested_fields, pre_filled_values)
             
             form_wizard_request = FormRequest(
                 entity_id=self.picker_request.entity_id,
@@ -423,7 +423,7 @@ class DynamicEntityManager(Widget):
         try:
             from ...words import get_word
             from ...models.words import EntityWord
-            from ...handlers.wizard import _build_field_specs
+            from ...utils.field_specs import build_field_specs
             
             # Get entity model
             entity_word = get_word(self.picker_request.entity_id)
@@ -440,7 +440,7 @@ class DynamicEntityManager(Widget):
             pre_filled_values = {}
             
             # Build field specifications using the wizard helper
-            field_specs = _build_field_specs(entity_word.entity_model, requested_fields, pre_filled_values)
+            field_specs = build_field_specs(entity_word.entity_model, requested_fields, pre_filled_values)
             
             form_wizard_request = FormRequest(
                 entity_id=self.picker_request.entity_id,

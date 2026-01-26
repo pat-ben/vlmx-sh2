@@ -107,10 +107,6 @@ class ParseResult(BaseModel):
     
     # Command-related properties (for backward compatibility)
     
-    @property
-    def action_handler(self):
-        """Get handler function from command."""
-        return self.command.action_handler if self.command else None
     
     @property
     def entity_model(self):
@@ -124,10 +120,6 @@ class ParseResult(BaseModel):
         """Get entity name from command."""
         return self.command.entity_name if self.command else None
     
-    @property
-    def has_complete_action(self) -> bool:
-        """True if we have a valid command with action handler."""
-        return self.is_valid and self.command is not None and self.command.action_handler is not None
     
     @property
     def word_types_present(self) -> List[WordType]:

@@ -127,10 +127,6 @@ class ParsedCommand(BaseModel):
             return self.target.entity_model
         return None
     
-    @property
-    def action_handler(self):
-        """Get the handler function from the action word."""
-        return self.action.handler
     
     @property
     def has_target_name(self) -> bool:

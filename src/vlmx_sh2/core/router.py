@@ -78,30 +78,10 @@ class Router:
     @classmethod
     def _get_handler_function(cls, action_word):
         """
-        Get the handler function for an action word.
+        Get the handler function from the action word.
         
-        Maps action words to their corresponding handler functions.
-        This replaces the direct action_handler attribute lookup.
+        ActionWord objects already contain their handler function,
+        so we just return it directly. This eliminates the need for
+        duplicated handler mappings.
         """
-        # Import handlers here to avoid circular imports
-        from ..handlers.crud import show_handler, create_handler, delete_handler, add_handler, drop_handler, reset_handler
-        from ..handlers.navigation import navigate_handler
-        from ..handlers.wizard import fill_handler
-        
-        # Map action IDs to handler functions
-        handler_map = {
-            'show': show_handler,
-            'list': show_handler,  # alias
-            'create': create_handler,
-            'delete': delete_handler,
-            'add': add_handler,
-            'set': add_handler,  # alias
-            'drop': drop_handler,
-            'reset': reset_handler,
-            'cd': navigate_handler,
-            'fill': fill_handler,
-        }
-        
-        # Get action ID from action word
-        action_id = getattr(action_word, 'id', str(action_word)).lower()
-        return handler_map.get(action_id)
+        return getattr(action_word, 'handler', None)

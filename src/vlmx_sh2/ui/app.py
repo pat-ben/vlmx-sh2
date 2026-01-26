@@ -2,7 +2,6 @@
 
 from textual.app import App
 
-from ..parser import VLMXParser
 from ..models.context import Context
 from .screens import MainScreen
 
@@ -15,12 +14,11 @@ class VLMX(App):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.parser = VLMXParser()
         self.context = Context(level=0)
 
     def on_mount(self) -> None:
         """Push the main screen when app mounts."""
-        self.push_screen(MainScreen(self.parser, self.context))
+        self.push_screen(MainScreen(self.context))
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""

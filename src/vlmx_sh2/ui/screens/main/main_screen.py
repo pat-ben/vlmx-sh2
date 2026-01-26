@@ -4,7 +4,6 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Footer, Header
 
-from ....parser import VLMXParser
 from ....models.context import Context
 from ....models.responses import CommandResult, ErrorResult, FormRequest, PickerRequest, QueryRequest
 from ...results import format_command_result
@@ -14,9 +13,8 @@ from ...widgets.command_block import CommandBlock
 class MainScreen(Screen):
     """Main terminal screen for command execution."""
     
-    def __init__(self, parser: VLMXParser, context: Context):
+    def __init__(self, context: Context):
         super().__init__()
-        self.parser = parser
         self.context = context
         self._current_record_id = None  # Store record ID for updates
 
