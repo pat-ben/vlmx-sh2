@@ -17,7 +17,6 @@ from .interpretation import InterpretedToken
 from .parsing import ParseResult
 from .command import ParsedCommand
 from .splitting import SplitResult
-from .exceptions import FilterParseError
 
 __all__ = [
     # Enums
@@ -37,6 +36,4 @@ __all__ = [
     "ParseResult",
     "ParsedCommand",
     
-    # Exceptions
-    "FilterParseError",
 ]

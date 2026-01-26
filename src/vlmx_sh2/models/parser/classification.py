@@ -40,15 +40,8 @@ class ClassifiedToken(BaseModel):
         >>> ClassifiedToken(text="[", token_class=TokenClass.BRACKET, bracket=Bracket.BRACKET_OPEN)
     """
     
-    # Token data
-    text: str = Field(
-        description="Token text with quotes stripped (classifier's job)"
-    )
-    
-    # Structural classification (added by classifier)
-    token_class: TokenClass = Field(
-        description="Structural classification (TEXT | OPERATOR | BRACKET)"
-    )
+    text: str = Field(description="Token text with quotes stripped (classifier's job)")
+    token_class: TokenClass = Field(description="Structural classification (TEXT | OPERATOR | BRACKET)")
     was_quoted: Optional[bool] = Field(
         default=None,
         description="True if originally in quotes (TEXT tokens only, None for non-TEXT tokens)"

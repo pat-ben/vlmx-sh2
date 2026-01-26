@@ -1,5 +1,5 @@
 """
-ParsedCommand model for structured command representation.
+Command model for structured command representation (builder stage).
 
 Contains all information extracted from parsing, ready for handler execution.
 """
@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from .recognition import RecognizedToken
 from .filtering import FilterExpression
-from ..words import ActionWord, SchemaWord, EntityWord, FieldWord
+from ..words import ActionWord, SchemaWord, EntityWord
 
 if TYPE_CHECKING:
     from .interpretation import InterpretedToken

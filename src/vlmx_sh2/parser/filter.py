@@ -20,7 +20,7 @@ Operator precedence (highest to lowest):
 """
 
 from typing import List, Optional
-from ..models.parser import InterpretedToken, SplitResult, FilterParseError
+from ..models.parser import InterpretedToken, SplitResult
 from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator
 from ..models.validation import ValidationContext
 from vlmx_sh2.enums import IssueStage, QueryWord, Bracket
@@ -95,29 +95,25 @@ class Filter:
         Validator.validate_tokens(IssueStage.FILTER, context, tokens=filter_tokens)
         
         # Step 3: Parse using recursive descent
-        try:
-            parser_instance = cls(filter_tokens, context)
-            expression = parser_instance._parse_expression()
-            
-            # Ensure we consumed all tokens
-            if parser_instance.position < len(filter_tokens):
-                remaining_tokens = filter_tokens[parser_instance.position:]
-                remaining_text = ' '.join(token.text for token in remaining_tokens)
-                context.add_error(
-                    stage=IssueStage.FILTER,
-                    message=f"Unexpected tokens after filter expression: {remaining_text}",
-                    token_text=remaining_tokens[0].text if remaining_tokens else ""
-                )
-                return None
-            
-            return expression
-            
-        except FilterParseError as e:
+        parser_instance = cls(filter_tokens, context)
+        expression = parser_instance._parse_expression()
+        
+        # Return None if parsing failed
+        if parser_instance._has_error or expression is None:
+            return None
+        
+        # Ensure we consumed all tokens
+        if parser_instance.position < len(filter_tokens):
+            remaining_tokens = filter_tokens[parser_instance.position:]
+            remaining_text = ' '.join(token.text for token in remaining_tokens)
             context.add_error(
                 stage=IssueStage.FILTER,
-                message=str(e)
+                message=f"Unexpected tokens after filter expression: {remaining_text}",
+                token_text=remaining_tokens[0].text if remaining_tokens else ""
             )
             return None
+        
+        return expression
     
     # =============================================================================
     # Parser Instance for Recursive Descent
@@ -128,6 +124,7 @@ class Filter:
         self.tokens = tokens
         self.context = context
         self.position = 0
+        self._has_error = False
     
     def _current_token(self) -> Optional[InterpretedToken]:
         """Get current token or None if at end."""
@@ -149,11 +146,20 @@ class Filter:
             self.position += 1
         return token
     
+    def _add_error(self, message: str, token_text: str = "") -> None:
+        """Add error to validation context and mark parsing as failed."""
+        self.context.add_error(
+            stage=IssueStage.FILTER,
+            message=message,
+            token_text=token_text
+        )
+        self._has_error = True
+    
     # =============================================================================
     # Recursive Descent Grammar Implementation
     # =============================================================================
     
-    def _parse_expression(self) -> FilterExpression:
+    def _parse_expression(self) -> Optional[FilterExpression]:
         """
         Parse tokens into FilterExpression using recursive descent.
         
@@ -161,30 +167,32 @@ class Filter:
         expression := or_expr
         
         Returns:
-            Parsed FilterExpression
-            
-        Raises:
-            FilterParseError: If parsing fails
+            Parsed FilterExpression or None if parsing fails
         """
         if not self.tokens:
-            raise FilterParseError("Empty filter expression")
+            self._add_error("Empty filter expression")
+            return None
         
         return self._parse_or_expression()
     
-    def _parse_or_expression(self) -> FilterExpression:
+    def _parse_or_expression(self) -> Optional[FilterExpression]:
         """
         Parse OR expressions: and_expr ('OR' and_expr)*
         
         OR has lowest precedence, so it's at the top level.
         
         Returns:
-            FilterExpression (single or OR tree)
+            FilterExpression (single or OR tree) or None if parsing fails
         """
         left_expr = self._parse_and_expression()
+        if self._has_error or left_expr is None:
+            return None
         
         while self._current_token() and self._is_or_keyword(self._current_token()):
             self._consume_token()  # consume 'OR'
             right_expr = self._parse_and_expression()
+            if self._has_error or right_expr is None:
+                return None
             left_expr = FilterExpression(
                 left=left_expr,
                 operator=LogicalOperator.OR,
@@ -193,7 +201,7 @@ class Filter:
         
         return left_expr
     
-    def _parse_and_expression(self) -> FilterExpression:
+    def _parse_and_expression(self) -> Optional[FilterExpression]:
         """
         Parse AND expressions: condition (('AND' | IMPLICIT_AND) condition)*
         
@@ -201,9 +209,11 @@ class Filter:
         AND has higher precedence than OR.
         
         Returns:
-            FilterExpression (single condition or AND tree)
+            FilterExpression (single condition or AND tree) or None if parsing fails
         """
         left_expr = self._parse_condition()
+        if self._has_error or left_expr is None:
+            return None
         
         while self._current_token():
             current = self._current_token()
@@ -212,6 +222,8 @@ class Filter:
             if self._is_and_keyword(current):
                 self._consume_token()  # consume 'AND'
                 right_expr = self._parse_condition()
+                if self._has_error or right_expr is None:
+                    return None
                 left_expr = FilterExpression(
                     left=left_expr,
                     operator=LogicalOperator.AND,
@@ -220,6 +232,8 @@ class Filter:
             # Check for implicit AND (start of new condition)
             elif self._is_condition_start():
                 right_expr = self._parse_condition()
+                if self._has_error or right_expr is None:
+                    return None
                 left_expr = FilterExpression(
                     left=left_expr,
                     operator=LogicalOperator.AND,
@@ -231,18 +245,19 @@ class Filter:
         
         return left_expr
     
-    def _parse_condition(self) -> FilterExpression:
+    def _parse_condition(self) -> Optional[FilterExpression]:
         """
         Parse single condition: '(' expression ')' | field operator value
         
         Handles parenthesized expressions and simple field conditions.
         
         Returns:
-            FilterExpression (grouped or single condition)
+            FilterExpression (grouped or single condition) or None if parsing fails
         """
         current = self._current_token()
         if not current:
-            raise FilterParseError("Expected condition but found end of input")
+            self._add_error("Expected condition but found end of input")
+            return None
         
         # Check for grouped expression: ( ... )
         if self._is_open_paren(current):
@@ -251,43 +266,48 @@ class Filter:
         # Parse simple condition: field operator value
         return self._parse_simple_condition()
     
-    def _parse_grouped_expression(self) -> FilterExpression:
+    def _parse_grouped_expression(self) -> Optional[FilterExpression]:
         """
         Parse grouped expression: '(' expression ')'
         
         Returns:
-            FilterExpression with grouped field set
+            FilterExpression with grouped field set or None if parsing fails
         """
         # Consume opening parenthesis
         open_paren = self._consume_token()
         if not self._is_open_paren(open_paren):
             token_text = open_paren.text if open_paren else "end of input"
-            raise FilterParseError(f"Expected '(' but found '{token_text}'")
+            self._add_error(f"Expected '(' but found '{token_text}'", token_text)
+            return None
         
         # Parse inner expression
         inner_expr = self._parse_expression()
+        if self._has_error or inner_expr is None:
+            return None
         
         # Consume closing parenthesis
         close_paren = self._consume_token()
         if not close_paren or not self._is_close_paren(close_paren):
             if close_paren:
-                raise FilterParseError(f"Expected ')' but found '{close_paren.text}'")
+                self._add_error(f"Expected ')' but found '{close_paren.text}'", close_paren.text)
             else:
-                raise FilterParseError("Expected ')' but found end of input")
+                self._add_error("Expected ')' but found end of input")
+            return None
         
         return FilterExpression(grouped=inner_expr)
     
-    def _parse_simple_condition(self) -> FilterExpression:
+    def _parse_simple_condition(self) -> Optional[FilterExpression]:
         """
         Parse simple condition: field operator value
         
         Returns:
-            FilterExpression with condition field set
+            FilterExpression with condition field set or None if parsing fails
         """
         # Need at least 3 tokens: field operator value
         available = len(self.tokens) - self.position
         if available < 3:
-            raise FilterParseError(f"Condition requires field, operator, and value (found {available} tokens)")
+            self._add_error(f"Condition requires field, operator, and value (found {available} tokens)")
+            return None
         
         # Extract field, operator, value
         field_token = self._consume_token()
@@ -296,16 +316,19 @@ class Filter:
         
         # Validate field
         if not field_token or not field_token.text:
-            raise FilterParseError("Empty field name")
+            self._add_error("Empty field name", field_token.text if field_token else "")
+            return None
         
         # Validate operator
         if not operator_token or not hasattr(operator_token, 'operator') or not operator_token.operator:
             operator_text = operator_token.text if operator_token else "None"
-            raise FilterParseError(f"Invalid operator: {operator_text}")
+            self._add_error(f"Invalid operator: {operator_text}", operator_text)
+            return None
         
         # Validate value
         if not value_token or not value_token.text:
-            raise FilterParseError("Empty value")
+            self._add_error("Empty value", value_token.text if value_token else "")
+            return None
         
         # Build condition
         condition = FilterCondition(
