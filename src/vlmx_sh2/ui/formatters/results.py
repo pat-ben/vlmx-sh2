@@ -7,10 +7,10 @@ confirmations. Provides structured result objects and text formatting.
 """
 
 from typing import Optional, TYPE_CHECKING
-from ..diagnostics.suggestions import SuggestionEngine
+from vlmx_sh2.diagnostics.suggestions import SuggestionEngine
 
 if TYPE_CHECKING:
-    from ..models.parser import ParseResult
+    from vlmx_sh2.models.parser import ParseResult
 
 
 def format_command_result(result, parse_result: Optional["ParseResult"] = None) -> str:

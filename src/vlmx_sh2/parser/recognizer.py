@@ -16,7 +16,7 @@ from ..models.validation import ValidationContext
 from ..models.words import Word, WordType
 from ..words import get_all_words, get_word
 from ..diagnostics import Validator
-from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage, QueryWord
+from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage, QueryWord, RangeWord
 
 
 class Recognizer:
@@ -31,6 +31,12 @@ class Recognizer:
     _QUERY_WORDS: Dict[str, QueryWord] = {
         "and": QueryWord.AND,
         "or": QueryWord.OR,
+    }
+    
+    # Range keywords (already normalized by Classifier)
+    # Classifier handles symbol normalization: .. → to
+    _RANGE_WORDS: Dict[str, RangeWord] = {
+        "to": RangeWord.TO,
     }
     
     # Lazy-loaded class-level cache
@@ -215,7 +221,13 @@ class Recognizer:
         if query_word:
             return cls._create_token(classified_token, TokenType.QUERY, query_word=query_word)
         
-        # Priority 3: Try word registry lookup
+        # Priority 3: Check if it's a range keyword (to/..)
+        range_word = cls._match_range_word(classified_token.text)
+        
+        if range_word:
+            return cls._create_token(classified_token, TokenType.QUERY, range_word=range_word)
+        
+        # Priority 4: Try word registry lookup
         word = cls._match_word_in_registry(classified_token.text)
         
         if word:
@@ -252,6 +264,13 @@ class Recognizer:
         """
         return cls._QUERY_WORDS.get(text.lower())
     
+    @classmethod
+    def _match_range_word(cls, text: str) -> Optional[RangeWord]:
+        """
+        Check if text is a range keyword (to/..).
+        """
+        return cls._RANGE_WORDS.get(text.lower())
+    
     
     # =============================================================================
     # Token Factory - RecognizedToken Construction
@@ -264,7 +283,8 @@ class Recognizer:
         token_type: TokenType,
         word: Optional[Word] = None,
         value_context: Optional[ValueContext] = None,
-        query_word: Optional[QueryWord] = None
+        query_word: Optional[QueryWord] = None,
+        range_word: Optional[RangeWord] = None
     ) -> RecognizedToken:
         """
         Unified factory for creating RecognizedToken objects.
@@ -275,6 +295,7 @@ class Recognizer:
             word: Word object (for WORD tokens only)
             value_context: Value context (for VALUE tokens only)
             query_word: Query keyword (for QUERY tokens only)
+            range_word: Range keyword (for QUERY tokens only)
             
         Returns:
             RecognizedToken with appropriate fields populated
@@ -288,7 +309,8 @@ class Recognizer:
             token_type=token_type,
             word=word,
             value_context=value_context,
-            query_word=query_word
+            query_word=query_word,
+            range_word=range_word
         )
     
     

@@ -1,7 +1,7 @@
 """Filter application for dynamic table filtering."""
 
 from typing import List, Dict, Any, Union
-from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator
+from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator, ValueExpression
 from vlmx_sh2.enums import Operator
 
 
@@ -50,9 +50,42 @@ def _evaluate_condition(record: Dict[str, Any], condition: FilterCondition) -> b
     record_value = record.get(condition.field)
     
     try:
-        return _apply_operator(record_value, condition.operator, condition.value)
+        return _evaluate_value_expression(record_value, condition.operator, condition.value)
     except Exception as e:
         raise FilterApplicationError(f"Condition evaluation failed for {condition.field}: {str(e)}")
+
+
+def _evaluate_value_expression(
+    record_value: Any,
+    operator: Operator,
+    value_expr: ValueExpression
+) -> bool:
+    """Recursively evaluate a ValueExpression against a record value."""
+    
+    # Simple value
+    if value_expr.is_simple_value:
+        return _apply_operator(record_value, operator, value_expr.simple)
+    
+    # Range value
+    if value_expr.is_range_value:
+        result = True
+        if value_expr.range_start is not None:
+            result = result and _apply_operator(record_value, Operator.GREATER_EQUAL, value_expr.range_start)
+        if value_expr.range_end is not None:
+            result = result and _apply_operator(record_value, Operator.LESS_EQUAL, value_expr.range_end)
+        return result
+    
+    # Compound value (left LOGIC right)
+    if value_expr.is_compound_value:
+        left_result = _evaluate_value_expression(record_value, operator, value_expr.left)
+        right_result = _evaluate_value_expression(record_value, operator, value_expr.right)
+        
+        if value_expr.logic == LogicalOperator.OR:
+            return left_result or right_result
+        else:  # AND
+            return left_result and right_result
+    
+    raise FilterApplicationError(f"Invalid value expression structure: {value_expr}")
 
 
 def _apply_operator(record_value: Any, operator: Operator, filter_value: Any) -> bool:

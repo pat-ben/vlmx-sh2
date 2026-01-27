@@ -22,6 +22,7 @@ class Classifier:
     # =============================================================================
 
     _QUERY_SYMBOLS = {"&": "and", "&&": "and", "|": "or", "||": "or"}
+    _RANGE_SYMBOLS = {"..": "to"}
     _OPERATOR_VALUES = {op.value for op in Operator}  # Set for membership checks    
     
     # =============================================================================
@@ -53,15 +54,22 @@ class Classifier:
     # PRIVATE HELPERS
     # =============================================================================
     @classmethod
-    def _normalize_query_symbol(cls, text: str) -> str:
+    def _normalize_symbol(cls, text: str) -> str:
         """
-        Normalize query symbols to their word equivalents.
+        Normalize symbols to their word equivalents.
         
         Converts symbols like & and | to their keyword forms (and, or)
+        and range symbols like .. to their word forms (to)
         to ensure consistent handling throughout the parsing pipeline.
 
         """
-        return cls._QUERY_SYMBOLS.get(text, text)
+        # Check query symbols first
+        if text in cls._QUERY_SYMBOLS:
+            return cls._QUERY_SYMBOLS[text]
+        # Check range symbols  
+        if text in cls._RANGE_SYMBOLS:
+            return cls._RANGE_SYMBOLS[text]
+        return text
 
     @staticmethod
     def _unescape_quotes(text: str) -> str:
@@ -85,8 +93,8 @@ class Classifier:
         """
         text = token.text
         
-        # Normalize query keyword symbols to words before classification
-        normalized_text = cls._normalize_query_symbol(text)
+        # Normalize query keyword symbols and range symbols to words before classification
+        normalized_text = cls._normalize_symbol(text)
         
         # Check for operators using normalized text
         if normalized_text in cls._OPERATOR_VALUES:

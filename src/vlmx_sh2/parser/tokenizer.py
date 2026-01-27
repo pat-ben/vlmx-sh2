@@ -14,6 +14,7 @@ from vlmx_sh2.enums import Bracket, Operator
 # Shared constants (also used by Classifier, next stage)
 BRACKET_VALUES = {bracket.value for bracket in Bracket}
 OPERATORS_BY_LENGTH = sorted([op.value for op in Operator], key=len, reverse=True)
+RANGE_OPERATORS = [".."]  # Range operator
 
 
 
@@ -150,11 +151,19 @@ class Tokenizer:
     @classmethod
     def _find_operator(cls, token_text: str) -> tuple[str, str, str] | None:
         """Find operator in token. Returns (key, operator, value) or None."""
+        # Check regular operators first (longer first)
         for operator in OPERATORS_BY_LENGTH:
             if operator in token_text:
                 parts = token_text.split(operator, 1)
                 if len(parts) == 2 and parts[0]:  # Valid split with non-empty key
                     return parts[0], operator, parts[1]
+        
+        # Check range operators
+        for range_op in RANGE_OPERATORS:
+            if range_op in token_text:
+                parts = token_text.split(range_op, 1)
+                if len(parts) == 2:  # Range can have empty start or end
+                    return parts[0], range_op, parts[1]
         return None
 
     @classmethod  

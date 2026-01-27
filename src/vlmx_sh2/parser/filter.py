@@ -8,10 +8,18 @@ Input: SplitResult with filter_tokens: List[InterpretedToken]
 Output: FilterExpression (recursive AST with AND/OR/grouped)
 
 Grammar:
-    expression  := or_expr
-    or_expr     := and_expr ('OR' and_expr)*
-    and_expr    := condition (('AND' | IMPLICIT_AND) condition)*
-    condition   := '(' expression ')' | field operator value
+    expression   := or_expr
+    or_expr      := and_expr ('OR' and_expr)*
+    and_expr     := condition (('AND' | IMPLICIT_AND) condition)*
+    condition    := '(' expression ')' | field operator value_expr
+
+    value_expr   := value_or
+    value_or     := value_and ('OR' value_and)*
+    value_and    := value_term ('AND' value_term)*
+    value_term   := '(' value_expr ')' | range_value | simple_value
+    range_value  := simple_value 'TO' simple_value
+                  | simple_value 'TO'                  # Open-ended: >= value
+                  | 'TO' simple_value                  # Open-ended: <= value
 
 Operator precedence (highest to lowest):
     1. Parentheses ( )
@@ -21,9 +29,9 @@ Operator precedence (highest to lowest):
 
 from typing import List, Optional
 from ..models.parser import InterpretedToken, SplitResult
-from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator
+from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator, ValueExpression
 from ..models.validation import ValidationContext
-from vlmx_sh2.enums import IssueStage, QueryWord, Bracket
+from vlmx_sh2.enums import IssueStage, QueryWord, Bracket, RangeWord
 from ..diagnostics import Validator
 
 
@@ -298,7 +306,7 @@ class Filter:
     
     def _parse_simple_condition(self) -> Optional[FilterExpression]:
         """
-        Parse simple condition: field operator value
+        Parse simple condition: field operator value_expr
         
         Returns:
             FilterExpression with condition field set or None if parsing fails
@@ -309,10 +317,9 @@ class Filter:
             self._add_error(f"Condition requires field, operator, and value (found {available} tokens)")
             return None
         
-        # Extract field, operator, value
+        # Extract field and operator
         field_token = self._consume_token()
         operator_token = self._consume_token()
-        value_token = self._consume_token()
         
         # Validate field
         if not field_token or not field_token.text:
@@ -325,19 +332,225 @@ class Filter:
             self._add_error(f"Invalid operator: {operator_text}", operator_text)
             return None
         
-        # Validate value
-        if not value_token or not value_token.text:
-            self._add_error("Empty value", value_token.text if value_token else "")
+        # Parse value expression
+        value_expression = self._parse_value_expression()
+        if self._has_error or value_expression is None:
             return None
         
         # Build condition
         condition = FilterCondition(
             field=field_token.text,
             operator=operator_token.operator,
-            value=value_token.text
+            value=value_expression
         )
         
         return FilterExpression(condition=condition)
+    
+    # =============================================================================
+    # Value Expression Parsing
+    # =============================================================================
+    
+    def _parse_value_expression(self) -> Optional[ValueExpression]:
+        """
+        Parse value expression: value_or
+        
+        Entry point for value parsing.
+        
+        Returns:
+            ValueExpression or None if parsing fails
+        """
+        return self._parse_value_or()
+    
+    def _parse_value_or(self) -> Optional[ValueExpression]:
+        """
+        Parse value OR expressions: value_and ('OR' value_and)*
+        
+        Handles: product|team|market
+        
+        Returns:
+            ValueExpression (simple or OR tree) or None if parsing fails
+        """
+        left_expr = self._parse_value_and()
+        if self._has_error or left_expr is None:
+            return None
+        
+        while self._current_token() and self._is_or_keyword(self._current_token()) and self._is_in_value_context():
+            self._consume_token()  # consume 'OR' / '|'
+            right_expr = self._parse_value_and()
+            if self._has_error or right_expr is None:
+                return None
+            left_expr = ValueExpression(
+                left=left_expr,
+                logic=LogicalOperator.OR,
+                right=right_expr
+            )
+        
+        return left_expr
+    
+    def _parse_value_and(self) -> Optional[ValueExpression]:
+        """
+        Parse value AND expressions: value_term ('AND' value_term)*
+        
+        Handles: (product|team)&market
+        
+        Returns:
+            ValueExpression (simple or AND tree) or None if parsing fails
+        """
+        left_expr = self._parse_value_term()
+        if self._has_error or left_expr is None:
+            return None
+        
+        while self._current_token() and self._is_and_keyword(self._current_token()) and self._is_in_value_context():
+            self._consume_token()  # consume 'AND' / '&'
+            right_expr = self._parse_value_term()
+            if self._has_error or right_expr is None:
+                return None
+            left_expr = ValueExpression(
+                left=left_expr,
+                logic=LogicalOperator.AND,
+                right=right_expr
+            )
+        
+        return left_expr
+    
+    def _parse_value_term(self) -> Optional[ValueExpression]:
+        """
+        Parse value term: '(' value_expr ')' | range_value | simple_value
+        
+        Handles parentheses, ranges, or simple values.
+        
+        Returns:
+            ValueExpression or None if parsing fails
+        """
+        current = self._current_token()
+        if not current:
+            self._add_error("Expected value but found end of input")
+            return None
+        
+        # Check for grouped value expression: ( ... )
+        if self._is_open_paren(current):
+            return self._parse_grouped_value_expression()
+        
+        # Try to parse as range or simple value
+        return self._parse_range_or_simple_value()
+    
+    def _parse_grouped_value_expression(self) -> Optional[ValueExpression]:
+        """
+        Parse grouped value expression: '(' value_expr ')'
+        
+        Returns:
+            ValueExpression or None if parsing fails
+        """
+        # Consume opening parenthesis
+        open_paren = self._consume_token()
+        if not self._is_open_paren(open_paren):
+            token_text = open_paren.text if open_paren else "end of input"
+            self._add_error(f"Expected '(' but found '{token_text}'", token_text)
+            return None
+        
+        # Parse inner value expression
+        inner_expr = self._parse_value_expression()
+        if self._has_error or inner_expr is None:
+            return None
+        
+        # Consume closing parenthesis
+        close_paren = self._consume_token()
+        if not close_paren or not self._is_close_paren(close_paren):
+            if close_paren:
+                self._add_error(f"Expected ')' but found '{close_paren.text}'", close_paren.text)
+            else:
+                self._add_error("Expected ')' but found end of input")
+            return None
+        
+        return inner_expr  # Return inner expression directly, parentheses are just grouping
+    
+    def _parse_range_or_simple_value(self) -> Optional[ValueExpression]:
+        """
+        Parse range value or simple value.
+        
+        Handles:
+        - Simple value: "product"
+        - Range: 2022..2029, 2022.., ..2029
+        
+        Returns:
+            ValueExpression or None if parsing fails
+        """
+        current = self._current_token()
+        if not current:
+            self._add_error("Expected value but found end of input")
+            return None
+        
+        # Check if we start with 'TO' (..2029 case)
+        if self._is_range_keyword(current):
+            return self._parse_open_end_range()
+        
+        # Consume first value
+        start_value = self._consume_token()
+        if not start_value or not start_value.text:
+            self._add_error("Empty value", start_value.text if start_value else "")
+            return None
+        
+        # Check if next token is 'TO' (range case)
+        next_token = self._current_token()
+        if next_token and self._is_range_keyword(next_token):
+            return self._parse_range_value(start_value.text)
+        
+        # Simple value case
+        return ValueExpression(simple=start_value.text)
+    
+    def _parse_range_value(self, start_value: str) -> Optional[ValueExpression]:
+        """
+        Parse range value: start_value TO [end_value]
+        
+        Handles: 2022 TO 2029, 2022 TO (open-ended)
+        
+        Args:
+            start_value: Already consumed start value
+            
+        Returns:
+            ValueExpression with range or None if parsing fails
+        """
+        # Consume 'TO'
+        to_token = self._consume_token()
+        if not self._is_range_keyword(to_token):
+            token_text = to_token.text if to_token else "end of input"
+            self._add_error(f"Expected 'to' but found '{token_text}'", token_text)
+            return None
+        
+        # Check if there's an end value (not end of value expression)
+        next_token = self._current_token()
+        if next_token and self._is_value_token(next_token) and not self._is_next_condition_start():
+            # Consume end value
+            end_value_token = self._consume_token()
+            return ValueExpression(range_start=start_value, range_end=end_value_token.text)
+        else:
+            # Open-ended range: 2022..
+            return ValueExpression(range_start=start_value, range_end=None)
+    
+    def _parse_open_end_range(self) -> Optional[ValueExpression]:
+        """
+        Parse open-ended range: TO end_value
+        
+        Handles: ..2029
+        
+        Returns:
+            ValueExpression with range or None if parsing fails
+        """
+        # Consume 'TO'
+        to_token = self._consume_token()
+        if not self._is_range_keyword(to_token):
+            token_text = to_token.text if to_token else "end of input"
+            self._add_error(f"Expected 'to' but found '{token_text}'", token_text)
+            return None
+        
+        # Must have an end value
+        next_token = self._current_token()
+        if not next_token or not self._is_value_token(next_token):
+            self._add_error("Expected value after 'to' in range expression")
+            return None
+        
+        end_value_token = self._consume_token()
+        return ValueExpression(range_start=None, range_end=end_value_token.text)
     
     # =============================================================================
     # Token Type Detection Utilities
@@ -358,6 +571,35 @@ class Filter:
     def _is_close_paren(self, token: Optional[InterpretedToken]) -> bool:
         """Check if token is closing parenthesis ')'."""
         return token is not None and token.bracket == Bracket.PAREN_CLOSE
+    
+    def _is_range_keyword(self, token: Optional[InterpretedToken]) -> bool:
+        """Check if token is 'TO' range keyword."""
+        return token is not None and token.range_word == RangeWord.TO
+    
+    def _is_value_token(self, token: Optional[InterpretedToken]) -> bool:
+        """Check if token can be used as a value (not an operator, keyword, or bracket)."""
+        if not token:
+            return False
+        return not (token.operator or token.query_word or token.range_word or token.bracket)
+    
+    def _is_in_value_context(self) -> bool:
+        """Check if we're still in value parsing context (not at start of new condition)."""
+        return not self._is_next_condition_start()
+    
+    def _is_next_condition_start(self) -> bool:
+        """Check if upcoming tokens start a new condition (lookahead for field operator pattern)."""
+        current = self._current_token()
+        next_token = self._peek_token()
+        
+        if not current or not next_token:
+            return False
+        
+        # Skip if current token is a keyword or bracket
+        if current.query_word or current.bracket:
+            return False
+        
+        # Check if next token is an operator (indicates field=value pattern)
+        return next_token.operator is not None
     
     def _is_condition_start(self) -> bool:
         """Check if current position starts a condition (field operator value pattern)."""

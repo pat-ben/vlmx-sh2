@@ -6,7 +6,7 @@ from textual.widgets import Footer, Header
 
 from ....models.context import Context
 from ....models.responses import CommandResult, ErrorResult, FormRequest, PickerRequest, QueryRequest
-from ...results import format_command_result
+from vlmx_sh2.ui.formatters.results import format_command_result
 from ...widgets.command_block import CommandBlock
 
 

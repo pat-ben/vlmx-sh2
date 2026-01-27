@@ -18,6 +18,98 @@ class LogicalOperator(str, Enum):
     OR = "or"
 
 
+class ValueExpression(BaseModel):
+    """
+    Recursive value expression tree for complex filter values.
+    
+    Can represent:
+    1. Simple value: "product"
+    2. Range value: 2022..2029
+    3. Compound value: (product|team)&market
+    
+    Examples:
+        - Simple: ValueExpression(simple="product")
+        - Range: ValueExpression(range_start="2022", range_end="2029")
+        - OR: ValueExpression(left=..., logic=OR, right=...)
+        - AND: ValueExpression(left=..., logic=AND, right=...)
+    """
+    
+    # Simple value
+    simple: Optional[str] = Field(
+        default=None,
+        description="Simple string value"
+    )
+    
+    # Range value (start TO end)
+    range_start: Optional[str] = Field(
+        default=None,
+        description="Range start value (None = open-ended ..2029)"
+    )
+    range_end: Optional[str] = Field(
+        default=None,
+        description="Range end value (None = open-ended 2022..)"
+    )
+    
+    # Compound value (left LOGIC right)
+    left: Optional["ValueExpression"] = Field(
+        default=None,
+        description="Left side of logical value expression"
+    )
+    logic: Optional[LogicalOperator] = Field(
+        default=None,
+        description="Logical operator for value combination (OR/AND)"
+    )
+    right: Optional["ValueExpression"] = Field(
+        default=None,
+        description="Right side of logical value expression"
+    )
+    
+    class Config:
+        arbitrary_types_allowed = True
+    
+    def __str__(self) -> str:
+        """String representation of the value expression."""
+        if self.simple is not None:
+            return self.simple
+        elif self.range_start is not None or self.range_end is not None:
+            start = self.range_start or ""
+            end = self.range_end or ""
+            return f"{start}..{end}"
+        elif self.left and self.logic and self.right:
+            return f"{self.left}{self.logic.value[0]}{self.right}"  # Use | or &
+        else:
+            return "EmptyValue"
+    
+    @property
+    def is_simple_value(self) -> bool:
+        """True if this is a simple value."""
+        return self.simple is not None
+    
+    @property
+    def is_range_value(self) -> bool:
+        """True if this is a range value."""
+        return self.range_start is not None or self.range_end is not None
+    
+    @property
+    def is_compound_value(self) -> bool:
+        """True if this is a compound value (left logic right)."""
+        return all([self.left, self.logic, self.right])
+    
+    def validate_structure(self) -> bool:
+        """
+        Validate that exactly one value type is set.
+        
+        Returns:
+            True if valid structure, False otherwise
+        """
+        types_set = sum([
+            self.simple is not None,
+            self.is_range_value,
+            self.is_compound_value
+        ])
+        return types_set == 1
+
+
 class FilterCondition(BaseModel):
     """
     Single filter condition: field operator value.
@@ -34,7 +126,7 @@ class FilterCondition(BaseModel):
     """
     field: str = Field(description="Field name to filter on")
     operator: Operator = Field(description="Comparison operator")
-    value: Any = Field(description="Value to compare against")
+    value: ValueExpression = Field(description="Value expression to compare against")
     
     def __str__(self) -> str:
         return f"{self.field}{self.operator.value}{self.value}"
@@ -139,4 +231,5 @@ class FilterExpression(BaseModel):
 
 
 # Update forward references
+ValueExpression.model_rebuild()
 FilterExpression.model_rebuild()

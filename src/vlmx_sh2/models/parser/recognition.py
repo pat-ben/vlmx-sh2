@@ -7,7 +7,7 @@ Contains both structural (from classifier) and semantic (from recognizer) classi
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
 
-from vlmx_sh2.enums import TokenType, ValueContext, TokenClass, Operator, Bracket, QueryWord
+from vlmx_sh2.enums import TokenType, ValueContext, TokenClass, Operator, Bracket, QueryWord, RangeWord
 from ..words import Word, WordType
 
 
@@ -21,7 +21,7 @@ class RecognizedToken(BaseModel):
     Fields are populated based on token_type:
     - WORD tokens: word field is set
     - VALUE tokens: value_context field is set
-    - QUERY tokens: query_word field is set
+    - QUERY tokens: query_word or range_word field is set
     - STRUCTURAL tokens: operator/bracket fields are set
     - UNKNOWN tokens: suggestions may be provided
     
@@ -32,6 +32,7 @@ class RecognizedToken(BaseModel):
         word: Complete Word object from registry (only for WORD tokens)
         value_context: Context for VALUE tokens (SCHEMA, ENTITY, or FIELD)
         query_word: Query keyword enum (only for QUERY tokens)
+        range_word: Range keyword enum (only for QUERY tokens)
         confidence: Recognition confidence score (0-100)
         suggestions: Suggestions for unrecognized tokens
     
@@ -104,6 +105,11 @@ class RecognizedToken(BaseModel):
     query_word: Optional[QueryWord] = Field(
         default=None,
         description="Query keyword enum (only for QUERY tokens)"
+    )
+    
+    range_word: Optional[RangeWord] = Field(
+        default=None,
+        description="Range keyword enum (only for QUERY tokens)"
     )
     
     confidence: float = Field(

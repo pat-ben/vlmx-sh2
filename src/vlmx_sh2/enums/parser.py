@@ -23,6 +23,11 @@ class QueryWord(str, Enum):
     OR = "or"
 
 
+class RangeWord(str, Enum):
+    """Range operator for value boundaries"""
+    TO = "to"
+
+
 class Bracket(str, Enum):
     """Brackets and parentheses"""
     PAREN_OPEN = "("
