@@ -10,14 +10,16 @@ Components:
 - ValidationRule: Model for defining validation rules
 - VALIDATION_RULES: Central registry of all validation rules
 - SuggestionEngine: Context-aware suggestions for fixing issues
+- PositionResolver: Lazy position resolution for error reporting
+- DiagnosticFormatter: Rich error message formatting
 - DiagnosticLogger: Issue tracking and logging (future)
-- DiagnosticReporter: Main coordinator for diagnostic output (future)
 """
 
 from .suggestions import SuggestionEngine
 from .validator import Validator, TokenLike, AnyToken
 from .rules import ValidationRule, VALIDATION_RULES, get_rules_for_stage
 from .resolver import PositionResolver
+from .formatter import DiagnosticFormatter, OutputFormat
 
 __all__ = [
     "SuggestionEngine",
@@ -28,4 +30,6 @@ __all__ = [
     "VALIDATION_RULES",
     "get_rules_for_stage",
     "PositionResolver",
+    "DiagnosticFormatter",
+    "OutputFormat",
 ]

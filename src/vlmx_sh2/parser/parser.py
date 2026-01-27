@@ -37,6 +37,7 @@ from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
 from ..models.context import Context
 from ..enums.core import ContextLevel
+from ..diagnostics import DiagnosticFormatter
 
 # Import all pipeline stages
 from .normalizer import normalize
@@ -190,13 +191,28 @@ class Parser:
         Assemble final ParseResult from all components.
         
         Packages everything into the final result structure that callers expect.
+        Uses DiagnosticFormatter to create rich error messages while preserving
+        the simple string format expected by ParseResult.
         """
+        # Use DiagnosticFormatter to create rich error messages
+        formatter = DiagnosticFormatter()
+        
+        # Format errors with rich diagnostic information
+        formatted_errors = []
+        if context.has_errors():
+            for error in context.errors:
+                formatted_error = formatter.format_issue(error, input_text)
+                formatted_errors.append(formatted_error)
+        
+        # Extract formatted suggestions
+        formatted_suggestions = formatter.get_formatted_suggestions(context)
+        
         return ParseResult(
             input_text=input_text,
             command=parsed_command,
             is_valid=context.is_valid() and parsed_command is not None,
-            errors=[issue.message for issue in context.errors],
-            suggestions=[issue.suggestion for issue in context.errors if issue.suggestion],
+            errors=formatted_errors,
+            suggestions=formatted_suggestions,
             command_tokens=command_tokens,
             filter_tokens=filter_tokens
         )

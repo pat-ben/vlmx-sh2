@@ -4,7 +4,7 @@ Command model for structured command representation (builder stage).
 Contains all information extracted from parsing, ready for handler execution.
 """
 
-from typing import Optional, Dict, Any, List, Union, TYPE_CHECKING, Sequence
+from typing import Optional, Dict, Any, List, Union, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, Field
 
