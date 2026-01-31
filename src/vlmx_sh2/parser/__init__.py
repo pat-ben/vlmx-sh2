@@ -1,7 +1,7 @@
 """
 Parser package.
 
-Provides modular parsing functionality with clean separation of concerns:
+Provides modular text analysis functionality with clean separation of concerns:
 - Normalization: Text preprocessing and macro expansion
 - Tokenization: Breaking input into tokens
 - Classification: Structural token analysis
@@ -9,9 +9,8 @@ Provides modular parsing functionality with clean separation of concerns:
 - Interpretation: Intelligence layer for user intent
 - Splitting: Command/Filter separation
 - Filtering: Filter expression parsing
-- Building: Command assembly from tokens
 
-The parsing pipeline consists of 7 stages, each with specific responsibilities.
+The parsing pipeline consists of 6 text analysis stages (command building moved to core).
 """
 
 from .normalizer import normalize      # Stage 0
@@ -21,7 +20,6 @@ from .recognizer import Recognizer     # Stage 3
 from .interpreter import Interpreter   # Stage 4
 from .splitter import Splitter         # Stage 5
 from .filter import Filter             # Stage 6
-from .builder import Builder           # Stage 7
 from .parser import Parser             # Pipeline Orchestrator
 
 # Legacy alias for compatibility
@@ -35,7 +33,6 @@ __all__ = [
     'Interpreter',     # Stage 4
     'Splitter',        # Stage 5
     'Filter',          # Stage 6
-    'Builder',         # Stage 7
     'Parser',          # Pipeline Orchestrator
     'VLMXParser',      # Legacy alias
 ]

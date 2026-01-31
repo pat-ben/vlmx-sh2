@@ -9,7 +9,7 @@ from typing import Union, Dict, Any, Optional
 from ..models.context import Context
 from ..models.responses import HandlerResult, ErrorResult
 from ..parser.parser import Parser
-from ..parser.builder import Builder
+from .builder import CommandBuilder
 from .router import Router
 
 
@@ -28,7 +28,7 @@ class CommandExecutor:
         Execute a command from raw text input.
         
         This is the ONLY method the UI should call for command processing.
-        It handles the entire pipeline: parsing -> validation -> routing -> execution.
+        It handles the entire pipeline: parsing -> building -> routing -> execution.
         
         Args:
             input_text: Raw command text from user
@@ -39,10 +39,43 @@ class CommandExecutor:
                          FormRequest, PickerRequest) that UI can render
         """
         try:
-            # Step 1: Parse the input text
-            parse_result = Parser.parse(input_text)
+            # Step 1: Parse the input text (stages 0-6)
+            tokens_result = Parser.parse(input_text)
             
-            # Step 2: Route and execute through Router
+            # Step 2: Check for parsing errors
+            if not tokens_result.is_valid:
+                return ErrorResult(
+                    errors=tokens_result.errors,
+                    suggestions=tokens_result.suggestions
+                )
+            
+            # Step 3: Build ParsedCommand from tokens (stage 7)
+            parsed_command = CommandBuilder.from_tokens(
+                command_tokens=tokens_result.command_tokens,
+                filter_expression=tokens_result.filter_expression,
+                raw_input=input_text,
+                context=tokens_result.validation_context
+            )
+            
+            if not parsed_command:
+                return ErrorResult(
+                    errors=["Failed to build command from parsed tokens"],
+                    suggestions=["Check command syntax"]
+                )
+            
+            # Step 4: Create ParseResult for Router
+            from ..models.parser.parsing import ParseResult
+            parse_result = ParseResult(
+                input_text=input_text,
+                command_tokens=tokens_result.command_tokens,
+                filter_tokens=tokens_result.filter_tokens,
+                command=parsed_command,
+                is_valid=True,
+                errors=[],
+                suggestions=[]
+            )
+            
+            # Step 5: Route and execute through Router
             return await Router.dispatch(parse_result, context)
             
         except Exception as e:
@@ -83,7 +116,7 @@ class CommandExecutor:
         """
         try:
             # Step 1: Build ParsedCommand from wizard data
-            parsed_command = Builder.from_wizard(
+            parsed_command = CommandBuilder.from_wizard(
                 action_id=action_id,
                 entity_id=entity_id,
                 entity_name=entity_name,

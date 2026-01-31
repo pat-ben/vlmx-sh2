@@ -1,8 +1,8 @@
 """
 PARSING ORCHESTRATOR: Parser
 
-Pipeline orchestrator that coordinates all parsing stages and assembles the final ParseResult.
-Important: Parser is NOT a parsing stage itself - it orchestrates stages 0-7.
+Pipeline orchestrator that coordinates text analysis stages and assembles TokensResult.
+Important: Parser is NOT a parsing stage itself - it orchestrates stages 0-6 only.
 
 Pipeline Flow:
     Input: raw text (user input)
@@ -14,32 +14,30 @@ Pipeline Flow:
     Stage 4: Interpreter    -> List[InterpretedToken]
     Stage 5: Splitter       -> SplitResult (command_tokens + filter_tokens)
     Stage 6: Filter         -> FilterExpression (AST) or None
-    Stage 7: Builder        -> ParsedCommand
     
-    Output: ParseResult (with ParsedCommand + ValidationContext)
+    Output: TokensResult (with interpreted tokens + filter AST + validation context)
 
 Parser Responsibilities:
 - Create ValidationContext for error tracking
-- Orchestrate stages 0-7 in sequence
+- Orchestrate text analysis stages 0-6 in sequence
 - Handle stage failures (stop on blocking errors, continue on warnings)
-- Return ParseResult with everything packaged for caller
+- Return TokensResult with tokens and AST for CommandBuilder
 
 What Parser Does NOT Do:
+- Build ParsedCommand (CommandBuilder's job)
 - Route to handlers (caller's job)
 - Execute handlers (caller's job)  
 - Handle wizard flows (UI layer's job)
-- Build commands from tokens (Builder's job)
 """
 
 from typing import Optional, List
-from ..models.parser import ParseResult, ParsedCommand
+from ..models.parser import TokensResult
 from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
 from ..models.context import Context
 from ..enums.core import ContextLevel
-from ..diagnostics import DiagnosticFormatter
 
-# Import all pipeline stages
+# Import all pipeline stages (0-6 only, no builder)
 from .normalizer import normalize
 from .tokenizer import Tokenizer
 from .classifier import Classifier
@@ -47,14 +45,13 @@ from .recognizer import Recognizer
 from .interpreter import Interpreter
 from .splitter import Splitter
 from .filter import Filter
-from .builder import Builder
 
 
 class Parser:
     """
-    Pipeline orchestrator for parsing user input into structured commands.
+    Pipeline orchestrator for parsing user input into tokens and filter AST.
     
-    Coordinates all parsing stages (0-7) and assembles the final ParseResult.
+    Coordinates text analysis stages (0-6) and assembles TokensResult.
     Parser is stateless - all state is maintained in ValidationContext.
     
     Error Handling Strategy:
@@ -67,53 +64,45 @@ class Parser:
         Interpreter  | Continue (collect)| Continue  
         Splitter     | Stop if brackets | Continue
         Filter       | Continue (optional)| Continue
-        Builder      | Continue (collect)| Continue
         Parser       | Mark as invalid  | N/A
     """
     
     @classmethod
-    def parse(cls, input_text: str) -> ParseResult:
+    def parse(cls, input_text: str) -> TokensResult:
         """
-        Orchestrate the parsing pipeline and build a ParseResult.
+        Orchestrate the text analysis pipeline and build a TokensResult.
         
-        Runs all parsing stages in sequence, handles errors appropriately,
-        and assembles the final ParseResult with structured command.
+        Runs parsing stages 0-6 in sequence, handles errors appropriately,
+        and assembles TokensResult with tokens and filter AST for CommandBuilder.
         
         Args:
             input_text: Raw user input text
             
         Returns:
-            ParseResult with:
-            - command: ParsedCommand (if valid)
-            - is_valid: True if no blocking errors  
-            - errors/warnings from ValidationContext
+            TokensResult with:
+            - command_tokens: Interpreted tokens for command building
+            - filter_tokens: Recognized tokens for filter portion
+            - filter_expression: Parsed filter AST (or None)
+            - validation_context: Errors/warnings from parsing stages
+            - is_valid: True if no blocking errors occurred
         """
         # Step 1: Initialize ValidationContext
         context = ValidationContext(input_text=input_text)
         
-        # Step 2: Run the parsing pipeline
+        # Step 2: Run the parsing pipeline (stages 0-6)
         pipeline_result = cls._run_pipeline(input_text, context)
         if pipeline_result is None:
             # Pipeline failed early - return empty result
-            return cls._build_result(input_text, None, None, [], [], context)
+            return cls._build_tokens_result(input_text, [], [], None, context)
         
         split_result, filter_expression = pipeline_result
         
-        # Step 3: Build ParsedCommand from tokens (Stage 7)
-        parsed_command = Builder.build(
-            split_result.command_tokens, 
-            filter_expression, 
+        # Step 3: Assemble TokensResult (no command building)
+        return cls._build_tokens_result(
             input_text,
-            context
-        )
-        
-        # Step 4: Assemble final ParseResult
-        return cls._build_result(
-            input_text,
-            parsed_command,
-            filter_expression,
             split_result.command_tokens,
             split_result.filter_tokens,
+            filter_expression,
             context
         )
     
@@ -178,42 +167,26 @@ class Parser:
     
     
     @classmethod
-    def _build_result(
+    def _build_tokens_result(
         cls,
         input_text: str,
-        parsed_command: Optional[ParsedCommand],
-        filter_expression: Optional[FilterExpression],
         command_tokens: List,
         filter_tokens: List,
+        filter_expression: Optional[FilterExpression],
         context: ValidationContext
-    ) -> ParseResult:
+    ) -> TokensResult:
         """
-        Assemble final ParseResult from all components.
+        Assemble TokensResult from parsing stages 0-6.
         
-        Packages everything into the final result structure that callers expect.
-        Uses DiagnosticFormatter to create rich error messages while preserving
-        the simple string format expected by ParseResult.
+        Packages tokens, filter AST, and validation context into the result
+        structure that CommandBuilder expects. No ParsedCommand is built here.
         """
-        # Use DiagnosticFormatter to create rich error messages
-        formatter = DiagnosticFormatter()
-        
-        # Format errors with rich diagnostic information
-        formatted_errors = []
-        if context.has_errors():
-            for error in context.errors:
-                formatted_error = formatter.format_issue(error, input_text)
-                formatted_errors.append(formatted_error)
-        
-        # Extract formatted suggestions
-        formatted_suggestions = formatter.get_formatted_suggestions(context)
-        
-        return ParseResult(
+        return TokensResult(
             input_text=input_text,
-            command=parsed_command,
-            is_valid=context.is_valid() and parsed_command is not None,
-            errors=formatted_errors,
-            suggestions=formatted_suggestions,
             command_tokens=command_tokens,
-            filter_tokens=filter_tokens
+            filter_tokens=filter_tokens,
+            filter_expression=filter_expression,
+            validation_context=context,
+            is_valid=context.is_valid()
         )
     
