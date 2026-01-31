@@ -48,77 +48,51 @@ class DynamicEntityScreen(ModalScreen):
         self.app.call_after_refresh(self.main_screen._create_new_command_block)
     
     async def _process_form_submission(self, message: DynamicEntityManager.FormSubmitted) -> None:
-        """Process the form submission."""
-        from ....storage.database import update_dynamic_entity_record, save_entity_array, load_all_entities
-        from ....handlers.utils import get_company_name_from_context
-        
-        # Get current context and company
-        context = self.main_screen.context
-        company_name = get_company_name_from_context(context)
-        
-        # Check that we have a valid company context
-        if not company_name:
-            self.dismiss()
-            self.app.call_after_refresh(self._show_error_and_new_prompt, "Error: Not in organization context")
-            return
-        
-        entity_type = self.picker_request.entity_id
-        form_data = message.form_data
-        
-        if message.record_id is None:
-            # Creating new record
+        """Process the form submission using unified command flow."""
+        try:
+            # Use unified command executor instead of directly calling storage functions
+            from ....core.executor import CommandExecutor
             
-            # Load current entity data (array)
-            current_data = load_all_entities(entity_type, company_name, context)
+            # Get current context
+            context = self.main_screen.context
+            entity_type = self.picker_request.entity_id
+            form_data = message.form_data
             
-            # Add new record with generated ID
-            new_record = form_data.copy()
-            new_record['id'] = str(len(current_data) + 1)  # Simple ID generation
+            # Determine action based on whether this is create or update
+            action_id = "add"  # Both create and update use "add" action
+            record_id = message.record_id  # None for create, string for update
             
-            # Add timestamps
-            from datetime import datetime
-            timestamp = datetime.now().isoformat()
-            new_record['created_at'] = timestamp
-            new_record['updated_at'] = timestamp
-            
-            # Add to array
-            current_data.append(new_record)
-            
-            # Save updated array
-            save_result = save_entity_array(entity_type, current_data, company_name, context)
-            
-            if save_result.get("success", False):
-                # Refresh the screen to show new record
-                await self._refresh_screen()
-                # Show success message within the modal (don't close it)
-                self._show_success_message_in_modal(f"✅ Created new {entity_type} record")
-                return
-            else:
-                error_msg = save_result.get("error", f"Failed to create {entity_type} record")
-                # Show error message within the modal (don't close it)
-                self._show_error_message_in_modal(f"❌ {error_msg}")
-                return
-        
-        else:
-            # Updating existing record
-            # Update the record in the array
-            update_result = update_dynamic_entity_record(
-                entity_type=entity_type,
-                record_id=message.record_id,
-                updated_fields=form_data,
-                company_name=company_name,
+            # Execute through unified pipeline
+            result = await CommandExecutor.execute_from_wizard(
+                action_id=action_id,
+                entity_id=entity_type,
+                entity_name=None,  # Dynamic entities don't have entity names
+                field_values=form_data,
+                record_id=record_id,
                 context=context
             )
             
-            if update_result.get("success", False):
-                # Refresh the screen to show updated record
+            # Handle the result
+            if result.type == 'command_result' and result.success:
+                # Refresh the screen to show updated data
                 await self._refresh_screen()
-                # Show success message within the modal (don't close it)
-                self._show_success_message_in_modal(f"✅ Updated {entity_type} record")
-            else:
-                error_msg = update_result.get("error", f"Failed to update {entity_type} record")
+                
+                # Show appropriate success message
+                operation = "Updated" if record_id else "Created new"
+                self._show_success_message_in_modal(f"✅ {operation} {entity_type} record")
+                
+            elif result.type == 'error':
                 # Show error message within the modal (don't close it)
-                self._show_error_message_in_modal(f"❌ {error_msg}")
+                error_messages = "; ".join(result.errors)
+                self._show_error_message_in_modal(f"❌ {error_messages}")
+                
+            else:
+                # Unexpected result type
+                self._show_error_message_in_modal(f"❌ Unexpected result: {result.type}")
+                
+        except Exception as e:
+            # Show error message within the modal (don't close it)
+            self._show_error_message_in_modal(f"❌ Error processing form: {str(e)}")
     
     async def _refresh_screen(self) -> None:
         """Refresh the screen with updated data."""

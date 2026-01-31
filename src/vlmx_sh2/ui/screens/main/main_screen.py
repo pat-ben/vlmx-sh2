@@ -157,52 +157,20 @@ class MainScreen(Screen):
         self._create_new_command_block()
 
     async def _process_wizard_submission(self, wizard_request: FormRequest, fields: dict):
-        """Process form wizard submission by updating entity fields."""
+        """Process form wizard submission using unified command flow."""
         try:
-            from ....handlers.crud import add_handler
-            from ....words import get_word, WordType
-            from ....models.parser.command import ParsedCommand
-            
-            # Get the entity model for the entity type
-            entity_word = get_word(wizard_request.entity_id)
-            if not entity_word or entity_word.word_type != WordType.ENTITY:
-                error_msg = f"Unknown entity type: {wizard_request.entity_id}"
-                self.call_after_refresh(self._show_delayed_output, error_msg, True)
-                return
-
-            # Get add action word
-            add_action_word = get_word("add")
-            if not add_action_word:
-                error_msg = "Add action not found"
-                self.call_after_refresh(self._show_delayed_output, error_msg, True)
-                return
-            
-            # Ensure it's an ActionWord
-            from ....models.words import ActionWord
-            if not isinstance(add_action_word, ActionWord):
-                error_msg = "Add word is not an ActionWord"
-                self.call_after_refresh(self._show_delayed_output, error_msg, True)
-                return
-
-            # Build parsed command for add operation (wizard always uses add semantics)
-            parsed_command = ParsedCommand(
-                action=add_action_word,
-                target=entity_word,
-                target_name=wizard_request.entity_name,
+            # Use unified command executor instead of manually building command
+            from ....core.executor import CommandExecutor
+            result = await CommandExecutor.execute_from_wizard(
+                action_id="add",
+                entity_id=wizard_request.entity_id,
+                entity_name=wizard_request.entity_name,
                 field_values=fields,
-                field_words=[],
-                filters=None,
-                raw_input="",
-                command_tokens=[]
-            )
-
-            # Call handler with new signature
-            result = await add_handler(
-                parsed_command=parsed_command,
+                record_id=None,  # FormWizardScreen is always for creating new records
                 context=self.context
             )
             
-            # Display result using format_command_result - create ONE command block with all output
+            # Display result using existing result handling - create ONE command block with all output
             self._create_new_command_block_with_result(result)
             
         except Exception as e:

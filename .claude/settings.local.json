@@ -78,7 +78,8 @@
       "Bash(PYTHONPATH=src find D:Codevlmx-sh2src -name \"*.py\" -exec grep -l \"VLMXParser\" {} ;)",
       "Bash(PYTHONPATH=src grep -n \"^def.*_handler\\|^async def.*_handler\" src/vlmx_sh2/handlers/*.py)",
       "Bash(PYTHONPATH=src grep -n \"_build_field_specs\\|_build_column_specs\" src/vlmx_sh2/handlers/wizard.py)",
-      "Read(/D:\\/**)"
+      "Read(/D:\\/**)",
+      "Bash(PYTHONPATH=src rg \"from.*handlers.*import|from.*storage.*import|add_handler\\(|update_dynamic_entity_record|save_entity_array\" src/vlmx_sh2/ui/ --type py)"
     ],
     "deny": [],
     "ask": [],
