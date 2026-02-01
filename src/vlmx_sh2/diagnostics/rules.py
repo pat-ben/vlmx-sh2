@@ -16,7 +16,7 @@ Two-Tier Validation Philosophy:
 2. TOKEN-LEVEL VALIDATION (Post-tokenization):  
    - Validates individual tokens
    - Non-blocking by default (collect ALL errors)
-   - Examples: unclosed quotes, invalid syntax, unknown words
+   - Examples: unclosed quotes, invalid syntax, unknown dsl
    - Philosophy: "Collect all errors" - show user everything wrong at once
 
 Each rule defines:
@@ -437,7 +437,7 @@ def _is_orphaned_schema_value(token, tokens: List) -> bool:
     # Check the previous token
     prev_token = tokens[current_index - 1]
     
-    # Schema values should be preceded by action or schema words
+    # Schema values should be preceded by action or schema dsl
     if prev_token.token_type == TokenType.WORD:
         if (prev_token.word_type == WordType.ACTION or 
             prev_token.word_type == WordType.SCHEMA):

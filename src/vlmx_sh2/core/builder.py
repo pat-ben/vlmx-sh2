@@ -14,7 +14,7 @@ from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from ..models.parser import ParsedCommand
 from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
-from ..words.registry import get_word
+from ..dsl.registry import get_word
 from ..models.words import ActionWord, SchemaWord, EntityWord
 
 if TYPE_CHECKING:
@@ -101,7 +101,7 @@ class CommandBuilder:
             # Extract field=value pairs
             field_values = cls._extract_field_value_pairs(command_tokens)
             
-            # Extract standalone field words (not part of assignments)
+            # Extract standalone field dsl (not part of assignments)
             field_words = cls._extract_standalone_field_words(command_tokens)
             
             return ParsedCommand(

@@ -9,14 +9,14 @@ between database models and DSL word registrations.
 from collections import defaultdict
 from typing import Dict, List, Type
 
-from ..models.schemas.base import SchemaModel, EntityModel
+from ..schemas.base import SchemaModel, EntityModel
 from ..models.words import SchemaWord, EntityWord, FieldWord 
 from ..enums.forms import TypeOrg
 
 
 def generate_schema_words() -> Dict[str, SchemaWord]:
     """Generate SchemaWord objects for all organization types."""
-    from ..models.schemas.company import CompanyDatabase
+    from ..schemas.company import CompanyDatabase
     
     schema_words = {}
     

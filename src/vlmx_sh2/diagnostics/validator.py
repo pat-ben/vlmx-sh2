@@ -56,7 +56,7 @@ class Validator:
        - Validates individual tokens with position metadata
        - Non-blocking by default (collect ALL errors)
        - Position extracted from token metadata
-       - Examples: unclosed quotes, invalid syntax, unknown words
+       - Examples: unclosed quotes, invalid syntax, unknown dsl
     
     VALIDATION PHILOSOPHY:
     - Text-level: "Fail fast" - can't proceed if we can't read input

@@ -240,7 +240,7 @@ def _create_default_entity_data(entity_class) -> Dict[str, Any]:
 
 def _create_company_entities(company_folder: Path) -> List[str]:
     """Create all entity files for a new company."""
-    from ..models.schemas.company import CompanyDatabase
+    from ..schemas.company import CompanyDatabase
     
     created_files = []
     
@@ -285,7 +285,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                     pass
             
             # Create organization data with defaults
-            from ..models.schemas.company import OrganizationEntity
+            from ..schemas.company import OrganizationEntity
             
             base_data = {
                 "id": None,

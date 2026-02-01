@@ -11,7 +11,7 @@ from typing import Dict
 from ..models.words import WordType, Word
 from .generator import generate_schema_words, generate_entity_words, generate_field_words
 from .actions import ACTION_WORDS_LIST
-from ..models.schemas.company import CompanyDatabase
+from ..schemas.company import CompanyDatabase
 
 
 # ==================== AUTO-GENERATED WORD REGISTRY ====================
@@ -54,12 +54,12 @@ def get_word(word_id: str) -> Word | None:
 
 
 def get_all_words() -> Dict[str, Word]:
-    """Get all registered words"""
+    """Get all registered dsl"""
     return WORD_REGISTRY
 
 
 def get_words_by_type(word_type: WordType) -> Dict[str, Word]:
-    """Get all words of a specific type"""
+    """Get all dsl of a specific type"""
     return {
         k: v for k, v in WORD_REGISTRY.items()
         if v.word_type == word_type

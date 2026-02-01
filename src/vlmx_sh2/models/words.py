@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Type, Optional, Literal, List, Any, Sequence
 from ..enums.core import ContextLevel
 from ..enums.forms import TypeOrg
-from .schemas.base import SchemaModel
+from ..schemas.base import SchemaModel
 
 
 # ==================== BASE WORD MODEL====================

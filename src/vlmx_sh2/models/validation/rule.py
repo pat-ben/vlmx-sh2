@@ -26,7 +26,7 @@ class ValidationRule(BaseModel):
     2. Token-Level Validation (Post-tokenization):
        - Input: List of tokens
        - Blocking: Default False (collect ALL errors for comprehensive diagnostics)
-       - Examples: unclosed quotes, mismatched brackets, unrecognized words
+       - Examples: unclosed quotes, mismatched brackets, unrecognized dsl
        - Philosophy: "Collect all errors" - show user everything wrong in one go
     
     Position information is resolved lazily only when displaying errors to users.

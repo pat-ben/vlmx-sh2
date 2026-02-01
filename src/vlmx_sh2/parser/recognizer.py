@@ -3,7 +3,7 @@ PARSING STAGE 3/7: Semantic Recognition
 
 Performs semantic classification of structurally classified tokens.
 Converts ClassifiedToken objects to RecognizedToken objects by:
-- Recognizing words from registry (actions, entities, fields, schemas)
+- Recognizing dsl from registry (actions, entities, fields, schemas)
 - Handling aliases (del → delete, etc.)
 - Classifying values based on context (schema name, field values)
 - Copying structural information (operators, brackets) from Classifier
@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 from ..models.parser import ClassifiedToken, RecognizedToken
 from ..models.validation import ValidationContext
 from ..models.words import Word, WordType
-from ..words import get_all_words, get_word
+from ..dsl import get_all_words, get_word
 from ..diagnostics import Validator
 from vlmx_sh2.enums import TokenClass, TokenType, ValueContext, IssueStage, QueryWord, RangeWord
 
@@ -55,7 +55,7 @@ class Recognizer:
         context: ValidationContext
     ) -> List[RecognizedToken]:
         """
-        Recognize words and classify values from classified tokens.
+        Recognize dsl and classify values from classified tokens.
         
         Example transformation:
             Input:  "create company ACME currency=EUR"
@@ -97,7 +97,7 @@ class Recognizer:
             recognized_tokens.append(recognized_token)
         
         # Token-level validation
-        # - Validates semantic issues (unknown words, invalid values)
+        # - Validates semantic issues (unknown dsl, invalid values)
         # - Non-blocking by default (collect ALL errors)
         Validator.validate_tokens(IssueStage.RECOGNIZER, context, tokens=recognized_tokens)
         
@@ -106,7 +106,7 @@ class Recognizer:
     @classmethod
     def get_words_by_type(cls, word_type: WordType) -> List[Word]:
         """
-        Get all words of a specific type.
+        Get all dsl of a specific type.
         """
         words_by_type = cls._get_words_by_type()
         return words_by_type.get(word_type, [])
@@ -131,7 +131,7 @@ class Recognizer:
     
     @classmethod
     def _get_words_by_type(cls) -> Dict[WordType, List[Word]]:
-        """Get words by type with lazy loading."""
+        """Get dsl by type with lazy loading."""
         if cls._words_by_type is None:
             cls._words_by_type = cls._group_words_by_type()
         return cls._words_by_type
@@ -163,7 +163,7 @@ class Recognizer:
     @classmethod
     def _group_words_by_type(cls) -> Dict[WordType, List[Word]]:
         """
-        Group words by their type for quick access.
+        Group dsl by their type for quick access.
         """
         groups = {wt: [] for wt in WordType}
         word_registry = cls._get_word_registry()

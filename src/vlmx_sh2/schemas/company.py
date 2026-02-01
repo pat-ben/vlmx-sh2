@@ -6,14 +6,14 @@ entity models including CompanyEntity, MetadataEntity, BrandEntity,
 OfferingEntity, TargetEntity, and ValuesEntity.
 """
 
-# src/vlmx_sh2/models/schemas/company.py
+# src/vlmx_sh2/schemas/company.py
 
 from datetime import date, datetime
 from typing import Optional, ClassVar, List, Type
 from sqlmodel import Field
 from vlmx_sh2.enums import Legal, Currency, Unit, TypeOrg, Country, Stage, Phase, Sector, Model, Round, NewsCategory, CompetitorSize, Cardinality
 from .base import SchemaModel, EntityModel
-from ...enums.core import ContextLevel
+from ..enums.core import ContextLevel
 
 
 # ============================================

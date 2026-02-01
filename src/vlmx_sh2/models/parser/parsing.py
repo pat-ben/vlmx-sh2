@@ -76,32 +76,32 @@ class ParseResult(BaseModel):
     
     @property
     def recognized_words(self) -> List[Word]:
-        """Get all successfully recognized words from command tokens."""
+        """Get all successfully recognized dsl from command tokens."""
         return [t.word for t in self.command_tokens if t.word]
     
     @property
     def action_words(self) -> List[Word]:
-        """Get all ACTION type words from recognized words."""
+        """Get all ACTION type dsl from recognized dsl."""
         return [word for word in self.recognized_words if word.word_type == WordType.ACTION]
     
     @property
     def entity_words(self) -> List[Word]:
-        """Get all ENTITY type words from recognized words."""
+        """Get all ENTITY type dsl from recognized dsl."""
         return [word for word in self.recognized_words if word.word_type == WordType.ENTITY]
     
     @property
     def field_words(self) -> List[Word]:
-        """Get all FIELD type words from recognized words."""
+        """Get all FIELD type dsl from recognized dsl."""
         return [word for word in self.recognized_words if word.word_type == WordType.FIELD]
     
     @property
     def schema_words(self) -> List[Word]:
-        """Get all SCHEMA type words from recognized words."""
+        """Get all SCHEMA type dsl from recognized dsl."""
         return [word for word in self.recognized_words if word.word_type == WordType.SCHEMA]
     
     @property
     def modifier_words(self) -> List[Word]:
-        """Get all MODIFIER type words from recognized words (currently unused)."""
+        """Get all MODIFIER type dsl from recognized dsl (currently unused)."""
         # Note: MODIFIER word type doesn't exist yet in WordType enum
         return []
     
@@ -123,7 +123,7 @@ class ParseResult(BaseModel):
     
     @property
     def word_types_present(self) -> List[WordType]:
-        """Get list of word types present in recognized words."""
+        """Get list of word types present in recognized dsl."""
         return list(set(word.word_type for word in self.recognized_words))
     
     @property

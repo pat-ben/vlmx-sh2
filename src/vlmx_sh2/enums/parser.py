@@ -18,7 +18,7 @@ class Operator(str, Enum):
 
 
 class QueryWord(str, Enum):
-    """Query words for filtering"""
+    """Query dsl for filtering"""
     AND = "and"
     OR = "or"
 
