@@ -79,7 +79,9 @@
       "Bash(PYTHONPATH=src grep -n \"^def.*_handler\\|^async def.*_handler\" src/vlmx_sh2/handlers/*.py)",
       "Bash(PYTHONPATH=src grep -n \"_build_field_specs\\|_build_column_specs\" src/vlmx_sh2/handlers/wizard.py)",
       "Read(/D:\\/**)",
-      "Bash(PYTHONPATH=src rg \"from.*handlers.*import|from.*storage.*import|add_handler\\(|update_dynamic_entity_record|save_entity_array\" src/vlmx_sh2/ui/ --type py)"
+      "Bash(PYTHONPATH=src rg \"from.*handlers.*import|from.*storage.*import|add_handler\\(|update_dynamic_entity_record|save_entity_array\" src/vlmx_sh2/ui/ --type py)",
+      "Bash(PYTHONPATH=src tail -20 D:Codevlmx-sh2srcvlmx_sh2dslgenerator.py)",
+      "Bash(PYTHONPATH=src tail -30 D:Codevlmx-sh2srcvlmx_sh2handlerscrud.py)"
     ],
     "deny": [],
     "ask": [],

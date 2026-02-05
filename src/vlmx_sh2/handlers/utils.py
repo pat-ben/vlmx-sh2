@@ -10,9 +10,10 @@ from pydantic import BaseModel
 
 from ..models.context import Context
 from ..enums.core import ContextLevel
+from ..enums.context_rules import is_target_allowed_in_context, get_allowed_target_names_for_context
 from ..models.responses import ErrorResult, CommandResult, HandlerResult, StorageResult
 from ..models.parser.command import ParsedCommand
-from ..models.words import SchemaWord, EntityWord, FieldWord
+from ..models.words import SchemaWord, EntityWord, FieldWord, TargetWord, WordType
 
 
 # =============================================================================
@@ -73,6 +74,46 @@ def _validation_error(message: str, suggestions: Optional[List[str]] = None) -> 
 def validate_target_exists(parsed_command: ParsedCommand) -> Optional[ErrorResult]:
     """Validate that parsed command has a target."""
     return _validation_error("No target specified") if not parsed_command.target else None
+
+
+def validate_target_context(target: TargetWord, context: Context) -> Optional[ErrorResult]:
+    """
+    Validate that target is allowed in current context.
+    
+    Context Segmentation:
+    - SYS: Schema only
+    - ORG: Module, Entity, Field
+    - APP: View, Tool
+    
+    Returns ErrorResult if invalid, None if valid.
+    """
+    if is_target_allowed_in_context(target.word_type.value, context.level):
+        return None
+    
+    # Build helpful error message
+    allowed_names = get_allowed_target_names_for_context(context.level)
+    
+    # Suggest correct context
+    if target.word_type == WordType.SCHEMA:
+        suggestion = "Navigate to SYS level: cd ~"
+    elif target.word_type == WordType.APP:
+        suggestion = "Navigate to APP level: cd app/"
+    else:
+        suggestion = "Navigate to ORG level: cd <company>/"
+    
+    # Get context level name
+    level_names = {ContextLevel.SYS: "SYS", ContextLevel.ORG: "ORG", ContextLevel.APP: "APP"}
+    level_name = level_names.get(context.level, f"level {context.level}")
+    
+    return ErrorResult(
+        errors=[
+            f"'{target.id}' ({target.word_type.value}) is not available in {level_name} context"
+        ],
+        suggestions=[
+            f"Allowed in {level_name}: {', '.join(allowed_names)}",
+            suggestion
+        ]
+    )
 
 
 def validate_org_context(context: Context) -> Tuple[Optional[str], Optional[ErrorResult]]:

@@ -23,6 +23,7 @@ class EntityModel(SQLModel):
     # Entity cardinality classification
     cardinality: ClassVar[Cardinality] = Cardinality.SINGLE
     context: ClassVar[ContextLevel] = ContextLevel.ORG
+    module: ClassVar[str] = "core"  # Default module grouping
     
     # ==================== DEFAULT SYSTEM FIELDS ====================
     # These fields are excluded from word registry by default

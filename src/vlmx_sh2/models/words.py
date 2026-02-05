@@ -22,6 +22,8 @@ class WordType(Enum):
     SCHEMA = "schema"  # database-level operations (company, fund, holding, etc.)
     ENTITY = "entity"  # An entity is an Pydantic model which corresponds to a SQL table (eg. MetadataModel => metadata table)
     FIELD = "field"  # Pydantic model's fields which correspond to SQL table columns (eg. currency field => currency column)
+    MODULE = "module"  # Entity groupings
+    APP = "app"        # Views and tools
 
 
 class BaseWord(BaseModel):
@@ -38,6 +40,26 @@ class BaseWord(BaseModel):
     deprecated: bool = Field(default=False, description="Whether this word is deprecated and should not be used")
     replaced_by: Optional[str] = Field(default=None, description="If deprecated, which word replaces this one")    
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+# ==================== TARGET WORD MODEL ====================
+
+class TargetWord(BaseWord):
+    """
+    Base class for all noun types (targets of actions).
+    
+    Separates verbs (ActionWord) from nouns (everything else).
+    Provides shared fields like context level.
+    
+    Context Segmentation:
+    - SYS level: only SchemaWord targets
+    - ORG level: only ModuleWord, EntityWord, FieldWord targets  
+    - APP level: only ViewWord, ToolWord targets
+    """
+    context: ContextLevel = Field(
+        default=ContextLevel.ORG, 
+        description="Context level where this target is available"
+    )
 
 
 # ==================== ACTION WORD MODEL ====================
@@ -84,7 +106,7 @@ class ActionWord(BaseWord):
 
 # ==================== SCHEMA WORD MODEL ====================
 
-class SchemaWord(BaseWord):
+class SchemaWord(TargetWord):
     """
     Schema word - represents organization types for database creation.
     
@@ -92,19 +114,19 @@ class SchemaWord(BaseWord):
     Each SchemaWord maps to a TypeOrg value and a DatabaseModel schema class.
     """
     word_type: Literal[WordType.SCHEMA] = WordType.SCHEMA
+    context: ContextLevel = Field(default=ContextLevel.SYS, description="Schemas only available at SYS level")
     type_value: TypeOrg = Field(description="The TypeOrg enum value")
     schema_class: Type[SchemaModel] = Field(description="Database schema class for this org type")
 
 
 # ==================== ENTITY WORD MODEL ====================
 
-class EntityWord(BaseWord):
+class EntityWord(TargetWord):
     """
     Entity word - represents business schemas like company, milestone.
     """
     
     word_type: Literal[WordType.ENTITY] = WordType.ENTITY
-    context: ContextLevel = Field(default=ContextLevel.ORG, description="Minimum context level required: SYS(0), ORG(1), or APP(2)")
     entity_model: Type[BaseModel] = Field(description="Reference to the Pydantic model representing this entity")
     
     # wizard_widget: str | None = Field(default=None, description="Which Textual widget to use in wizard mode (e.g., 'form', 'table')")
@@ -112,7 +134,7 @@ class EntityWord(BaseWord):
 
 # ==================== FIELD WORD MODEL ====================
 
-class FieldWord(BaseWord):
+class FieldWord(TargetWord):
     """
     Field word - represents entity fields like name, currency, revenue.
     
@@ -123,8 +145,93 @@ class FieldWord(BaseWord):
     entity_models: Sequence[Type[BaseModel]] = Field(description="Reference to the Pydantic model representing this entity")
     # number_format_mode: str = Field(default="not_applicable", description="Number formatting mode for this field")
     # currency_mode: str = Field(default="not_applicable", description="Currency mode for this field")
- 
 
-# ==================== UNION TYPE ====================
 
-Word = ActionWord | SchemaWord | EntityWord | FieldWord
+# ==================== MODULE WORD MODEL ====================
+
+class ModuleWord(TargetWord):
+    """
+    Module word - represents logical groupings of entities.
+    
+    Examples: "core", "branding", "market"
+    Modules group related entities for easier navigation and filtering.
+    
+    Available only in ORG context.
+    """
+    
+    word_type: Literal[WordType.MODULE] = WordType.MODULE
+    context: ContextLevel = Field(default=ContextLevel.ORG, description="Modules only available at ORG level")
+    entities: List[str] = Field(
+        default_factory=list,
+        description="Entity IDs belonging to this module"
+    )
+
+
+# ==================== VIEW WORD MODEL ====================
+
+class ViewWord(TargetWord):
+    """
+    View word - represents report filters/templates.
+    
+    Examples: "neco", "investor", "duediligence"
+    Views filter which entities are displayed together.
+    
+    Available only in APP context.
+    """
+    
+    word_type: Literal[WordType.APP] = WordType.APP
+    context: ContextLevel = Field(default=ContextLevel.APP, description="Views only available at APP level")
+    app_type: Literal["view"] = "view"
+    entities: List[str] = Field(
+        default_factory=list,
+        description="Entity IDs this view displays"
+    )
+
+
+# ==================== TOOL WORD MODEL ====================
+
+class ToolWord(TargetWord):
+    """
+    Tool word - represents calculation tools.
+    
+    Examples: "dcf", "captable", "forecast"
+    Tools perform calculations with required parameters.
+    
+    Available only in APP context.
+    """
+    
+    word_type: Literal[WordType.APP] = WordType.APP
+    context: ContextLevel = Field(default=ContextLevel.APP, description="Tools only available at APP level")
+    app_type: Literal["tool"] = "tool"
+    parameters: List[str] = Field(
+        default_factory=list,
+        description="Required input parameter names"
+    )
+
+
+# ==================== UNION TYPES ====================
+
+# Union types for type checking
+TargetWordUnion = SchemaWord | EntityWord | FieldWord | ModuleWord | ViewWord | ToolWord
+Word = ActionWord | TargetWordUnion
+
+
+# ==================== EXPORTS ====================
+
+__all__ = [
+    "WordType",
+    "BaseWord", 
+    "TargetWord",
+    "ActionWord",
+    "SchemaWord",
+    "EntityWord", 
+    "FieldWord",
+    "ModuleWord",
+    "ViewWord",
+    "ToolWord",
+    "Word",
+    "TargetWordUnion",
+    "ActionCategory",
+    "CRUDOperation",
+    "ExecutionType",
+]

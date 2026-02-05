@@ -25,6 +25,7 @@ class OrganizationEntity(EntityModel, table=True):
     
     # ==================== CLASS METADATA ====================
     context: ClassVar[ContextLevel] = ContextLevel.SYS
+    module: ClassVar[str] = "core"
         
     # ==================== PRIMARY KEY ====================
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -64,6 +65,8 @@ class AddressEntity(EntityModel, table=True):
     Description: company address elements
     """    
     
+    module: ClassVar[str] = "core"
+    
     # ==================== KEYS ======================
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
@@ -95,6 +98,8 @@ class MetadataEntity(EntityModel, table=True):
     SQL Table: metadata
     Description: Relational
     """
+
+    module: ClassVar[str] = "core"
 
     # ==================== KEYS ======================
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -134,6 +139,8 @@ class BrandEntity(EntityModel, table=True):
     - ValueModel → brand_values table
     """
     
+    module: ClassVar[str] = "branding"
+    
     # ==================== KEYS ======================
     id: Optional[int] = Field(default=None, primary_key=True)
     co_id: int = Field(default=1, description="Reference to company.id")
@@ -170,6 +177,7 @@ class OfferingEntity(EntityModel, table=True):
     """
     # ==================== CLASS METADATA ====================
     cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
+    module: ClassVar[str] = "branding"
     
     # ==================== KEYS ==========================
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -206,6 +214,7 @@ class TargetEntity(EntityModel, table=True):
     
     # ==================== CLASS METADATA ====================
     cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
+    module: ClassVar[str] = "branding"
     
     # ==================== KEYS ==========================
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -242,6 +251,7 @@ class ValuesEntity(EntityModel, table=True):
     
     # ==================== CLASS METADATA ====================
     cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
+    module: ClassVar[str] = "branding"
     
     # ==================== KEYS ==========================
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -273,6 +283,7 @@ class NewsEntity(EntityModel, table=True):
     
     # ==================== CLASS METADATA ====================
     cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
+    module: ClassVar[str] = "market"
     
     # ==================== KEYS ==========================
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -307,6 +318,7 @@ class CompetitorsEntity(EntityModel, table=True):
     
     # ==================== CLASS METADATA ====================
     cardinality: ClassVar[Cardinality] = Cardinality.MULTIPLE
+    module: ClassVar[str] = "market"
     
     # ==================== KEYS ==========================
     id: Optional[int] = Field(default=None, primary_key=True)

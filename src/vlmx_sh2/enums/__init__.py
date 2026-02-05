@@ -48,6 +48,12 @@ from .validation import (
     IssueStage,
 )
 
+# Context rules (context segmentation)
+from .context_rules import (
+    is_target_allowed_in_context,
+    get_allowed_target_names_for_context,
+)
+
 __all__ = [
     # Form/UI ENUMs
     'Legal',
@@ -79,4 +85,8 @@ __all__ = [
     # Validation ENUMs
     'IssueSeverity',
     'IssueStage',
+    
+    # Context rules
+    'is_target_allowed_in_context',
+    'get_allowed_target_names_for_context',
 ]

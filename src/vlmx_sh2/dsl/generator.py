@@ -10,8 +10,9 @@ from collections import defaultdict
 from typing import Dict, List, Type
 
 from ..schemas.base import SchemaModel, EntityModel
-from ..models.words import SchemaWord, EntityWord, FieldWord 
+from ..models.words import SchemaWord, EntityWord, FieldWord, ModuleWord, ViewWord, ToolWord
 from ..enums.forms import TypeOrg
+from ..enums.core import ContextLevel
 
 
 def generate_schema_words() -> Dict[str, SchemaWord]:
@@ -134,6 +135,59 @@ def generate_field_words(schema: Type[SchemaModel]) -> Dict[str, FieldWord]:
     return field_words
 
 
+def generate_module_words(schema: Type[SchemaModel]) -> Dict[str, ModuleWord]:
+    """
+    Generate ModuleWord objects by grouping entities by their module ClassVar.
+    
+    Modules are available only in ORG context.
+    
+    Args:
+        schema: Database schema class (e.g., CompanyDatabase)
+        
+    Returns:
+        Dictionary of module_id → ModuleWord
+    """
+    from collections import defaultdict
+    
+    # Group entities by module
+    module_entities: Dict[str, List[str]] = defaultdict(list)
+    
+    for entity_cls in schema.tables:
+        module_name = getattr(entity_cls, 'module', 'core')
+        entity_id = entity_cls.get_entity_word_id()
+        module_entities[module_name].append(entity_id)
+    
+    # Build ModuleWords
+    module_words = {}
+    for module_name, entity_ids in module_entities.items():
+        module_words[module_name] = ModuleWord(
+            id=module_name,
+            description=f"Module containing: {', '.join(entity_ids)}",
+            context=ContextLevel.ORG,
+            entities=entity_ids
+        )
+    
+    return module_words
+
+
+def generate_view_words() -> Dict[str, ViewWord]:
+    """
+    Generate ViewWord objects from manual definitions.
+    
+    Views are available only in APP context.
+    """
+    from .views import VIEW_WORDS_LIST
+    return {view.id: view for view in VIEW_WORDS_LIST}
+
+
+def generate_tool_words() -> Dict[str, ToolWord]:
+    """
+    Generate ToolWord objects from manual definitions.
+    
+    Tools are available only in APP context.
+    """
+    from .tools import TOOL_WORDS_LIST
+    return {tool.id: tool for tool in TOOL_WORDS_LIST}
 
 
 

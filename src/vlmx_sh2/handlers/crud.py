@@ -18,13 +18,17 @@ from pydantic import BaseModel
 from ..models.context import Context
 from ..models.responses import CommandResult, ErrorResult, HandlerResult
 from ..models.parser.command import ParsedCommand
-from ..models.words import SchemaWord, EntityWord, FieldWord
+from ..models.words import (
+    SchemaWord, EntityWord, FieldWord, ModuleWord, ViewWord, ToolWord, 
+    TargetWord, WordType
+)
 from vlmx_sh2.enums import Cardinality
 from ..handlers.utils import (
     format_entity_data_for_display,
     get_entity_type_string,
     get_target_id, 
     validate_target_exists,
+    validate_target_context,
     validate_org_context,
     validate_field_values_present,
     handle_storage_result
@@ -44,6 +48,11 @@ async def create_handler(parsed_command: ParsedCommand, context: Context) -> Han
     error = validate_target_exists(parsed_command)
     if error:
         return error
+    
+    # Validate target is allowed in current context
+    context_error = validate_target_context(parsed_command.target, context)
+    if context_error:
+        return context_error
     
     assert parsed_command.target is not None  # Validated by validate_target_exists
     target_id = get_target_id(parsed_command.target)
@@ -76,6 +85,11 @@ async def drop_handler(parsed_command: ParsedCommand, context: Context) -> Handl
     if error:
         return error
     
+    # Validate target is allowed in current context
+    context_error = validate_target_context(parsed_command.target, context)
+    if context_error:
+        return context_error
+    
     assert parsed_command.target is not None  # Validated by validate_target_exists
     target_id = get_target_id(parsed_command.target)
     target_name = parsed_command.target_name
@@ -101,6 +115,16 @@ async def drop_handler(parsed_command: ParsedCommand, context: Context) -> Handl
 
 async def add_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Add or set field values."""
+    
+    # Validate target exists
+    error = validate_target_exists(parsed_command)
+    if error:
+        return error
+    
+    # Validate target is allowed in current context
+    context_error = validate_target_context(parsed_command.target, context)
+    if context_error:
+        return context_error
     
     error = validate_field_values_present(parsed_command)
     if error:
@@ -128,6 +152,25 @@ async def add_handler(parsed_command: ParsedCommand, context: Context) -> Handle
 
 async def delete_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Delete data (content, not structure)."""
+    
+    # Validate target exists
+    error = validate_target_exists(parsed_command)
+    if error:
+        return error
+    
+    # Validate target is allowed in current context
+    context_error = validate_target_context(parsed_command.target, context)
+    if context_error:
+        return context_error
+    
+    # Check if word type supports delete
+    target = parsed_command.target
+    if target.word_type not in _DELETE_DISPATCH:
+        supported = ', '.join(wt.value for wt in _DELETE_DISPATCH.keys())
+        return ErrorResult(
+            errors=[f"'delete' does not support {target.word_type.value}"],
+            suggestions=[f"'delete' works with: {supported}"]
+        )
     
     company_name, error = validate_org_context(context)
     if error:
@@ -171,6 +214,16 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
 async def reset_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Reset entity or fields to default values."""
     
+    # Validate target exists
+    error = validate_target_exists(parsed_command)
+    if error:
+        return error
+    
+    # Validate target is allowed in current context
+    context_error = validate_target_context(parsed_command.target, context)
+    if context_error:
+        return context_error
+    
     company_name, error = validate_org_context(context)
     if error:
         return error
@@ -202,30 +255,59 @@ async def reset_handler(parsed_command: ParsedCommand, context: Context) -> Hand
 async def show_handler(parsed_command: ParsedCommand, context: Context) -> HandlerResult:
     """Display data with optional field selection and filtering."""
     
-    if isinstance(parsed_command.target, SchemaWord):
-        assert parsed_command.target is not None  # Checked by isinstance
-        target_id = get_target_id(parsed_command.target)
-        target_name = parsed_command.target_name
-        return await _show_schema_info(target_id, target_name, context)
-    
-    company_name, error = validate_org_context(context)
+    # Validate target exists
+    error = validate_target_exists(parsed_command)
     if error:
         return error
     
-    assert company_name is not None  # Validated by validate_org_context
-    assert parsed_command.target_model is not None  # Required for show operations
-    entity_type = get_entity_type_string(parsed_command.target_model)
-    field_names = parsed_command.field_words
-    filters = parsed_command.filters
+    # Validate target is allowed in current context
+    context_error = validate_target_context(parsed_command.target, context)
+    if context_error:
+        return context_error
     
-    return await _show_entity(
-        entity_type=entity_type,
-        field_names=field_names,
-        filters=filters,
-        company_name=company_name,
-        context=context,
-        entity_model=parsed_command.target_model
-    )
+    # Dispatch by word type
+    target = parsed_command.target
+    handler_fn = _SHOW_DISPATCH.get(target.word_type)
+    
+    # Handle new word types with direct dispatch
+    if handler_fn is not None:
+        return await handler_fn(target, context)
+    
+    # Handle legacy word types with special logic
+    if isinstance(target, SchemaWord):
+        target_id = get_target_id(target)
+        target_name = parsed_command.target_name
+        return await _show_schema_info(target_id, target_name, context)
+    
+    # Handle entity and field words (require organization context)
+    elif isinstance(target, (EntityWord, FieldWord)):
+        company_name, error = validate_org_context(context)
+        if error:
+            return error
+        
+        assert company_name is not None  # Validated by validate_org_context
+        assert parsed_command.target_model is not None  # Required for show operations
+        entity_type = get_entity_type_string(parsed_command.target_model)
+        field_names = parsed_command.field_words
+        filters = parsed_command.filters
+        
+        return await _show_entity(
+            entity_type=entity_type,
+            field_names=field_names,
+            filters=filters,
+            company_name=company_name,
+            context=context,
+            entity_model=parsed_command.target_model
+        )
+    
+    # Unsupported word type
+    else:
+        supported = [wt.value for wt in _SHOW_DISPATCH.keys() if _SHOW_DISPATCH[wt] is not None]
+        supported.extend(["schema", "entity", "field"])
+        return ErrorResult(
+            errors=[f"'show' does not support {target.word_type.value}"],
+            suggestions=[f"Supported types: {', '.join(supported)}"]
+        )
 
 
 # =============================================================================
@@ -769,3 +851,91 @@ async def _show_entity(
             errors=[f"Failed to show entity data: {str(e)}"],
             suggestions=["Check entity exists and database connection"]
         )
+
+
+# =============================================================================
+# 3. New Word Type Handlers (Module, View, Tool)
+# =============================================================================
+
+async def _show_module(target: ModuleWord, context: Context) -> HandlerResult:
+    """Show module information and its entities."""
+    return CommandResult(
+        success=True,
+        message=f"Module: {target.id}",
+        data={
+            "module_id": target.id,
+            "description": target.description,
+            "entities": target.entities,
+            "entity_count": len(target.entities)
+        }
+    )
+
+async def _show_view(target: ViewWord, context: Context) -> HandlerResult:
+    """Show view configuration."""
+    return CommandResult(
+        success=True,
+        message=f"View: {target.id}",
+        data={
+            "view_id": target.id,
+            "description": target.description,
+            "entities": target.entities,
+            "aliases": target.aliases
+        }
+    )
+
+async def _show_tool(target: ToolWord, context: Context) -> HandlerResult:
+    """Show tool configuration and parameters."""
+    return CommandResult(
+        success=True,
+        message=f"Tool: {target.id}",
+        data={
+            "tool_id": target.id,
+            "description": target.description,
+            "parameters": target.parameters,
+            "aliases": target.aliases
+        }
+    )
+
+
+async def _show_app(target: TargetWord, context: Context) -> HandlerResult:
+    """Route APP word type to view or tool handler."""
+    if isinstance(target, ViewWord):
+        return await _show_view(target, context)
+    elif isinstance(target, ToolWord):
+        return await _show_tool(target, context)
+    else:
+        return ErrorResult(errors=[f"Unknown APP type: {type(target).__name__}"])
+
+
+# For non-dispatch path handlers that need different signatures
+async def _show_entity_dispatch(target: TargetWord, context: Context) -> HandlerResult:
+    """Wrapper for entity showing with proper signature."""
+    # This handles entities and fields that need organization context
+    company_name, error = validate_org_context(context)
+    if error:
+        return error
+    
+    # Get parsed command data (this is a limitation of the current approach)
+    # In a full refactor, we'd pass the parsed command to the dispatch handlers
+    return ErrorResult(
+        errors=["Entity/field show requires parsed command context"],
+        suggestions=["This is handled by the legacy path in show_handler"]
+    )
+
+
+# Dispatch table: WordType -> handler function
+_SHOW_DISPATCH = {
+    WordType.SCHEMA: None,  # Special handling needed for schema 
+    WordType.MODULE: _show_module,
+    WordType.ENTITY: None,  # Special handling needed for entities
+    WordType.FIELD: None,   # Special handling needed for fields
+    WordType.APP: _show_app,  # Routes to view or tool
+}
+
+# Delete dispatch - only certain types support delete
+_DELETE_DISPATCH = {
+    WordType.SCHEMA: None,  # Special handling needed
+    WordType.ENTITY: None,  # Special handling needed  
+    WordType.FIELD: None,   # Special handling needed
+    # MODULE, APP not supported for delete
+}
