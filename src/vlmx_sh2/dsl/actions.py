@@ -21,6 +21,7 @@ from ..handlers.crud import (
 )
 from ..handlers.navigation import navigate_handler
 from ..handlers.wizard import fill_handler
+from ..handlers.apps import apply_handler, run_handler
 
 
 # ==================== ACTION WORDS ====================
@@ -94,6 +95,24 @@ ACTION_WORDS_LIST: List[ActionWord] = [
         handler=fill_handler,
         execution_type=ExecutionType.WIZARD,
         crud_operation=CRUDOperation.UPDATE,
+    ),
+
+    ActionWord(
+        id="apply",
+        description="Apply/activate a view filter",
+        aliases=["activate", "use"],
+        handler=apply_handler,
+        action_category=ActionCategory.ANALYSIS,
+        crud_operation=CRUDOperation.NONE,
+    ),
+
+    ActionWord(
+        id="run",
+        description="Execute a calculation tool",
+        aliases=["exec", "calc"],
+        handler=run_handler,
+        action_category=ActionCategory.ANALYSIS,
+        crud_operation=CRUDOperation.NONE,
     ),
 ]
 

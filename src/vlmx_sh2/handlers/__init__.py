@@ -15,6 +15,7 @@ from .crud import (
 )
 from .navigation import navigate_handler
 from .wizard import fill_handler
+from .apps import apply_handler, run_handler
 
 __all__ = [
     'create_handler',
@@ -24,5 +25,7 @@ __all__ = [
     'drop_handler',
     'reset_handler',
     'navigate_handler',
-    'fill_handler'
+    'fill_handler',
+    'apply_handler',
+    'run_handler'
 ]

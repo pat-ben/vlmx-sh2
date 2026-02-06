@@ -15,7 +15,10 @@ from ..models.parser import ParsedCommand
 from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
 from ..dsl.registry import get_word
-from ..models.words import ActionWord, SchemaWord, EntityWord
+from ..models.words import (
+    ActionWord, SchemaWord, EntityWord, ModuleWord, ViewWord, ToolWord,
+    TargetWord, WordType
+)
 
 if TYPE_CHECKING:
     from ..models.parser.interpretation import InterpretedToken
@@ -79,20 +82,18 @@ class CommandBuilder:
                 )
                 return None
             
-            # Extract optional components using token properties
-            target_token = next((t for t in command_tokens if t.is_schema_word or t.is_entity_word), None)
+            # Find any target word (not action, not field)
+            target_token = next(
+                (t for t in command_tokens 
+                 if t.word 
+                 and isinstance(t.word, TargetWord)
+                 and t.word.word_type != WordType.FIELD),
+                None
+            )
+            
             target = None
             if target_token:
-                # Ensure target is either SchemaWord or EntityWord
-                if isinstance(target_token.word, (SchemaWord, EntityWord)):
-                    target = target_token.word
-                else:
-                    from vlmx_sh2.enums import IssueStage
-                    context.add_error(
-                        stage=IssueStage.RECOGNIZER,
-                        message=f"Expected SchemaWord or EntityWord but got {type(target_token.word)}",
-                        error_code="invalid_target_type"
-                    )
+                target = target_token.word  # Already a TargetWord
             
             # Extract target name from VALUE or UNKNOWN tokens
             target_name_token = next((t for t in command_tokens if t.is_value or t.is_unknown), None)

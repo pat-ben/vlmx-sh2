@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 
 from .recognition import RecognizedToken
 from .filtering import FilterExpression
-from ..words import ActionWord, SchemaWord, EntityWord
+from ..words import (
+    ActionWord, SchemaWord, EntityWord, ModuleWord, ViewWord, ToolWord, 
+    TargetWord
+)
 
 if TYPE_CHECKING:
     from .interpretation import InterpretedToken
@@ -58,9 +61,9 @@ class ParsedCommand(BaseModel):
     action: ActionWord = Field(
         description="The action to perform (create, update, show, delete)"
     )
-    target: Optional[Union[SchemaWord, EntityWord]] = Field(
+    target: Optional[TargetWord] = Field(
         default=None,
-        description="The target to operate on. SchemaWord for database operations, EntityWord for table operations. None for navigation commands."
+        description="The target to operate on. Can be Schema, Entity, Module, View, or Tool. None for navigation commands."
     )
     
     # Command data
@@ -118,6 +121,7 @@ class ParsedCommand(BaseModel):
             return self.target.schema_class
         elif isinstance(self.target, EntityWord):
             return self.target.entity_model
+        # ModuleWord, ViewWord, ToolWord don't have a model
         return None
     
     @property
