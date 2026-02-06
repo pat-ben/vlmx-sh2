@@ -17,7 +17,6 @@ from ..models.responses import HandlerResult, CommandResult, ErrorResult
 from ..models.parser.command import ParsedCommand
 from ..enums.core import ContextLevel
 from ..storage.database import find_company_by_name
-from ..dsl.registry import VIEW_WORDS, TOOL_WORDS
 
 
 # =============================================================================
@@ -50,6 +49,9 @@ async def _navigate_to_app(app_name: str, context: Context) -> HandlerResult:
             errors=["Cannot enter APP context from SYS level"],
             suggestions=["First navigate to a company: cd <company>/"]
         )
+    
+    # Import here to avoid circular imports
+    from ..dsl.registry import VIEW_WORDS, TOOL_WORDS
     
     # Look up app in VIEW_WORDS and TOOL_WORDS
     app_word = VIEW_WORDS.get(app_name) or TOOL_WORDS.get(app_name)

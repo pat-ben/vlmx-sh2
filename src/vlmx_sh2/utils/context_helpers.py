@@ -311,3 +311,29 @@ def get_app_type(context: Context) -> Optional[str]:
         "view" or "tool" if at APP level, None otherwise
     """
     return context.app_type if context.level == ContextLevel.APP else None
+
+
+def is_view_context(context: Context) -> bool:
+    """
+    Check if context is in a view app.
+    
+    Args:
+        context: The context to check
+        
+    Returns:
+        True if at APP level with app_type="view", False otherwise
+    """
+    return context.level == ContextLevel.APP and context.app_type == "view"
+
+
+def is_tool_context(context: Context) -> bool:
+    """
+    Check if context is in a tool app.
+    
+    Args:
+        context: The context to check
+        
+    Returns:
+        True if at APP level with app_type="tool", False otherwise
+    """
+    return context.level == ContextLevel.APP and context.app_type == "tool"

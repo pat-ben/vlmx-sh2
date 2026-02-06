@@ -84,10 +84,10 @@ def get_words_for_context(context_level: ContextLevel) -> Dict[str, Word]:
     """
     Get words available in a specific context.
     
-    Actions are always available. Targets are filtered by context rules:
-    - SYS: Schema only
-    - ORG: Module, Entity, Field
-    - APP: View, Tool
+    Cumulative model - Actions always available, targets cumulative:
+    - SYS: Schema
+    - ORG: Schema + Module + Entity + Field
+    - APP: All targets
     """
     result = {}
     

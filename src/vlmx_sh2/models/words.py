@@ -51,10 +51,10 @@ class TargetWord(BaseWord):
     Separates verbs (ActionWord) from nouns (everything else).
     Provides shared fields like context level.
     
-    Context Segmentation:
-    - SYS level: only SchemaWord targets
-    - ORG level: only ModuleWord, EntityWord, FieldWord targets  
-    - APP level: only ViewWord, ToolWord targets
+    Cumulative Context Model:
+    - SYS: Schema only
+    - ORG: Schema + Module + Entity + Field
+    - APP: All targets (everything)
     """
     context: ContextLevel = Field(
         default=ContextLevel.ORG, 
