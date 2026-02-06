@@ -40,8 +40,10 @@ class Context(BaseModel):
     org_name: Optional[str] = None
     org_db_path: Optional[Path] = None
 
-    # Application level (level 2) - plugin_id kept for developer compatibility
+    # Application level (level 2)
     app_id: Optional[str] = None
+    app_name: Optional[str] = None      # NEW: Human-readable app name
+    app_type: Optional[str] = None      # NEW: "view" or "tool"
 
     # Session (Step 2)
     user_id: Optional[int] = None
@@ -58,9 +60,9 @@ class Context(BaseModel):
     def _validate_level_consistency(self) -> "Context":
         # SYS level: no organization or application fields
         if self.level == ContextLevel.SYS:
-            if any((self.org_id, self.org_name, self.app_id)):
+            if any((self.org_id, self.org_name, self.app_id, self.app_name)):
                 raise ValueError(
-                    "At SYS level, org_id, org_name, and app_id must all be None"
+                    "At SYS level, org and app fields must all be None"
                 )
         # ORG level: must have organization, no application
         elif self.level == ContextLevel.ORG:
@@ -68,14 +70,17 @@ class Context(BaseModel):
                 raise ValueError(
                     "At ORG level, org_id and org_name must not be None"
                 )
-            if self.app_id is None is False and self.app_id is not None:
-                # Defensive, but effectively: app_id must be None
-                raise ValueError("At ORG level, app_id must be None")
-        # APP level: must have organization and application
+            if self.app_id is not None or self.app_name is not None:
+                raise ValueError("At ORG level, app fields must be None")
+        # APP level: must have organization AND application
         elif self.level == ContextLevel.APP:
-            if self.org_id is None or self.org_name is None or self.app_id is None:
+            if self.org_id is None or self.org_name is None:
                 raise ValueError(
-                    "At APP level, org_id, org_name, and app_id must not be None"
+                    "At APP level, org_id and org_name must not be None"
+                )
+            if self.app_id is None or self.app_name is None:
+                raise ValueError(
+                    "At APP level, app_id and app_name must not be None"
                 )
         return self
 

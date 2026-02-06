@@ -1,16 +1,23 @@
 """
 Navigation handler.
 
-Handles context navigation (cd command) between different levels
-of the application (SYS, ORG, APP).
+Handles context navigation (cd command) between different levels:
+- SYS (root) <-> ORG (company) <-> APP (specific view or tool)
+
+Navigation commands:
+    cd ~              -> SYS (root)
+    cd ..             -> Up one level
+    cd <company>/     -> ORG (enter company)
+    cd <app_name>/    -> APP (enter specific view or tool from ORG)
 """
 
-from typing import Callable, Awaitable, Dict, Optional
+from typing import Callable, Dict, Optional
 from ..models.context import Context
 from ..models.responses import HandlerResult, CommandResult, ErrorResult
 from ..models.parser.command import ParsedCommand
 from ..enums.core import ContextLevel
 from ..storage.database import find_company_by_name
+from ..dsl.registry import VIEW_WORDS, TOOL_WORDS
 
 
 # =============================================================================
@@ -27,35 +34,53 @@ def _navigate_to_sys(context: Context) -> HandlerResult:
                 "level": "SYS",
                 "org_id": None,
                 "org_name": None,
-                "org_db_path": None
+                "org_db_path": None,
+                "app_id": None,
+                "app_name": None,
+                "app_type": None,
             }
         }
     )
 
 
-def _navigate_to_app(context: Context) -> HandlerResult:
-    """Navigate to APP context (from ORG or stay in APP)."""
+async def _navigate_to_app(app_name: str, context: Context) -> HandlerResult:
+    """Navigate to a specific app (view or tool) from ORG level."""
     if context.level == ContextLevel.SYS:
         return ErrorResult(
-            errors=["Can only enter APP context from ORG context"],
+            errors=["Cannot enter APP context from SYS level"],
             suggestions=["First navigate to a company: cd <company>/"]
         )
     
-    # From ORG or APP -> APP (with appropriate message)
-    if context.level == ContextLevel.APP:
-        message = f"Already in APP context for {context.org_name}"
-    else:
-        message = f"Entered APP context for {context.org_name}"
+    # Look up app in VIEW_WORDS and TOOL_WORDS
+    app_word = VIEW_WORDS.get(app_name) or TOOL_WORDS.get(app_name)
+    
+    if not app_word:
+        # List available apps for suggestion
+        available_views = list(VIEW_WORDS.keys())
+        available_tools = list(TOOL_WORDS.keys())
+        return ErrorResult(
+            errors=[f"App '{app_name}' not found"],
+            suggestions=[
+                f"Available views: {', '.join(available_views)}",
+                f"Available tools: {', '.join(available_tools)}",
+            ]
+        )
+    
+    # Determine app type
+    app_type = app_word.app_type  # "view" or "tool"
     
     return CommandResult(
         success=True,
-        message=message,
+        message=f"Entered {app_name} ({app_type}) for {context.org_name}",
         data={
             "context_switch": {
                 "level": "APP",
                 "org_id": context.org_id,
                 "org_name": context.org_name,
-                "org_db_path": context.org_db_path
+                "org_db_path": context.org_db_path,
+                "app_id": app_word.id,
+                "app_name": app_name,
+                "app_type": app_type,
             }
         }
     )
@@ -79,7 +104,10 @@ def _navigate_org_to_sys(context: Context) -> HandlerResult:
                 "level": "SYS",
                 "org_id": None,
                 "org_name": None,
-                "org_db_path": None
+                "org_db_path": None,
+                "app_id": None,
+                "app_name": None,
+                "app_type": None,
             }
         }
     )
@@ -95,7 +123,10 @@ def _navigate_app_to_org(context: Context) -> HandlerResult:
                 "level": "ORG",
                 "org_id": context.org_id,
                 "org_name": context.org_name,
-                "org_db_path": context.org_db_path
+                "org_db_path": context.org_db_path,
+                "app_id": None,
+                "app_name": None,
+                "app_type": None,
             }
         }
     )
@@ -103,16 +134,13 @@ def _navigate_app_to_org(context: Context) -> HandlerResult:
 
 async def _navigate_to_org(org_name: str, context: Context) -> HandlerResult:
     """Navigate to a specific organization."""
-    # Validate we're at SYS level
     if context.level != ContextLevel.SYS:
         return ErrorResult(
-            errors=[f"Cannot navigate to '{org_name}' from {context.level} context"],
+            errors=[f"Cannot navigate to company '{org_name}' from current context"],
             suggestions=["First return to root: cd ~"]
         )
     
-    # Check org exists
     company = find_company_by_name(org_name)
-    
     if not company:
         return ErrorResult(
             errors=[f"Company '{org_name}' not found"],
@@ -127,7 +155,10 @@ async def _navigate_to_org(org_name: str, context: Context) -> HandlerResult:
                 "level": "ORG",
                 "org_id": company.get("id"),
                 "org_name": org_name,
-                "org_db_path": company.get("db_path")
+                "org_db_path": company.get("db_path"),
+                "app_id": None,
+                "app_name": None,
+                "app_type": None,
             }
         }
     )
@@ -137,13 +168,11 @@ async def _navigate_to_org(org_name: str, context: Context) -> HandlerResult:
 # 2. Dispatch Tables
 # =============================================================================
 
-# Special paths: path -> handler (sync functions)
+# Special paths (no trailing slash needed in lookup)
 _SPECIAL_PATHS: Dict[str, Callable[[Context], HandlerResult]] = {
     "~": _navigate_to_sys,
     "": _navigate_to_sys,
     "..": None,  # Special case: uses _NAVIGATE_UP table
-    "app": _navigate_to_app,
-    "app/": _navigate_to_app,
 }
 
 # Navigate up dispatch: current_level -> handler
@@ -162,37 +191,36 @@ async def navigate_handler(parsed_command: ParsedCommand, context: Context) -> H
     """
     Navigate between contexts.
     
-    Navigation model:
-        SYS (root) <-> ORG (company) <-> APP (analytics)
+    Navigation model (cumulative):
+        SYS (root) <-> ORG (company) <-> APP (specific view/tool)
     
     Commands:
-        cd ~           -> SYS (root)
-        cd ..          -> Up one level
-        cd <company>/  -> ORG (enter company)
-        cd app/        -> APP (enter analytics mode)
+        cd ~              -> SYS (root)
+        cd ..             -> Up one level
+        cd <company>/     -> ORG (enter company) - from SYS only
+        cd <app_name>/    -> APP (enter view/tool) - from ORG or APP
     """
     target_path = (parsed_command.target_name or "").strip()
+    lookup_path = target_path.rstrip("/")
     
-    # Normalize path (remove trailing slash for lookup, except "app/")
-    lookup_path = target_path.rstrip("/") if target_path not in ("app/",) else target_path
-    
-    # Check for special paths
-    if lookup_path in _SPECIAL_PATHS or target_path in _SPECIAL_PATHS:
-        # Handle ".." specially with context-aware dispatch
+    # Handle special paths
+    if lookup_path in _SPECIAL_PATHS:
         if lookup_path == "..":
             handler_fn = _NAVIGATE_UP.get(context.level)
             if handler_fn:
                 return handler_fn(context)
             return ErrorResult(errors=[f"Unknown context level: {context.level}"])
         
-        # Other special paths
-        handler_fn = _SPECIAL_PATHS.get(lookup_path) or _SPECIAL_PATHS.get(target_path)
+        handler_fn = _SPECIAL_PATHS.get(lookup_path)
         if handler_fn:
             return handler_fn(context)
     
-    # Default: navigate to org
-    org_name = target_path.rstrip("/")
-    return await _navigate_to_org(org_name, context)
+    # From SYS: navigate to company
+    if context.level == ContextLevel.SYS:
+        return await _navigate_to_org(lookup_path, context)
+    
+    # From ORG or APP: navigate to app (or switch app)
+    return await _navigate_to_app(lookup_path, context)
 
 
 # =============================================================================
@@ -206,12 +234,12 @@ def get_prompt_string(context: Context) -> str:
     Returns:
         ~ $              for SYS
         ~/acme $         for ORG
-        ~/acme/app $     for APP
+        ~/acme/neco $    for APP (with app name)
     """
     _PROMPT_FORMAT: Dict[ContextLevel, Callable[[Context], str]] = {
         ContextLevel.SYS: lambda c: "~",
         ContextLevel.ORG: lambda c: f"~/{c.org_name}",
-        ContextLevel.APP: lambda c: f"~/{c.org_name}/app",
+        ContextLevel.APP: lambda c: f"~/{c.org_name}/{c.app_name}",
     }
     
     formatter = _PROMPT_FORMAT.get(context.level, lambda c: "?")

@@ -285,3 +285,29 @@ def validate_command_context_requirements(action_word, context: Context, entity_
             return False, f"At {level_name} level, you must specify the app: {command_name} ... [app_name]"
     else:  # both missing
         return False, f"At {level_name} level, you must specify both schema and app: {command_name} [company_name] ... [app_name]"
+
+
+def get_app_name(context: Context) -> Optional[str]:
+    """
+    Get the current app name from context.
+    
+    Args:
+        context: The context to check
+        
+    Returns:
+        App name if at APP level, None otherwise
+    """
+    return context.app_name if context.level == ContextLevel.APP else None
+
+
+def get_app_type(context: Context) -> Optional[str]:
+    """
+    Get the current app type from context.
+    
+    Args:
+        context: The context to check
+        
+    Returns:
+        "view" or "tool" if at APP level, None otherwise
+    """
+    return context.app_type if context.level == ContextLevel.APP else None

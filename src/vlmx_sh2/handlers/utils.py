@@ -80,10 +80,10 @@ def validate_target_context(target: TargetWord, context: Context) -> Optional[Er
     """
     Validate that target is allowed in current context.
     
-    Context Segmentation:
+    Cumulative Context Model:
     - SYS: Schema only
-    - ORG: Module, Entity, Field
-    - APP: View, Tool
+    - ORG: Schema + Module + Entity + Field
+    - APP: All (Schema + Module + Entity + Field + View + Tool)
     
     Returns ErrorResult if invalid, None if valid.
     """
@@ -93,15 +93,12 @@ def validate_target_context(target: TargetWord, context: Context) -> Optional[Er
     # Build helpful error message
     allowed_names = get_allowed_target_names_for_context(context.level)
     
-    # Suggest correct context
-    if target.word_type == WordType.SCHEMA:
-        suggestion = "Navigate to SYS level: cd ~"
-    elif target.word_type == WordType.APP:
-        suggestion = "Navigate to APP level: cd app/"
+    # Suggest correct context for APP targets
+    if target.word_type.value == "app":
+        suggestion = f"Navigate to an app: cd {target.id}/"
     else:
-        suggestion = "Navigate to ORG level: cd <company>/"
+        suggestion = "This should not happen in cumulative model"
     
-    # Get context level name
     level_names = {ContextLevel.SYS: "SYS", ContextLevel.ORG: "ORG", ContextLevel.APP: "APP"}
     level_name = level_names.get(context.level, f"level {context.level}")
     
