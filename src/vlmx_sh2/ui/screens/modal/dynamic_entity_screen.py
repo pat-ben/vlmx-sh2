@@ -98,7 +98,7 @@ class DynamicEntityScreen(ModalScreen):
         """Refresh the screen with updated data."""
         try:
             # Reload records from database
-            from ....storage.database import load_all_entities
+            from ....storage.database import StorageInterface
             from ....handlers.utils import get_company_name_from_context
             
             context = self.main_screen.context
@@ -110,7 +110,10 @@ class DynamicEntityScreen(ModalScreen):
                 return
             
             # Load fresh data
-            updated_records = load_all_entities(entity_type, company_name, context)
+            records_result = StorageInterface.load_all_entities(entity_type, company_name, context)
+            if not records_result.success:
+                return  # Silently fail like the existing try/except
+            updated_records = records_result.data
             
             # Update picker request with fresh data
             self.picker_request.records = updated_records

@@ -218,13 +218,15 @@ class StorageInterface:
                     error=f"Company '{search_name}' not found"
                 )
             
-            # Construct company data with path information
-            from pathlib import Path
+            # Construct company data with path information  
             company_folder = get_company_folder_path(company_name, context)
+            org_file = company_folder / "company.json"
+            org_data = _safe_json_load(org_file)
+
             company_data = {
                 "name": company_name,
-                "id": 1,  # Default company ID
-                "db_path": str(company_folder / "company.json")
+                "id": org_data.get("id") if org_data else None,
+                "db_path": str(org_file)
             }
             
             return StorageResult(

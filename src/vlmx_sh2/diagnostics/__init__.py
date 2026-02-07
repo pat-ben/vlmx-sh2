@@ -35,3 +35,4 @@ __all__ = [
 ]
 
 # TODO: Add DiagnosticLogger for issue history tracking
+# TODO: Add DiagnosticReporter for output coordination (format + log + display)
