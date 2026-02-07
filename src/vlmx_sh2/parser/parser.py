@@ -119,38 +119,42 @@ class Parser:
             Tuple of (SplitResult, FilterExpression) if successful
             None if pipeline failed early
         """
-        # Stage 0: Normalizer
+        # BLOCKING STAGES: Stop pipeline on errors to prevent cascading failures
+        
+        # Stage 0: Normalizer (BLOCKING)
         normalized_text = normalize(input_text, context)
         context.normalized_text = normalized_text
         
         if context.has_errors():
             return None  # Stop on normalization errors
         
-        # Stage 1: Tokenizer
+        # Stage 1: Tokenizer (BLOCKING)
         tokens = Tokenizer.tokenize(normalized_text, context)
         
         if context.has_errors():
             return None  # Stop on tokenization errors
         
-        # Stage 2: Classifier
+        # Stage 2: Classifier (BLOCKING)
         classified_tokens = Classifier.classify(tokens, context)
         
         if context.has_errors():
             return None  # Stop on classification errors
         
-        # Stage 3: Recognizer
+        # NON-BLOCKING STAGES: Continue to collect all issues for better error reporting
+        
+        # Stage 3: Recognizer (NON-BLOCKING)
         recognized_tokens = Recognizer.recognize(classified_tokens, context)
         
         # Continue even with recognition errors to collect all issues
         
-        # Stage 4: Interpreter
+        # Stage 4: Interpreter (NON-BLOCKING)
         # Create default context for interpreter
         default_context = Context(level=ContextLevel.SYS)
         interpreted_tokens = Interpreter.interpret(recognized_tokens, default_context)
         
         # Continue even with interpretation errors
         
-        # Stage 5: Splitter
+        # Stage 5: Splitter (NON-BLOCKING)
         split_result = Splitter.split(interpreted_tokens, context)
         
         if context.has_errors():
@@ -158,7 +162,7 @@ class Parser:
             # For now, continue - splitter errors are usually recoverable
             pass
         
-        # Stage 6: Filter
+        # Stage 6: Filter (NON-BLOCKING)
         filter_expression = Filter.parse(split_result, context)
         
         # Filter parsing errors are non-blocking (filters are optional)

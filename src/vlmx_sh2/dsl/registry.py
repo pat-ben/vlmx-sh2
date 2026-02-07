@@ -102,3 +102,24 @@ def get_words_for_context(context_level: ContextLevel) -> Dict[str, Word]:
             result[word_id] = word
     
     return result
+
+
+def get_schema_class(schema_type: str):
+    """
+    Get the database schema class for a given schema type.
+    
+    Args:
+        schema_type: Schema type identifier (e.g., "company", "fund")
+        
+    Returns:
+        Database schema class or None if not found
+        
+    Example:
+        schema_class = get_schema_class("company")  # Returns CompanyDatabase
+    """
+    for schema in SCHEMAS:
+        # Get the schema type from the class name (e.g., CompanyDatabase -> "company")
+        schema_name = schema.__name__.replace('Database', '').lower()
+        if schema_name == schema_type.lower():
+            return schema
+    return None

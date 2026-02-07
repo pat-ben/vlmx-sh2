@@ -34,7 +34,7 @@ from ..handlers.utils import (
     handle_storage_result
 )
 from ..utils.context_helpers import is_sys
-from ..storage.database import StorageInterface, entity_exists, find_company_by_name, load_all_entities
+from ..storage.database import StorageInterface
 from ..storage.filters import apply_filters
 
 
@@ -164,12 +164,13 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
         return context_error
     
     # Check if word type supports delete
+    # TODO: This could be refactored to dispatch tables in the future
     target = parsed_command.target
-    if target.word_type not in _DELETE_DISPATCH:
-        supported = ', '.join(wt.value for wt in _DELETE_DISPATCH.keys())
+    if target.word_type not in [WordType.SCHEMA, WordType.ENTITY, WordType.FIELD]:
+        supported_types = ['schema', 'entity', 'field']
         return ErrorResult(
             errors=[f"'delete' does not support {target.word_type.value}"],
-            suggestions=[f"'delete' works with: {supported}"]
+            suggestions=[f"'delete' works with: {', '.join(supported_types)}"]
         )
     
     company_name, error = validate_org_context(context)
@@ -265,13 +266,15 @@ async def show_handler(parsed_command: ParsedCommand, context: Context) -> Handl
     if context_error:
         return context_error
     
-    # Dispatch by word type
+    # Handle by target type using isinstance checks
+    # TODO: These could be refactored to dispatch tables in the future
     target = parsed_command.target
-    handler_fn = _SHOW_DISPATCH.get(target.word_type)
     
-    # Handle new word types with direct dispatch
-    if handler_fn is not None:
-        return await handler_fn(target, context)
+    # Handle word types with direct dispatch
+    if isinstance(target, ModuleWord):
+        return await _show_module(target, context)
+    elif target.word_type == WordType.APP:
+        return await _show_app(target, context)
     
     # Handle legacy word types with special logic
     if isinstance(target, SchemaWord):
@@ -302,11 +305,10 @@ async def show_handler(parsed_command: ParsedCommand, context: Context) -> Handl
     
     # Unsupported word type
     else:
-        supported = [wt.value for wt in _SHOW_DISPATCH.keys() if _SHOW_DISPATCH[wt] is not None]
-        supported.extend(["schema", "entity", "field"])
+        supported_types = ['schema', 'entity', 'field', 'module', 'app']
         return ErrorResult(
             errors=[f"'show' does not support {target.word_type.value}"],
-            suggestions=[f"Supported types: {', '.join(supported)}"]
+            suggestions=[f"Supported types: {', '.join(supported_types)}"]
         )
 
 
@@ -377,7 +379,7 @@ def _validate_entity_exists(entity_type: str, company_name: str, context: Contex
     Returns:
         ErrorResult if entity doesn't exist, None if valid
     """
-    if not entity_exists(entity_type, company_name, context):
+    if not StorageInterface.entity_exists(entity_type, company_name, context):
         return _entity_not_found_error(entity_type, company_name)
     return None
 
@@ -395,12 +397,13 @@ def _resolve_company_name(name: Optional[str], context: Context) -> tuple[Option
             suggestions=["Specify company name"]
         )
     
-    actual_name = find_company_by_name(name, context)
-    if not actual_name:
+    result = StorageInterface.find_company_by_name(name, context)
+    if not result.success:
         return None, ErrorResult(
-            errors=[f"Company '{name}' not found"],
+            errors=[result.error],
             suggestions=["Check company name spelling or list existing companies"]
         )
+    actual_name = result.data["name"]
     
     return actual_name, None
 
@@ -564,7 +567,7 @@ async def _add_field_values(
     try:
         
         # Create entity if it doesn't exist using Pydantic model defaults
-        if not entity_exists(entity_type, company_name, context):
+        if not StorageInterface.entity_exists(entity_type, company_name, context):
             try:
                 if entity_model is None:
                     return ErrorResult(
@@ -798,7 +801,13 @@ async def _show_entity(
         cardinality = getattr(entity_model, 'cardinality', Cardinality.SINGLE) if entity_model else Cardinality.SINGLE
         if cardinality == Cardinality.MULTIPLE:
             # Load all records and apply filtering
-            all_records = load_all_entities(entity_type, company_name, context)
+            all_records_result = StorageInterface.load_all_entities(entity_type, company_name, context)
+            if not all_records_result.success:
+                return ErrorResult(
+                    errors=[all_records_result.error],
+                    suggestions=["Check entity exists and database connection"]
+                )
+            all_records = all_records_result.data
             
             # Apply filters if present
             if filters:
@@ -907,35 +916,3 @@ async def _show_app(target: TargetWord, context: Context) -> HandlerResult:
         return ErrorResult(errors=[f"Unknown APP type: {type(target).__name__}"])
 
 
-# For non-dispatch path handlers that need different signatures
-async def _show_entity_dispatch(target: TargetWord, context: Context) -> HandlerResult:
-    """Wrapper for entity showing with proper signature."""
-    # This handles entities and fields that need organization context
-    company_name, error = validate_org_context(context)
-    if error:
-        return error
-    
-    # Get parsed command data (this is a limitation of the current approach)
-    # In a full refactor, we'd pass the parsed command to the dispatch handlers
-    return ErrorResult(
-        errors=["Entity/field show requires parsed command context"],
-        suggestions=["This is handled by the legacy path in show_handler"]
-    )
-
-
-# Dispatch table: WordType -> handler function
-_SHOW_DISPATCH = {
-    WordType.SCHEMA: None,  # Special handling needed for schema 
-    WordType.MODULE: _show_module,
-    WordType.ENTITY: None,  # Special handling needed for entities
-    WordType.FIELD: None,   # Special handling needed for fields
-    WordType.APP: _show_app,  # Routes to view or tool
-}
-
-# Delete dispatch - only certain types support delete
-_DELETE_DISPATCH = {
-    WordType.SCHEMA: None,  # Special handling needed
-    WordType.ENTITY: None,  # Special handling needed  
-    WordType.FIELD: None,   # Special handling needed
-    # MODULE, APP not supported for delete
-}

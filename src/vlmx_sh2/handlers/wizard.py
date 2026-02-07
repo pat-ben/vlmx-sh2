@@ -15,7 +15,7 @@ from vlmx_sh2.enums import Cardinality
 from ..models.parser.command import ParsedCommand
 from ..handlers.utils import get_company_name_from_context
 from ..constants import SYSTEM_FIELDS
-from ..storage.database import StorageInterface, entity_exists, load_all_entities
+from ..storage.database import StorageInterface
 
 
 # =============================================================================
@@ -52,7 +52,7 @@ async def fill_handler(parsed_command: ParsedCommand, context: Context) -> Handl
         # Handle based on cardinality
         if getattr(entity_model, 'cardinality', None) == Cardinality.SINGLE:
             # Single cardinality: form wizard with existing data
-            if not entity_exists(entity_type, company_name, context):
+            if not StorageInterface.entity_exists(entity_type, company_name, context):
                 return _validation_error(
                     f"{entity_type.title()} does not exist for company '{company_name}'",
                     [f"Create the {entity_type} first: create {entity_type}",
@@ -138,7 +138,13 @@ def _get_requested_fields(entity_model: Type[BaseModel], parsed_command: ParsedC
 def _create_picker_request(entity_type: str, entity_value: Optional[str], company_name: str, 
                          entity_model: Type[BaseModel], context: Context) -> PickerRequest:
     """Create picker request for multiple cardinality schemas."""
-    records = load_all_entities(entity_type, company_name, context)
+    records_result = StorageInterface.load_all_entities(entity_type, company_name, context)
+    if not records_result.success:
+        return ErrorResult(
+            errors=[records_result.error],
+            suggestions=["Check entity type and database connection"]
+        )
+    records = records_result.data
     display_fields = _get_display_fields(entity_type, entity_model)
     column_specs = build_column_specs(entity_type, entity_model, display_fields)
     

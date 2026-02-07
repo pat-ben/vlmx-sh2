@@ -82,8 +82,13 @@ class EntityModel(SQLModel):
 
     @classmethod
     def table_name(cls) -> str:
-        """Returns the SQL table name for this model"""
-        raise NotImplementedError
+        """
+        Returns the SQL table name for this model.
+        
+        Default implementation uses the same logic as get_entity_word_id().
+        Subclasses can override this for custom table naming (e.g., "brand_offerings").
+        """
+        return cls.__name__.replace("Entity", "").lower()
         
         
         

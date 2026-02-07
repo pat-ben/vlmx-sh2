@@ -48,25 +48,40 @@ class Router:
                 suggestions=parse_result.suggestions or ["Check command syntax"]
             )
         
-        # Step 3: Check if action handler exists
-        if not hasattr(parse_result.command, 'action') or not parse_result.command.action:
+        # Step 3: Delegate to direct command dispatch
+        return await cls.dispatch_command(parse_result.command, context)
+    
+    @classmethod
+    async def dispatch_command(cls, parsed_command, context: Context) -> HandlerResult:
+        """
+        Dispatch a ParsedCommand directly to its handler without ParseResult wrapper.
+        
+        Args:
+            parsed_command: ParsedCommand instance
+            context: Current execution context
+            
+        Returns:
+            HandlerResult: Data contract from handler or ErrorResult if failed
+        """
+        # Step 1: Check if action handler exists
+        if not hasattr(parsed_command, 'action') or not parsed_command.action:
             return ErrorResult(
                 errors=["No action specified"],
                 suggestions=["Specify an action like 'show', 'create', 'fill', etc."]
             )
         
-        # Step 4: Get the handler function
-        handler_func = cls._get_handler_function(parse_result.command.action)
+        # Step 2: Get the handler function
+        handler_func = cls._get_handler_function(parsed_command.action)
         if not handler_func:
-            action_name = getattr(parse_result.command.action, 'id', str(parse_result.command.action))
+            action_name = getattr(parsed_command.action, 'id', str(parsed_command.action))
             return ErrorResult(
                 errors=[f"No handler found for action '{action_name}'"],
                 suggestions=["Check if the action is implemented"]
             )
         
-        # Step 5: Execute handler safely
+        # Step 3: Execute handler safely
         try:
-            result = await handler_func(parse_result.command, context)
+            result = await handler_func(parsed_command, context)
             return result
             
         except Exception as e:

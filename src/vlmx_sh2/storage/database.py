@@ -3,7 +3,12 @@
 Data persistence layer.
 
 Handles JSON file-based storage for schemas with context-aware paths.
+Public API: StorageInterface class and get_company_folder_path utility.
+Private functions are prefixed with _ and should not be imported directly.
 """
+
+# Public API - only these should be imported
+__all__ = ["StorageInterface", "get_company_folder_path"]
 
 import json
 import os
@@ -180,6 +185,55 @@ class StorageInterface:
                 )
         except Exception as e:
             return StorageResult(success=False, error=f"Exception during list {entity_type}: {str(e)}")
+    
+    @staticmethod
+    def entity_exists(entity_type: str, company_name: str, context: Context) -> bool:
+        """Check if an entity exists with standardized error handling."""
+        try:
+            return entity_exists(entity_type, company_name, context)
+        except Exception:
+            return False
+    
+    @staticmethod
+    def load_all_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """Load all entities with standardized error handling."""
+        try:
+            result = load_all_entities(entity_type, company_name, context)
+            return StorageResult(
+                success=True,
+                data=result,
+                message=f"Successfully loaded {len(result)} {entity_type} records"
+            )
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during load all {entity_type}: {str(e)}")
+    
+    @staticmethod
+    def find_company_by_name(search_name: str, context: Context) -> StorageResult:
+        """Find company by name with standardized error handling."""
+        try:
+            company_name = find_company_by_name(search_name, context)
+            if company_name is None:
+                return StorageResult(
+                    success=False,
+                    error=f"Company '{search_name}' not found"
+                )
+            
+            # Construct company data with path information
+            from pathlib import Path
+            company_folder = get_company_folder_path(company_name, context)
+            company_data = {
+                "name": company_name,
+                "id": 1,  # Default company ID
+                "db_path": str(company_folder / "company.json")
+            }
+            
+            return StorageResult(
+                success=True,
+                data=company_data,
+                message=f"Found company: {company_name}"
+            )
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during find company: {str(e)}")
 
 
 # ==================== ENTITY OPERATIONS ====================
@@ -238,13 +292,11 @@ def _create_default_entity_data(entity_class) -> Dict[str, Any]:
         return default_data
 
 
-def _create_company_entities(company_folder: Path) -> List[str]:
-    """Create all entity files for a new company."""
-    from ..schemas.company import CompanyDatabase
-    
+def _create_company_entities(company_folder: Path, schema_class) -> List[str]:
+    """Create all entity files for a new company using provided schema class."""
     created_files = []
     
-    for entity_class in CompanyDatabase.tables:
+    for entity_class in schema_class.tables:
         if entity_class.__name__ == 'OrganizationEntity':
             continue
         
@@ -267,6 +319,7 @@ def _create_company_entities(company_folder: Path) -> List[str]:
 def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> Dict[str, Any]:
     """Generic entity creation - works for ANY entity type."""
     try:
+        # Company has special creation flow (folder + entity files)
         if entity_type == 'company':
             company_name = data.get('name')
             if not company_name:
@@ -284,9 +337,23 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
                 except (ValueError, TypeError):
                     pass
             
-            # Create organization data with defaults
-            from ..schemas.company import OrganizationEntity
+            # Get schema class dynamically
+            from ..dsl.registry import get_schema_class
+            schema_class = get_schema_class(entity_type)
+            if not schema_class:
+                return _error_result(f"Unknown schema type: {entity_type}")
             
+            # Find OrganizationEntity in schema tables
+            organization_entity_class = None
+            for entity_class in schema_class.tables:
+                if entity_class.__name__ == 'OrganizationEntity':
+                    organization_entity_class = entity_class
+                    break
+            
+            if not organization_entity_class:
+                return _error_result(f"OrganizationEntity not found in {entity_type} schema")
+            
+            # Create organization data with defaults
             base_data = {
                 "id": None,
                 "name": data.get('name'),
@@ -296,7 +363,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             base_data.update(data)
             
             try:
-                company_instance = OrganizationEntity(**base_data)
+                company_instance = organization_entity_class(**base_data)
                 organization_data = company_instance.model_dump()
             except Exception as e:
                 return _error_result(f"Invalid company data: {str(e)}")
@@ -308,7 +375,7 @@ def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> D
             if not _safe_json_save(org_file, organization_data):
                 return _error_result("Failed to save company data")
             
-            created_files = ["company.json"] + _create_company_entities(company_folder)
+            created_files = ["company.json"] + _create_company_entities(company_folder, schema_class)
             
             return _success_result(
                 f"Successfully created company '{company_name}'",

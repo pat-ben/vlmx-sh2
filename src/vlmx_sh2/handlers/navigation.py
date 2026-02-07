@@ -16,7 +16,7 @@ from ..models.context import Context
 from ..models.responses import HandlerResult, CommandResult, ErrorResult
 from ..models.parser.command import ParsedCommand
 from ..enums.core import ContextLevel
-from ..storage.database import find_company_by_name
+from ..storage.database import StorageInterface
 
 
 # =============================================================================
@@ -30,7 +30,7 @@ def _navigate_to_sys(context: Context) -> HandlerResult:
         message="At root",
         data={
             "context_switch": {
-                "level": "SYS",
+                "level": ContextLevel.SYS,
                 "org_id": None,
                 "org_name": None,
                 "org_db_path": None,
@@ -76,7 +76,7 @@ async def _navigate_to_app(app_name: str, context: Context) -> HandlerResult:
         message=f"Entered {app_name} ({app_type}) for {context.org_name}",
         data={
             "context_switch": {
-                "level": "APP",
+                "level": ContextLevel.APP,
                 "org_id": context.org_id,
                 "org_name": context.org_name,
                 "org_db_path": context.org_db_path,
@@ -103,7 +103,7 @@ def _navigate_org_to_sys(context: Context) -> HandlerResult:
         message="Back to root",
         data={
             "context_switch": {
-                "level": "SYS",
+                "level": ContextLevel.SYS,
                 "org_id": None,
                 "org_name": None,
                 "org_db_path": None,
@@ -122,7 +122,7 @@ def _navigate_app_to_org(context: Context) -> HandlerResult:
         message=f"Back to {context.org_name}",
         data={
             "context_switch": {
-                "level": "ORG",
+                "level": ContextLevel.ORG,
                 "org_id": context.org_id,
                 "org_name": context.org_name,
                 "org_db_path": context.org_db_path,
@@ -142,10 +142,10 @@ async def _navigate_to_org(org_name: str, context: Context) -> HandlerResult:
             suggestions=["First return to root: cd ~"]
         )
     
-    company = find_company_by_name(org_name)
-    if not company:
+    company_result = StorageInterface.find_company_by_name(org_name, context)
+    if not company_result.success:
         return ErrorResult(
-            errors=[f"Company '{org_name}' not found"],
+            errors=[company_result.error],
             suggestions=["Use 'create company <name>' to create a new company"]
         )
     
@@ -154,10 +154,10 @@ async def _navigate_to_org(org_name: str, context: Context) -> HandlerResult:
         message=f"Entered {org_name}",
         data={
             "context_switch": {
-                "level": "ORG",
-                "org_id": company.get("id"),
+                "level": ContextLevel.ORG,
+                "org_id": company_result.data.get("id"),
                 "org_name": org_name,
-                "org_db_path": company.get("db_path"),
+                "org_db_path": company_result.data.get("db_path"),
                 "app_id": None,
                 "app_name": None,
                 "app_type": None,

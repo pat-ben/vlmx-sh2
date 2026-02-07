@@ -63,20 +63,8 @@ class CommandExecutor:
                     suggestions=["Check command syntax"]
                 )
             
-            # Step 4: Create ParseResult for Router
-            from ..models.parser.parsing import ParseResult
-            parse_result = ParseResult(
-                input_text=input_text,
-                command_tokens=tokens_result.command_tokens,
-                filter_tokens=tokens_result.filter_tokens,
-                command=parsed_command,
-                is_valid=True,
-                errors=[],
-                suggestions=[]
-            )
-            
-            # Step 5: Route and execute through Router
-            return await Router.dispatch(parse_result, context)
+            # Step 4: Route and execute through Router directly
+            return await Router.dispatch_command(parsed_command, context)
             
         except Exception as e:
             # Catch ANY unexpected errors and wrap in ErrorResult
@@ -134,21 +122,8 @@ class CommandExecutor:
                     ]
                 )
             
-            # Step 3: Create a ParseResult-like structure for Router
-            # We need to create a minimal ParseResult to pass to Router.dispatch
-            from ..models.parser.parsing import ParseResult
-            parse_result = ParseResult(
-                input_text=f"[WIZARD] {action_id} {entity_id}",
-                command_tokens=[],
-                filter_tokens=[],
-                command=parsed_command,
-                is_valid=True,
-                errors=[],
-                suggestions=[]
-            )
-            
-            # Step 4: Route and execute through Router (same as standard flow)
-            return await Router.dispatch(parse_result, context)
+            # Step 3: Route and execute through Router directly
+            return await Router.dispatch_command(parsed_command, context)
             
         except Exception as e:
             # Catch ANY unexpected errors and wrap in ErrorResult

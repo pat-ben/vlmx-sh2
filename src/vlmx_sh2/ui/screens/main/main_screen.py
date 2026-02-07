@@ -6,6 +6,8 @@ from textual.widgets import Footer, Header
 
 from ....models.context import Context
 from ....models.responses import CommandResult, ErrorResult, FormRequest, PickerRequest, QueryRequest
+from ....enums.core import ContextLevel
+from ....core.executor import CommandExecutor
 from vlmx_sh2.ui.formatters.results import format_command_result
 from ...widgets.command_block import CommandBlock
 
@@ -33,7 +35,6 @@ class MainScreen(Screen):
         command_block.show_output(f"Command: {command}")
         
         # ONE LINE to execute - delegate everything to CommandExecutor
-        from ....core.executor import CommandExecutor
         result = await CommandExecutor.execute(command, self.context)
         
         # Render based on result type
@@ -87,16 +88,24 @@ class MainScreen(Screen):
         if result.success and result.data and result.data.get("context_switch"):
             # Update context based on context_switch data
             context_switch = result.data["context_switch"]
-            from ....models.context import Context
-            from ....enums.core import ContextLevel
-            if context_switch["level"] == "SYS":
+            if context_switch["level"] == ContextLevel.SYS:
                 self.context = Context(level=ContextLevel.SYS)
-            elif context_switch["level"] == "ORG":
+            elif context_switch["level"] == ContextLevel.ORG:
                 self.context = Context(
                     level=ContextLevel.ORG,
                     org_id=context_switch["org_id"],
                     org_name=context_switch["org_name"],
                     org_db_path=context_switch["org_db_path"]
+                )
+            elif context_switch["level"] == ContextLevel.APP:
+                self.context = Context(
+                    level=ContextLevel.APP,
+                    org_id=context_switch["org_id"],
+                    org_name=context_switch["org_name"],
+                    org_db_path=context_switch["org_db_path"],
+                    app_id=context_switch["app_id"],
+                    app_name=context_switch["app_name"],
+                    app_type=context_switch["app_type"]
                 )
         
         # Create new prompt
@@ -160,7 +169,6 @@ class MainScreen(Screen):
         """Process form wizard submission using unified command flow."""
         try:
             # Use unified command executor instead of manually building command
-            from ....core.executor import CommandExecutor
             result = await CommandExecutor.execute_from_wizard(
                 action_id="add",
                 entity_id=wizard_request.entity_id,

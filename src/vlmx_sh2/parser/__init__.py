@@ -22,8 +22,6 @@ from .splitter import Splitter         # Stage 5
 from .filter import Filter             # Stage 6
 from .parser import Parser             # Pipeline Orchestrator
 
-# Legacy alias for compatibility
-VLMXParser = Parser
 
 __all__ = [
     'normalize',       # Stage 0
@@ -34,6 +32,5 @@ __all__ = [
     'Splitter',        # Stage 5
     'Filter',          # Stage 6
     'Parser',          # Pipeline Orchestrator
-    'VLMXParser',      # Legacy alias
 ]
 

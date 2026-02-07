@@ -33,3 +33,5 @@ __all__ = [
     "DiagnosticFormatter",
     "OutputFormat",
 ]
+
+# TODO: Add DiagnosticLogger for issue history tracking
