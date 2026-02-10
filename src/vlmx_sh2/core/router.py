@@ -6,7 +6,6 @@ Converts parser results into handler results while maintaining error isolation.
 """
 
 from ..models.context import Context
-from ..models.parser import ParseResult
 from ..models.responses import HandlerResult, ErrorResult
 
 
@@ -21,35 +20,6 @@ class Router:
     - Convert exceptions to ErrorResult
     - Return pure data contracts
     """
-    
-    @classmethod
-    async def dispatch(cls, parse_result: ParseResult, context: Context) -> HandlerResult:
-        """
-        Dispatch a parsed command to its handler.
-        
-        Args:
-            parse_result: Result from Parser.parse()
-            context: Current execution context
-            
-        Returns:
-            HandlerResult: Data contract from handler or ErrorResult if failed
-        """
-        # Step 1: Check for parse errors
-        if not parse_result.is_valid or parse_result.errors:
-            return ErrorResult(
-                errors=parse_result.errors or ["Invalid command"],
-                suggestions=parse_result.suggestions or []
-            )
-        
-        # Step 2: Ensure we have a parsed command
-        if not parse_result.command:
-            return ErrorResult(
-                errors=["No valid command found"],
-                suggestions=parse_result.suggestions or ["Check command syntax"]
-            )
-        
-        # Step 3: Delegate to direct command dispatch
-        return await cls.dispatch_command(parse_result.command, context)
     
     @classmethod
     async def dispatch_command(cls, parsed_command, context: Context) -> HandlerResult:

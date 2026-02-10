@@ -35,7 +35,6 @@ from ..models.parser import TokensResult
 from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
 from ..models.context import Context
-from ..enums.core import ContextLevel
 
 # Import all pipeline stages (0-6 only, no builder)
 from .normalizer import normalize
@@ -68,7 +67,7 @@ class Parser:
     """
     
     @classmethod
-    def parse(cls, input_text: str) -> TokensResult:
+    def parse(cls, input_text: str, context: Context) -> TokensResult:
         """
         Orchestrate the text analysis pipeline and build a TokensResult.
         
@@ -77,6 +76,7 @@ class Parser:
         
         Args:
             input_text: Raw user input text
+            context: Current execution context (ORG, SYS, APP level)
             
         Returns:
             TokensResult with:
@@ -87,13 +87,13 @@ class Parser:
             - is_valid: True if no blocking errors occurred
         """
         # Step 1: Initialize ValidationContext
-        context = ValidationContext(input_text=input_text)
+        validation_context = ValidationContext(input_text=input_text)
         
         # Step 2: Run the parsing pipeline (stages 0-6)
-        pipeline_result = cls._run_pipeline(input_text, context)
+        pipeline_result = cls._run_pipeline(input_text, validation_context, context)
         if pipeline_result is None:
             # Pipeline failed early - return empty result
-            return cls._build_tokens_result(input_text, [], [], None, context)
+            return cls._build_tokens_result(input_text, [], [], None, validation_context)
         
         split_result, filter_expression = pipeline_result
         
@@ -103,14 +103,15 @@ class Parser:
             split_result.command_tokens,
             split_result.filter_tokens,
             filter_expression,
-            context
+            validation_context
         )
     
     @classmethod
     def _run_pipeline(
         cls, 
         input_text: str, 
-        context: ValidationContext
+        validation_context: ValidationContext,
+        context: Context
     ) -> Optional[tuple]:
         """
         Run all parsing stages in sequence with error handling.
@@ -122,48 +123,47 @@ class Parser:
         # BLOCKING STAGES: Stop pipeline on errors to prevent cascading failures
         
         # Stage 0: Normalizer (BLOCKING)
-        normalized_text = normalize(input_text, context)
-        context.normalized_text = normalized_text
+        normalized_text = normalize(input_text, validation_context)
+        validation_context.normalized_text = normalized_text
         
-        if context.has_errors():
+        if validation_context.has_errors():
             return None  # Stop on normalization errors
         
         # Stage 1: Tokenizer (BLOCKING)
-        tokens = Tokenizer.tokenize(normalized_text, context)
+        tokens = Tokenizer.tokenize(normalized_text, validation_context)
         
-        if context.has_errors():
+        if validation_context.has_errors():
             return None  # Stop on tokenization errors
         
         # Stage 2: Classifier (BLOCKING)
-        classified_tokens = Classifier.classify(tokens, context)
+        classified_tokens = Classifier.classify(tokens, validation_context)
         
-        if context.has_errors():
+        if validation_context.has_errors():
             return None  # Stop on classification errors
         
         # NON-BLOCKING STAGES: Continue to collect all issues for better error reporting
         
         # Stage 3: Recognizer (NON-BLOCKING)
-        recognized_tokens = Recognizer.recognize(classified_tokens, context)
+        recognized_tokens = Recognizer.recognize(classified_tokens, validation_context)
         
         # Continue even with recognition errors to collect all issues
         
         # Stage 4: Interpreter (NON-BLOCKING)
-        # Create default context for interpreter
-        default_context = Context(level=ContextLevel.SYS)
-        interpreted_tokens = Interpreter.interpret(recognized_tokens, default_context)
+        # Use the real context passed in (not hardcoded default)
+        interpreted_tokens = Interpreter.interpret(recognized_tokens, context)
         
         # Continue even with interpretation errors
         
         # Stage 5: Splitter (NON-BLOCKING)
-        split_result = Splitter.split(interpreted_tokens, context)
+        split_result = Splitter.split(interpreted_tokens, validation_context)
         
-        if context.has_errors():
+        if validation_context.has_errors():
             # Check if splitter errors are blocking (bracket issues)
             # For now, continue - splitter errors are usually recoverable
             pass
         
         # Stage 6: Filter (NON-BLOCKING)
-        filter_expression = Filter.parse(split_result, context)
+        filter_expression = Filter.parse(split_result, validation_context)
         
         # Filter parsing errors are non-blocking (filters are optional)
         

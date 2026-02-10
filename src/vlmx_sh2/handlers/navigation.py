@@ -23,7 +23,7 @@ from ..storage.database import StorageInterface
 # 1. Atomic Navigation Functions
 # =============================================================================
 
-def _navigate_to_sys(context: Context) -> HandlerResult:
+async def _navigate_to_sys(context: Context) -> HandlerResult:
     """Navigate to SYS (root) level."""
     return CommandResult(
         success=True,
@@ -88,7 +88,7 @@ async def _navigate_to_app(app_name: str, context: Context) -> HandlerResult:
     )
 
 
-def _already_at_root(context: Context) -> HandlerResult:
+async def _already_at_root(context: Context) -> HandlerResult:
     """Error: already at SYS level."""
     return ErrorResult(
         errors=["Already at root level"],
@@ -96,7 +96,7 @@ def _already_at_root(context: Context) -> HandlerResult:
     )
 
 
-def _navigate_org_to_sys(context: Context) -> HandlerResult:
+async def _navigate_org_to_sys(context: Context) -> HandlerResult:
     """Navigate from ORG to SYS."""
     return CommandResult(
         success=True,
@@ -115,7 +115,7 @@ def _navigate_org_to_sys(context: Context) -> HandlerResult:
     )
 
 
-def _navigate_app_to_org(context: Context) -> HandlerResult:
+async def _navigate_app_to_org(context: Context) -> HandlerResult:
     """Navigate from APP to ORG."""
     return CommandResult(
         success=True,
@@ -144,9 +144,16 @@ async def _navigate_to_org(org_name: str, context: Context) -> HandlerResult:
     
     company_result = StorageInterface.find_company_by_name(org_name, context)
     if not company_result.success:
+        suggestions = ["Use 'create company <name>' to create a new company"]
+        
+        # Add disambiguation suggestions if available
+        if company_result.data and company_result.data.get("suggestions"):
+            candidate_suggestions = [f"cd {name}/" for name in company_result.data["suggestions"]]
+            suggestions = candidate_suggestions + suggestions
+        
         return ErrorResult(
             errors=[company_result.error],
-            suggestions=["Use 'create company <name>' to create a new company"]
+            suggestions=suggestions
         )
     
     return CommandResult(
@@ -210,12 +217,12 @@ async def navigate_handler(parsed_command: ParsedCommand, context: Context) -> H
         if lookup_path == "..":
             handler_fn = _NAVIGATE_UP.get(context.level)
             if handler_fn:
-                return handler_fn(context)
+                return await handler_fn(context)
             return ErrorResult(errors=[f"Unknown context level: {context.level}"])
         
         handler_fn = _SPECIAL_PATHS.get(lookup_path)
         if handler_fn:
-            return handler_fn(context)
+            return await handler_fn(context)
     
     # From SYS: navigate to company
     if context.level == ContextLevel.SYS:

@@ -3,6 +3,7 @@
 from textual.app import App
 
 from ..models.context import Context
+from ..enums.core import ContextLevel
 from .screens import MainScreen
 
 
@@ -14,7 +15,7 @@ class VLMX(App):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.context = Context(level=0)
+        self.context = Context(level=ContextLevel.SYS)
 
     def on_mount(self) -> None:
         """Push the main screen when app mounts."""

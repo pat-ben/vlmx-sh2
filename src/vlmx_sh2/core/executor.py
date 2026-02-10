@@ -40,7 +40,7 @@ class CommandExecutor:
         """
         try:
             # Step 1: Parse the input text (stages 0-6)
-            tokens_result = Parser.parse(input_text)
+            tokens_result = Parser.parse(input_text, context)
             
             # Step 2: Check for parsing errors
             if not tokens_result.is_valid:

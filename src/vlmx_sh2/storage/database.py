@@ -8,7 +8,7 @@ Private functions are prefixed with _ and should not be imported directly.
 """
 
 # Public API - only these should be imported
-__all__ = ["StorageInterface", "get_company_folder_path"]
+__all__ = ["StorageInterface", "get_company_folder_path", "find_company_candidates"]
 
 import json
 import os
@@ -52,11 +52,17 @@ def _safe_json_load(file_path: Path) -> Optional[Dict[str, Any]]:
 
 
 def _safe_json_save(file_path: Path, data: Any) -> bool:
-    """Safely save JSON data with error handling."""
+    """Safely save JSON data with atomic write and error handling."""
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(file_path, 'w', encoding='utf-8') as f:
+        
+        # Write to temporary file first for atomic operation
+        temp_path = file_path.with_suffix('.json.tmp')
+        with open(temp_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, default=str, ensure_ascii=False)
+        
+        # Atomically replace the target file
+        os.replace(temp_path, file_path)
         return True
     except (IOError, OSError):
         return False
@@ -213,10 +219,20 @@ class StorageInterface:
         try:
             company_name = find_company_by_name(search_name, context)
             if company_name is None:
-                return StorageResult(
-                    success=False,
-                    error=f"Company '{search_name}' not found"
-                )
+                # Check if there are partial matches for disambiguation
+                candidates = find_company_candidates(search_name, context)
+                if candidates:
+                    candidates_str = ', '.join(f"'{name}'" for name in candidates)
+                    return StorageResult(
+                        success=False,
+                        error=f"Company '{search_name}' not found or ambiguous",
+                        data={"suggestions": candidates, "message": f"Multiple matches found: {candidates_str}"}
+                    )
+                else:
+                    return StorageResult(
+                        success=False,
+                        error=f"Company '{search_name}' not found"
+                    )
             
             # Construct company data with path information  
             company_folder = get_company_folder_path(company_name, context)
@@ -596,6 +612,37 @@ def save_entity_array(entity_type: str, entity_array: List[Dict[str, Any]],
         return _error_result(f"Failed to save {entity_type} array: {str(e)}")
 
 
+def find_company_candidates(search_name: str, context: Context) -> List[str]:
+    """Find all companies that partially match the search name."""
+    data_dir = get_data_directory_path(context)
+    if not data_dir.exists():
+        return []
+    
+    search_name_lower = search_name.lower().strip()
+    
+    # Get all company folders
+    try:
+        company_folders = [item.name for item in data_dir.iterdir() if item.is_dir()]
+    except (OSError, PermissionError):
+        return []
+    
+    if not company_folders:
+        return []
+    
+    # Find partial matches on first word (case insensitive)
+    search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
+    if not search_first_word:
+        return []
+    
+    partial_matches = []
+    for company_name in company_folders:
+        company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
+        if company_first_word == search_first_word:
+            partial_matches.append(company_name)
+    
+    return partial_matches
+
+
 def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
     """Find a company using intelligent matching."""
     data_dir = get_data_directory_path(context)
@@ -621,9 +668,15 @@ def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
     # Try partial match on first word (case insensitive)
     search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
     if search_first_word:
+        partial_matches = []
         for company_name in company_folders:
             company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
             if company_first_word == search_first_word:
-                return company_name
+                partial_matches.append(company_name)
+        
+        # Only return a match if there's exactly one
+        if len(partial_matches) == 1:
+            return partial_matches[0]
+        # If multiple matches, return None to let caller handle disambiguation
     
     return None

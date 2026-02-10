@@ -30,7 +30,7 @@ class Context(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # Context level tracking
-    level: int = ContextLevel.SYS  # SYS=System, ORG=Organization, APP=Application
+    level: ContextLevel = ContextLevel.SYS  # SYS=System, ORG=Organization, APP=Application
 
     # System level (level 0)
     sys_path: Optional[Path] = None
@@ -51,9 +51,7 @@ class Context(BaseModel):
 
     @field_validator("level")
     @classmethod
-    def _validate_level_range(cls, v: int) -> int:
-        if v not in (ContextLevel.SYS, ContextLevel.ORG, ContextLevel.APP):
-            raise ValueError("level must be SYS (0), ORG (1), or APP (2)")
+    def _validate_level_range(cls, v: ContextLevel) -> ContextLevel:
         return v
 
     @model_validator(mode="after")
