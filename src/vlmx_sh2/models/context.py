@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, model_validator
 from pydantic.config import ConfigDict
 
 from ..enums.core import ContextLevel
@@ -48,11 +48,6 @@ class Context(BaseModel):
     # Session (Step 2)
     user_id: Optional[int] = None
     user_email: Optional[str] = None
-
-    @field_validator("level")
-    @classmethod
-    def _validate_level_range(cls, v: ContextLevel) -> ContextLevel:
-        return v
 
     @model_validator(mode="after")
     def _validate_level_consistency(self) -> "Context":
