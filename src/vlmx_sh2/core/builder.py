@@ -10,7 +10,10 @@ only handle text analysis (stages 0-6). CommandBuilder lives in core/ because
 it's orchestration logic, not parsing logic.
 """
 
+import logging
 from typing import Optional, List, Dict, Any, TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 from ..models.parser import ParsedCommand
 from ..models.parser.filtering import FilterExpression
 from ..models.validation import ValidationContext
@@ -102,15 +105,15 @@ class CommandBuilder:
             # Extract field=value pairs
             field_values = cls._extract_field_value_pairs(command_tokens)
             
-            # Extract standalone field dsl (not part of assignments)
-            field_words = cls._extract_standalone_field_words(command_tokens)
+            # Extract standalone field words (not part of assignments)
+            field_names = cls._extract_standalone_field_names(command_tokens)
             
             return ParsedCommand(
                 action=action_token.word,
                 target=target,
                 target_name=target_name,
                 field_values=field_values,
-                field_words=field_words,
+                field_names=field_names,
                 filters=filter_expression,
                 raw_input=raw_input,
                 command_tokens=command_tokens
@@ -192,13 +195,15 @@ class CommandBuilder:
                 target=target_word,
                 target_name=entity_name,
                 field_values=string_field_values,
-                field_words=[],
+                field_names=[],
                 filters=None,
                 raw_input=f"[WIZARD] {raw_input}",
                 command_tokens=[]
             )
             
         except Exception:
+            # Log the error for debugging before returning None
+            logger.exception(f"Failed to build command from wizard: action={action_id}, entity={entity_id}")
             # If anything goes wrong during building, return None
             # The CommandExecutor will handle this gracefully
             return None
@@ -241,7 +246,7 @@ class CommandBuilder:
         return field_values
     
     @classmethod
-    def _extract_standalone_field_words(cls, tokens: List["InterpretedToken"]) -> List[str]:
+    def _extract_standalone_field_names(cls, tokens: List["InterpretedToken"]) -> List[str]:
         """
         Extract field names that are not part of field=value assignments.
         
@@ -253,7 +258,7 @@ class CommandBuilder:
         Returns:
             List of field names
         """
-        field_words = []
+        field_names = []
         
         for i, token in enumerate(tokens):
             if not token.is_field_word:
@@ -265,6 +270,6 @@ class CommandBuilder:
                            tokens[i + 1].operator)
             
             if not is_assignment:
-                field_words.append(token.text)
+                field_names.append(token.text)
         
-        return field_words
+        return field_names

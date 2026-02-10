@@ -16,6 +16,7 @@ from typing import Type, Optional, Dict, Any, List
 from pydantic import BaseModel
 
 from ..models.context import Context
+from ..utils.entity_defaults import create_default_entity_data
 from ..models.responses import CommandResult, ErrorResult, HandlerResult
 from ..models.parser.command import ParsedCommand
 from ..models.words import (
@@ -36,6 +37,7 @@ from ..handlers.utils import (
 from ..utils.context_helpers import is_sys
 from ..storage.database import StorageInterface
 from ..storage.filters import apply_filters
+from ..constants import SYSTEM_FIELDS
 
 
 # =============================================================================
@@ -180,13 +182,13 @@ async def delete_handler(parsed_command: ParsedCommand, context: Context) -> Han
     assert company_name is not None  # Validated by validate_org_context
     assert parsed_command.target_model is not None  # Required for delete operations
     entity_type = get_entity_type_string(parsed_command.target_model)
-    field_words = parsed_command.field_words
+    field_names = parsed_command.field_names
     filters = parsed_command.filters
     
-    if field_words:
+    if field_names:
         return await _delete_field_values(
             entity_type=entity_type,
-            field_names=field_words,
+            field_names=field_names,
             filters=filters,
             company_name=company_name,
             context=context
@@ -232,13 +234,13 @@ async def reset_handler(parsed_command: ParsedCommand, context: Context) -> Hand
     assert company_name is not None  # Validated by validate_org_context
     assert parsed_command.target_model is not None  # Required for reset operations
     entity_type = get_entity_type_string(parsed_command.target_model)
-    field_words = parsed_command.field_words
+    field_names = parsed_command.field_names
     filters = parsed_command.filters
     
-    if field_words:
+    if field_names:
         return await _reset_field_values(
             entity_type=entity_type,
-            field_names=field_words,
+            field_names=field_names,
             filters=filters,
             company_name=company_name,
             context=context,
@@ -291,7 +293,7 @@ async def show_handler(parsed_command: ParsedCommand, context: Context) -> Handl
         assert company_name is not None  # Validated by validate_org_context
         assert parsed_command.target_model is not None  # Required for show operations
         entity_type = get_entity_type_string(parsed_command.target_model)
-        field_names = parsed_command.field_words
+        field_names = parsed_command.field_names
         filters = parsed_command.filters
         
         return await _show_entity(
@@ -316,44 +318,6 @@ async def show_handler(parsed_command: ParsedCommand, context: Context) -> Handl
 # 2. Validation & Utilities (Common Helper Functions)
 # =============================================================================
 
-def _create_default_entity_data(entity_model: Type[BaseModel], entity_type: str) -> Dict[str, Any]:
-    """
-    Create default entity data from Pydantic model.
-    
-    Args:
-        entity_model: Pydantic model class
-        entity_type: Entity type string (for default name)
-        
-    Returns:
-        Dictionary with default entity data
-        
-    Raises:
-        Exception: If model instantiation fails
-    """
-    default_entity_data = {
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat(),
-    }
-    
-    # For schemas with a "name" field, set a default name
-    if hasattr(entity_model, 'model_fields') and 'name' in entity_model.model_fields:
-        default_entity_data["name"] = f"default_{entity_type}"
-    
-    # Create instance with minimal required data
-    entity_instance = entity_model(**default_entity_data)
-    
-    # Get all model fields and create a complete data dict with explicit None for optional fields
-    complete_data = {}
-    for field_name, field_info in entity_model.model_fields.items():
-        if hasattr(entity_instance, field_name):
-            value = getattr(entity_instance, field_name)
-            complete_data[field_name] = value
-        else:
-            # For fields not in the instance, explicitly set to None if they're optional
-            if not field_info.is_required():
-                complete_data[field_name] = None
-    
-    return complete_data
 
 
 def _not_yet_supported_error(feature: str, suggestion: Optional[str] = None) -> ErrorResult:
@@ -575,7 +539,7 @@ async def _add_field_values(
                         suggestions=["Check entity model configuration"]
                     )
                 
-                default_data = _create_default_entity_data(entity_model, entity_type)
+                default_data = create_default_entity_data(entity_model, entity_type)
             except Exception as e:
                 return ErrorResult(
                     errors=[f"Failed to create default entity: {str(e)}"],
@@ -588,7 +552,29 @@ async def _add_field_values(
         load_result = StorageInterface.load_entity(entity_type, company_name, context)
         current_data = load_result.data if (load_result.success and load_result.data) else {}
 
-        # Create updated data with new fields
+        # Validate field names before storage
+        if entity_model is not None:
+            valid_fields = set(entity_model.model_fields.keys())
+            invalid_fields = [f for f in fields if f not in valid_fields]
+            system_fields = [f for f in fields if f in SYSTEM_FIELDS]
+            
+            if invalid_fields or system_fields:
+                error_parts = []
+                if invalid_fields:
+                    valid_field_names = ', '.join(sorted(valid_fields - SYSTEM_FIELDS))
+                    error_parts.append(f"Unknown fields: {', '.join(invalid_fields)}. Valid fields for {entity_type}: {valid_field_names}")
+                if system_fields:
+                    error_parts.append(f"System-managed fields cannot be set manually: {', '.join(system_fields)}")
+                
+                return ErrorResult(
+                    errors=error_parts,
+                    suggestions=[
+                        f"Check field names for {entity_type}",
+                        "Use only user-editable fields"
+                    ]
+                )
+
+        # Create updated data with validated fields
         updated_data = current_data.copy()
         updated_data.update(fields)
         updated_data["updated_at"] = datetime.now().isoformat()
@@ -703,7 +689,7 @@ async def _reset_entity_content(
     """Reset entity to defaults."""
     
     try:
-        default_data = _create_default_entity_data(entity_model, entity_type)
+        default_data = create_default_entity_data(entity_model, entity_type)
     except Exception as e:
         return ErrorResult(
             errors=[f"Failed to generate defaults: {str(e)}"],

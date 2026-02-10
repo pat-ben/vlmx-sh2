@@ -68,12 +68,12 @@ def get_word(word_id: str) -> Word | None:
 
 
 def get_all_words() -> Dict[str, Word]:
-    """Get all registered dsl"""
+    """Get all registered words"""
     return WORD_REGISTRY
 
 
 def get_words_by_type(word_type: WordType) -> Dict[str, Word]:
-    """Get all dsl of a specific type"""
+    """Get all words of a specific type"""
     return {
         k: v for k, v in WORD_REGISTRY.items()
         if v.word_type == word_type

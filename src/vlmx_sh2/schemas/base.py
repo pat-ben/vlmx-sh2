@@ -59,7 +59,7 @@ class EntityModel(SQLModel):
         Override in subclasses to provide custom aliases.
         
         Returns:
-            List of alias dsl that map to this entity
+            List of alias words that map to this entity
         """
         return []
     

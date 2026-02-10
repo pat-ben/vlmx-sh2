@@ -7,6 +7,7 @@ Converts parser results into handler results while maintaining error isolation.
 
 from ..models.context import Context
 from ..models.responses import HandlerResult, ErrorResult
+from ..models.parser.command import ParsedCommand
 
 
 class Router:
@@ -22,7 +23,7 @@ class Router:
     """
     
     @classmethod
-    async def dispatch_command(cls, parsed_command, context: Context) -> HandlerResult:
+    async def dispatch_command(cls, parsed_command: ParsedCommand, context: Context) -> HandlerResult:
         """
         Dispatch a ParsedCommand directly to its handler without ParseResult wrapper.
         

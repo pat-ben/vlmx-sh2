@@ -7,7 +7,7 @@ for 'show brand'. Helps improve command line efficiency.
 
 Macro Design Guidelines:
 - Length: Macros must be 2 characters
-- Structure: Must expand to ActionWord + SchemaWord OR ActionWord + EntityWord (2 dsl)
+- Structure: Must expand to ActionWord + SchemaWord OR ActionWord + EntityWord (2 words)
 - Position: Only expands at the very beginning of input (position 0)
 - Case: Case-insensitive matching
 
@@ -38,7 +38,7 @@ def expand_macros(input_text: str) -> str:
         input_text: Original user input
         
     Returns:
-        Input with command macros expanded to full dsl
+        Input with command macros expanded to full words
     """
     if not input_text.strip():
         return input_text

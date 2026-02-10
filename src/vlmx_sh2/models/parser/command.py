@@ -32,7 +32,7 @@ class ParsedCommand(BaseModel):
         target: The target word (SchemaWord for database ops, EntityWord for table ops)
         target_name: Schema name - name of the target instance ("ACME", "TechCorp", etc.)
         field_values: Field-value pairs ({"currency": "EUR", "vision": "Our vision"})
-        field_words: Field names without values (["vision", "mission"])
+        field_names: Field names without values (["vision", "mission"])
         raw_input: Original user input text
         command_tokens: All recognized tokens from the parser
     
@@ -75,9 +75,9 @@ class ParsedCommand(BaseModel):
         default_factory=dict,
         description="Field-value pairs for entity attributes"
     )
-    field_words: List[str] = Field(
+    field_names: List[str] = Field(
         default_factory=list,
-        description="Field names without values (for selection/deletion)"
+        description="Standalone field names without values (e.g., ['vision', 'mission'] from 'delete brand vision mission')"
     )
     
     # Metadata

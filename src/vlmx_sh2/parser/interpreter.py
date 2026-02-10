@@ -6,7 +6,7 @@ Interprets user intent and corrects/infers missing information.
 
 This stage operates on recognized tokens and makes the DSL "smart" by:
 - Correcting typos with fuzzy matching
-- Inferring missing dsl from context
+- Inferring missing words from context
 - Making the command interface more forgiving
 """
 
@@ -24,7 +24,7 @@ class Interpreter:
     
     Operates on recognized tokens to make the DSL more intelligent:
     - Fuzzy matching: Corrects typos and spelling mistakes
-    - Expression inference: Adds missing action/entity dsl in ORG context
+    - Expression inference: Adds missing action/entity words in ORG context
     
     This stage bridges the gap between what users type and what
     the system needs to execute commands successfully.
@@ -48,7 +48,7 @@ class Interpreter:
         
         Processing order:
         1. Fuzzy matching (correct typos in UNKNOWN tokens)
-        2. Expression inference (inject missing dsl in ORG context)
+        2. Expression inference (inject missing words in ORG context)
        
         """
         
@@ -61,7 +61,7 @@ class Interpreter:
         # Apply fuzzy matching to correct typos in UNKNOWN tokens
         interpreted_tokens = cls._correct_typos(interpreted_tokens)
         
-        # Apply expression inference to add missing dsl
+        # Apply expression inference to add missing words
         interpreted_tokens = cls._infer_missing_words(interpreted_tokens, context)
         
         return interpreted_tokens
@@ -99,13 +99,13 @@ class Interpreter:
             if token.token_type != TokenType.UNKNOWN:
                 continue
                 
-            # Skip short dsl (≤ 3 characters)
+            # Skip short words (≤ 3 characters)
             if len(token.text) <= 3:
                 continue
             
             token_text_lower = token.text.lower()
             
-            # Check all dsl in registry for exact distance of 1
+            # Check all words in registry for exact distance of 1
             word_registry = cls._get_word_registry()
             for word_id in word_registry.keys():
                 # Skip if length difference is too large (optimization)
@@ -139,7 +139,7 @@ class Interpreter:
         context: Context
     ) -> List[InterpretedToken]:
         """
-        Infer missing dsl based on patterns and context.
+        Infer missing words based on patterns and context.
         Analyzes tokens to detect missing ActionWord and EntityWord, then injects
         them based on field patterns and operator context. Only operates in ORG
         context level.
@@ -156,7 +156,7 @@ class Interpreter:
         if not has_field or first_field_word is None:
             return tokens
         
-        # 4. Build list of dsl to inject
+        # 4. Build list of words to inject
         words_to_inject = []
         
         # 4a. Infer EntityWord if missing

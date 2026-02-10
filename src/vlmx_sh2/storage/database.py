@@ -17,6 +17,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ..utils.entity_defaults import create_default_entity_data_simple
+
 from ..models.context import Context
 from vlmx_sh2.enums import Cardinality
 from ..models.responses import StorageResult
@@ -53,6 +55,7 @@ def _safe_json_load(file_path: Path) -> Optional[Dict[str, Any]]:
 
 def _safe_json_save(file_path: Path, data: Any) -> bool:
     """Safely save JSON data with atomic write and error handling."""
+    temp_path = None
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -64,7 +67,10 @@ def _safe_json_save(file_path: Path, data: Any) -> bool:
         # Atomically replace the target file
         os.replace(temp_path, file_path)
         return True
-    except (IOError, OSError):
+    except (IOError, OSError, TypeError, ValueError, Exception) as e:
+        # Clean up temp file if it was created but operation failed
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
         return False
 
 
@@ -107,154 +113,7 @@ def _wrap_storage_result(func_result: Optional[Dict[str, Any]], entity_type: str
         )
 
 
-# ==================== STORAGE INTERFACE ====================
-
-class StorageInterface:
-    """Single point of access for all storage operations."""
-    
-    @staticmethod
-    def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> StorageResult:
-        """Create a new entity with standardized error handling."""
-        try:
-            result = create_entity(entity_type, data, context)
-            return _wrap_storage_result(result, entity_type, "create")
-        except Exception as e:
-            return StorageResult(success=False, error=f"Exception during create {entity_type}: {str(e)}")
-    
-    @staticmethod
-    def load_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
-        """Load an entity with standardized error handling."""
-        try:
-            result = load_entity(entity_type, company_name, context)
-            if result is None:
-                return StorageResult(
-                    success=False,
-                    error=f"{entity_type.title()} not found for company '{company_name}'"
-                )
-            return StorageResult(success=True, data=result, message=f"Successfully loaded {entity_type}")
-        except Exception as e:
-            return StorageResult(success=False, error=f"Exception during load {entity_type}: {str(e)}")
-    
-    @staticmethod  
-    def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, context: Context) -> StorageResult:
-        """Save an entity with standardized error handling."""
-        try:
-            result = save_entity(entity_type, data, company_name, context)
-            return _wrap_storage_result(result, entity_type, "save")
-        except Exception as e:
-            return StorageResult(success=False, error=f"Exception during save {entity_type}: {str(e)}")
-    
-    @staticmethod
-    def delete_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
-        """Delete an entity with standardized error handling."""
-        try:
-            result = delete_entity(entity_type, company_name, context)
-            return _wrap_storage_result(result, entity_type, "delete")
-        except Exception as e:
-            return StorageResult(success=False, error=f"Exception during delete {entity_type}: {str(e)}")
-    
-    @staticmethod
-    def list_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
-        """List schemas with standardized error handling."""
-        try:
-            if entity_type == 'company':
-                result = list_companies(context)
-            else:
-                result = load_all_entities(entity_type, company_name, context)
-                if isinstance(result, list):
-                    result = {"success": True, "data": result, "count": len(result)}
-            
-            if result is None:
-                return StorageResult(success=False, error=f"Failed to list {entity_type}: Unknown error")
-            
-            if isinstance(result, list):
-                return StorageResult(
-                    success=True,
-                    data={"schemas": result, "count": len(result)},
-                    message=f"Successfully listed {len(result)} {entity_type} schemas"
-                )
-            
-            if not isinstance(result, dict):
-                return StorageResult(success=False, error=f"Invalid storage result format for list {entity_type}")
-                
-            if result.get("success", True):
-                return StorageResult(
-                    success=True,
-                    data=result,
-                    message=result.get("message", f"Successfully listed {entity_type} schemas")
-                )
-            else:
-                return StorageResult(
-                    success=False,
-                    error=result.get("error", f"Failed to list {entity_type}"),
-                    message=result.get("message")
-                )
-        except Exception as e:
-            return StorageResult(success=False, error=f"Exception during list {entity_type}: {str(e)}")
-    
-    @staticmethod
-    def entity_exists(entity_type: str, company_name: str, context: Context) -> bool:
-        """Check if an entity exists with standardized error handling."""
-        try:
-            return entity_exists(entity_type, company_name, context)
-        except Exception:
-            return False
-    
-    @staticmethod
-    def load_all_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
-        """Load all entities with standardized error handling."""
-        try:
-            result = load_all_entities(entity_type, company_name, context)
-            return StorageResult(
-                success=True,
-                data=result,
-                message=f"Successfully loaded {len(result)} {entity_type} records"
-            )
-        except Exception as e:
-            return StorageResult(success=False, error=f"Exception during load all {entity_type}: {str(e)}")
-    
-    @staticmethod
-    def find_company_by_name(search_name: str, context: Context) -> StorageResult:
-        """Find company by name with standardized error handling."""
-        try:
-            company_name = find_company_by_name(search_name, context)
-            if company_name is None:
-                # Check if there are partial matches for disambiguation
-                candidates = find_company_candidates(search_name, context)
-                if candidates:
-                    candidates_str = ', '.join(f"'{name}'" for name in candidates)
-                    return StorageResult(
-                        success=False,
-                        error=f"Company '{search_name}' not found or ambiguous",
-                        data={"suggestions": candidates, "message": f"Multiple matches found: {candidates_str}"}
-                    )
-                else:
-                    return StorageResult(
-                        success=False,
-                        error=f"Company '{search_name}' not found"
-                    )
-            
-            # Construct company data with path information  
-            company_folder = get_company_folder_path(company_name, context)
-            org_file = company_folder / "company.json"
-            org_data = _safe_json_load(org_file)
-
-            company_data = {
-                "name": company_name,
-                "id": org_data.get("id") if org_data else None,
-                "db_path": str(org_file)
-            }
-            
-            return StorageResult(
-                success=True,
-                data=company_data,
-                message=f"Found company: {company_name}"
-            )
-        except Exception as e:
-            return StorageResult(success=False, error=f"Exception during find company: {str(e)}")
-
-
-# ==================== ENTITY OPERATIONS ====================
+# ==================== RAW STORAGE OPERATIONS ====================
 
 def load_entity_json(entity_name: str, company_name: str, context: Context) -> Optional[Dict[str, Any]]:
     """Load JSON data for any entity type."""
@@ -294,20 +153,8 @@ def entity_exists(entity_name: str, company_name: str, context: Context) -> bool
     return entity_file.exists()
 
 
-def _create_default_entity_data(entity_class) -> Dict[str, Any]:
-    """Create default entity data from entity class."""
-    default_data = {
-        "id": None,
-        "co_id": 1,
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat()
-    }
-    
-    try:
-        entity_instance = entity_class(**default_data)
-        return entity_instance.model_dump()
-    except Exception:
-        return default_data
+# Use shared utility function from utils.entity_defaults
+_create_default_entity_data = create_default_entity_data_simple
 
 
 def _create_company_entities(company_folder: Path, schema_class) -> List[str]:
@@ -680,3 +527,150 @@ def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
         # If multiple matches, return None to let caller handle disambiguation
     
     return None
+
+
+# ==================== STORAGE INTERFACE ====================
+
+class StorageInterface:
+    """Single point of access for all storage operations."""
+    
+    @staticmethod
+    def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> StorageResult:
+        """Create a new entity with standardized error handling."""
+        try:
+            result = create_entity(entity_type, data, context)
+            return _wrap_storage_result(result, entity_type, "create")
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during create {entity_type}: {str(e)}")
+    
+    @staticmethod
+    def load_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """Load an entity with standardized error handling."""
+        try:
+            result = load_entity(entity_type, company_name, context)
+            if result is None:
+                return StorageResult(
+                    success=False,
+                    error=f"{entity_type.title()} not found for company '{company_name}'"
+                )
+            return StorageResult(success=True, data=result, message=f"Successfully loaded {entity_type}")
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during load {entity_type}: {str(e)}")
+    
+    @staticmethod  
+    def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, context: Context) -> StorageResult:
+        """Save an entity with standardized error handling."""
+        try:
+            result = save_entity(entity_type, data, company_name, context)
+            return _wrap_storage_result(result, entity_type, "save")
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during save {entity_type}: {str(e)}")
+    
+    @staticmethod
+    def delete_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """Delete an entity with standardized error handling."""
+        try:
+            result = delete_entity(entity_type, company_name, context)
+            return _wrap_storage_result(result, entity_type, "delete")
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during delete {entity_type}: {str(e)}")
+    
+    @staticmethod
+    def list_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """List schemas with standardized error handling."""
+        try:
+            if entity_type == 'company':
+                result = list_companies(context)
+            else:
+                result = load_all_entities(entity_type, company_name, context)
+                if isinstance(result, list):
+                    result = {"success": True, "data": result, "count": len(result)}
+            
+            if result is None:
+                return StorageResult(success=False, error=f"Failed to list {entity_type}: Unknown error")
+            
+            if isinstance(result, list):
+                return StorageResult(
+                    success=True,
+                    data={"schemas": result, "count": len(result)},
+                    message=f"Successfully listed {len(result)} {entity_type} schemas"
+                )
+            
+            if not isinstance(result, dict):
+                return StorageResult(success=False, error=f"Invalid storage result format for list {entity_type}")
+                
+            if result.get("success", True):
+                return StorageResult(
+                    success=True,
+                    data=result,
+                    message=result.get("message", f"Successfully listed {entity_type} schemas")
+                )
+            else:
+                return StorageResult(
+                    success=False,
+                    error=result.get("error", f"Failed to list {entity_type}"),
+                    message=result.get("message")
+                )
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during list {entity_type}: {str(e)}")
+    
+    @staticmethod
+    def entity_exists(entity_type: str, company_name: str, context: Context) -> bool:
+        """Check if an entity exists with standardized error handling."""
+        try:
+            return entity_exists(entity_type, company_name, context)
+        except Exception:
+            return False
+    
+    @staticmethod
+    def load_all_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
+        """Load all entities with standardized error handling."""
+        try:
+            result = load_all_entities(entity_type, company_name, context)
+            return StorageResult(
+                success=True,
+                data=result,
+                message=f"Successfully loaded {len(result)} {entity_type} records"
+            )
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during load all {entity_type}: {str(e)}")
+    
+    @staticmethod
+    def find_company_by_name(search_name: str, context: Context) -> StorageResult:
+        """Find company by name with standardized error handling."""
+        try:
+            company_name = find_company_by_name(search_name, context)
+            if company_name is None:
+                # Check if there are partial matches for disambiguation
+                candidates = find_company_candidates(search_name, context)
+                if candidates:
+                    candidates_str = ', '.join(f"'{name}'" for name in candidates)
+                    return StorageResult(
+                        success=False,
+                        error=f"Company '{search_name}' not found or ambiguous",
+                        data={"suggestions": candidates, "message": f"Multiple matches found: {candidates_str}"}
+                    )
+                else:
+                    return StorageResult(
+                        success=False,
+                        error=f"Company '{search_name}' not found"
+                    )
+            
+            # Construct company data with path information  
+            company_folder = get_company_folder_path(company_name, context)
+            org_file = company_folder / "company.json"
+            org_data = _safe_json_load(org_file)
+
+            company_data = {
+                "name": company_name,
+                "id": org_data.get("id") if org_data else None,
+                "db_path": str(org_file)
+            }
+            
+            return StorageResult(
+                success=True,
+                data=company_data,
+                message=f"Found company: {company_name}"
+            )
+        except Exception as e:
+            return StorageResult(success=False, error=f"Exception during find company: {str(e)}")

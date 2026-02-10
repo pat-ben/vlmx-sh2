@@ -13,7 +13,7 @@ from ..utils.field_specs import build_field_specs, build_column_specs
 from ..models.context import Context
 from vlmx_sh2.enums import Cardinality
 from ..models.parser.command import ParsedCommand
-from ..handlers.utils import get_company_name_from_context
+from ..handlers.utils import get_company_name_from_context, _validation_error
 from ..constants import SYSTEM_FIELDS
 from ..storage.database import StorageInterface
 
@@ -122,11 +122,11 @@ def _get_display_fields(entity_type: str, entity_model: Type[BaseModel]) -> List
 
 def _get_requested_fields(entity_model: Type[BaseModel], parsed_command: ParsedCommand) -> List[str]:
     """Determine which fields to include in the form."""
-    # Priority: field_values > field_words > all model fields
+    # Priority: field_values > field_names > all model fields
     if parsed_command.field_values:
         return list(parsed_command.field_values.keys())
-    if parsed_command.field_words:
-        return parsed_command.field_words
+    if parsed_command.field_names:
+        return parsed_command.field_names
     
     return [f for f in entity_model.model_fields.keys() if f not in SYSTEM_FIELDS]
 
@@ -184,7 +184,3 @@ def _create_form_request(entity_type: str, entity_value: Optional[str], company_
 # =============================================================================
 # 5. Validation & Utilities (Error Handling & Helpers)
 # =============================================================================
-
-def _validation_error(message: str, suggestions: List[str]) -> ErrorResult:
-    """Create standardized validation error."""
-    return ErrorResult(errors=[message], suggestions=suggestions)

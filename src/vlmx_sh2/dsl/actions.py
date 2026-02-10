@@ -2,7 +2,7 @@
 Action word definitions.
 
 Contains all manually defined ActionWord objects with their handlers, aliases,
-and metadata. These dsl require custom handlers and are maintained manually
+and metadata. These words require custom handlers and are maintained manually
 while EntityWord and FieldWord objects are auto-generated.
 """
 

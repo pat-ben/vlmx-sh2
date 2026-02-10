@@ -5,7 +5,7 @@ This class serves as the main interface between the UI layer and backend logic.
 It coordinates parsing and routing while maintaining complete isolation from UI concerns.
 """
 
-from typing import Union, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from ..models.context import Context
 from ..models.responses import HandlerResult, ErrorResult
 from ..parser.parser import Parser

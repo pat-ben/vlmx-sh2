@@ -530,11 +530,10 @@ uv run textual run --dev src.vlmx_sh2.ui.app:VLMX
 # Test parsing pipeline
 PYTHONPATH=src uv run python -c "
 from vlmx_sh2.parser.parser import Parser
-from vlmx_sh2.models.validation import ValidationContext
-parser = Parser()
-context = ValidationContext()
-result = parser.parse('add brand vision=test', context)
-print('Success:', not context.has_errors())
+from vlmx_sh2.models.context import Context
+context = Context()
+result = Parser.parse('add brand vision=test', context)
+print('Valid:', result.is_valid)
 "
 
 # Test word generation

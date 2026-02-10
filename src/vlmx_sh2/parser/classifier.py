@@ -89,11 +89,11 @@ class Classifier:
         3. For text: check if quoted, strip quotes, unescape escaped quotes
         
         Note: Query keywords (and, or) are classified as TEXT, not OPERATOR.
-        They will be recognized as dsl by the Recognizer stage.
+        They will be recognized as words by the Recognizer stage.
         """
         text = token.text
         
-        # Normalize query keyword symbols and range symbols to dsl before classification
+        # Normalize query keyword symbols and range symbols to words before classification
         normalized_text = cls._normalize_symbol(text)
         
         # Check for operators using normalized text

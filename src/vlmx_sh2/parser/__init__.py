@@ -5,7 +5,7 @@ Provides modular text analysis functionality with clean separation of concerns:
 - Normalization: Text preprocessing and macro expansion
 - Tokenization: Breaking input into tokens
 - Classification: Structural token analysis
-- Recognition: Matching tokens to known dsl
+- Recognition: Matching tokens to known words
 - Interpretation: Intelligence layer for user intent
 - Splitting: Command/Filter separation
 - Filtering: Filter expression parsing

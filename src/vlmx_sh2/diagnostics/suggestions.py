@@ -14,7 +14,7 @@ class SuggestionEngine:
     """
     Centralized suggestion generation for parser components.
     
-    Handles both token-level suggestions (for unrecognized dsl) and
+    Handles both token-level suggestions (for unrecognized words) and
     command-level suggestions (for incomplete or invalid commands).
     """
     

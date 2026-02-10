@@ -84,7 +84,9 @@
       "Bash(PYTHONPATH=src tail -30 D:Codevlmx-sh2srcvlmx_sh2handlerscrud.py)",
       "Bash(PYTHONPATH=src find src/vlmx_sh2/handlers -name \"*.py\" -exec grep -l \"storage\\.database\" {} ;)",
       "Bash(PYTHONPATH=src find src/vlmx_sh2/handlers -name \"*.py\" -exec grep \"from.*storage\\.database.*import\" {} ;)",
-      "Bash(PYTHONPATH=src grep -r \"entity_exists\\|load_all_entities\\|find_company_by_name\" src/vlmx_sh2/handlers/)"
+      "Bash(PYTHONPATH=src grep -r \"entity_exists\\|load_all_entities\\|find_company_by_name\" src/vlmx_sh2/handlers/)",
+      "Bash(PYTHONPATH=src grep -n \"^# ======\" src/vlmx_sh2/storage/database.py)",
+      "Bash(PYTHONPATH=src wc:*)"
     ],
     "deny": [],
     "ask": [],
