@@ -3,6 +3,15 @@ Screen {
     align: left top;
 }
 
+#left-pane {
+    max-width: 25%;
+    background: red;
+}
+
+#command-block-container {
+    background: blue;
+}
+
 CommandBlock {
     layout: vertical;
     background: $surface;
