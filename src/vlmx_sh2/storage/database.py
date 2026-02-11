@@ -193,10 +193,17 @@ class StorageInterface:
             org_data = _backend.load_entity('company', company_name, context)
             company_folder = get_company_folder_path(company_name, context)
 
+            # Determine db_path based on active backend
+            if isinstance(_backend, JsonBackend):
+                db_path = str(company_folder / "company.json")
+            else:
+                from .engine import get_company_db_path
+                db_path = str(get_company_db_path(company_name, context))
+
             company_data = {
                 "name": company_name,
                 "id": org_data.get("id") if org_data else None,
-                "db_path": str(company_folder / "company.json"),
+                "db_path": db_path,
             }
 
             return StorageResult(

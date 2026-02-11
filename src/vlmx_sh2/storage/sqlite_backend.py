@@ -3,8 +3,8 @@
 SQLite storage backend.
 
 Provides both:
-- ``SqliteBackend`` class implementing the ``StorageBackend`` protocol
-  (skeleton — methods raise ``NotImplementedError`` until implemented)
+- ``SqliteBackend`` class implementing the ``StorageBackend`` protocol,
+  delegating to the legacy free functions below.
 - Legacy free functions (``sqlite_create_entity``, etc.) that predate
   the backend protocol and are kept for backward compatibility.
 """
@@ -46,11 +46,12 @@ def _get_entity_class(entity_type: str) -> Optional[Type[EntityModel]]:
 
 
 class SqliteBackend:
-    """SQLite storage backend — skeleton.
+    """SQLite storage backend.
 
     Satisfies the ``StorageBackend`` protocol via structural subtyping.
-    All methods currently raise ``NotImplementedError``; they will be
-    filled in when the SQLite migration is implemented.
+    Delegates to the legacy free functions (``sqlite_create_entity``, etc.)
+    defined in this module. Methods without a legacy equivalent raise
+    ``NotImplementedError``.
     """
 
     def create_entity(
@@ -59,7 +60,7 @@ class SqliteBackend:
         data: Dict[str, Any],
         context: Context,
     ) -> Dict[str, Any]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        return sqlite_create_entity(entity_type, data, context)
 
     def load_entity(
         self,
@@ -67,7 +68,7 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> Optional[Dict[str, Any]]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        return sqlite_load_entity(entity_type, company_name, context)
 
     def save_entity(
         self,
@@ -76,7 +77,7 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> Dict[str, Any]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        return sqlite_save_entity(entity_type, data, company_name, context)
 
     def delete_entity(
         self,
@@ -84,7 +85,7 @@ class SqliteBackend:
         entity_name: str,
         context: Context,
     ) -> Dict[str, Any]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        return sqlite_delete_entity(entity_type, entity_name, context)
 
     def load_all_entities(
         self,
@@ -92,7 +93,7 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> List[Dict[str, Any]]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        return sqlite_load_all_entities(entity_type, company_name, context)
 
     def save_entity_array(
         self,
@@ -101,7 +102,7 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> Dict[str, Any]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        raise NotImplementedError("SqliteBackend.save_entity_array not yet implemented")
 
     def update_dynamic_entity_record(
         self,
@@ -111,13 +112,13 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> Dict[str, Any]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        raise NotImplementedError("SqliteBackend.update_dynamic_entity_record not yet implemented")
 
     def list_companies(
         self,
         context: Context,
     ) -> Dict[str, Any]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        return sqlite_list_companies(context)
 
     def entity_exists(
         self,
@@ -125,21 +126,21 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> bool:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        return sqlite_entity_exists(entity_type=entity_name, company_name=company_name, context=context)
 
     def find_company_by_name(
         self,
         search_name: str,
         context: Context,
     ) -> Optional[str]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        raise NotImplementedError("SqliteBackend.find_company_by_name not yet implemented")
 
     def find_company_candidates(
         self,
         search_name: str,
         context: Context,
     ) -> List[str]:
-        raise NotImplementedError("SQLite backend not yet implemented")
+        raise NotImplementedError("SqliteBackend.find_company_candidates not yet implemented")
 
 
 # ==================== LEGACY FREE FUNCTIONS ====================
