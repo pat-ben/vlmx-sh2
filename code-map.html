@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLMX-SH2 Code Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0f1117; color: #e2e8f0; height: 100vh; overflow: hidden; }
+
+  .layout { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr auto; height: 100vh; }
+  .sidebar { grid-row: 1 / 3; background: #161822; border-right: 1px solid #2d3148; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .canvas-area { position: relative; overflow: hidden; background: #1a1d2e; }
+  .prompt-area { background: #161822; border-top: 1px solid #2d3148; border-left: 1px solid #2d3148; padding: 12px 16px; max-height: 200px; overflow-y: auto; }
+
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #8b92a8; margin-bottom: 8px; }
+  h1 { font-size: 15px; color: #c4ccdf; margin-bottom: 4px; }
+  .subtitle { font-size: 11px; color: #6b7280; }
+
+  .section { border-bottom: 1px solid #2d3148; padding-bottom: 12px; }
+
+  /* Presets */
+  .preset-btn { display: block; width: 100%; padding: 7px 10px; margin-bottom: 4px; background: #1e2235; border: 1px solid #2d3148; border-radius: 6px; color: #c4ccdf; font-size: 12px; cursor: pointer; text-align: left; transition: all .15s; }
+  .preset-btn:hover { background: #262a40; border-color: #3b82f6; }
+  .preset-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+
+  /* Checkboxes */
+  .check-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; font-size: 12px; }
+  .check-row input { accent-color: #3b82f6; }
+  .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .line-sample { width: 24px; height: 2px; display: inline-block; flex-shrink: 0; border-radius: 1px; }
+
+  /* Comments */
+  .comment-item { background: #1e2235; border: 1px solid #2d3148; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; font-size: 11px; position: relative; }
+  .comment-item .target { color: #93c5fd; font-weight: 600; }
+  .comment-item .file { color: #6b7280; font-size: 10px; }
+  .comment-item .text { color: #c4ccdf; margin-top: 4px; }
+  .comment-item .del-btn { position: absolute; top: 6px; right: 8px; background: none; border: none; color: #6b7280; cursor: pointer; font-size: 14px; line-height: 1; }
+  .comment-item .del-btn:hover { color: #ef4444; }
+  .no-comments { font-size: 11px; color: #6b7280; font-style: italic; }
+
+  /* SVG canvas */
+  svg { width: 100%; height: 100%; }
+  .node-rect { rx: 8; ry: 8; stroke-width: 1.5; cursor: pointer; transition: filter .15s; }
+  .node-rect:hover { filter: brightness(1.15); }
+  .node-rect.commented { stroke-width: 2.5; stroke-dasharray: none; }
+  .node-label { font-family: system-ui, sans-serif; font-size: 12px; font-weight: 600; fill: #1e293b; pointer-events: none; }
+  .node-sub { font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 9px; fill: #64748b; pointer-events: none; }
+  .conn-line { fill: none; stroke-width: 1.5; }
+  .conn-label { font-family: system-ui, sans-serif; font-size: 9px; fill: #8b92a8; pointer-events: none; }
+
+  /* Zoom controls */
+  .zoom-controls { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+  .zoom-btn { width: 30px; height: 30px; background: #1e2235; border: 1px solid #2d3148; border-radius: 6px; color: #c4ccdf; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .zoom-btn:hover { background: #262a40; border-color: #3b82f6; }
+
+  /* Legend */
+  .legend { position: absolute; bottom: 12px; left: 12px; background: #161822ee; border: 1px solid #2d3148; border-radius: 8px; padding: 10px 14px; font-size: 10px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; color: #8b92a8; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: #000a; z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #1e2235; border: 1px solid #2d3148; border-radius: 10px; padding: 20px; width: 400px; max-width: 90vw; }
+  .modal h3 { font-size: 14px; color: #c4ccdf; margin-bottom: 4px; }
+  .modal .modal-file { font-size: 11px; color: #6b7280; font-family: monospace; margin-bottom: 12px; }
+  .modal textarea { width: 100%; height: 80px; background: #161822; border: 1px solid #2d3148; border-radius: 6px; color: #e2e8f0; padding: 8px; font-size: 12px; font-family: system-ui; resize: vertical; }
+  .modal textarea:focus { outline: none; border-color: #3b82f6; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+  .modal-btn { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #2d3148; }
+  .modal-btn.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .modal-btn.primary:hover { background: #2563eb; }
+  .modal-btn.secondary { background: #1e2235; color: #c4ccdf; }
+  .modal-btn.secondary:hover { background: #262a40; }
+
+  /* Prompt */
+  .prompt-text { font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 12px; color: #c4ccdf; white-space: pre-wrap; line-height: 1.6; min-height: 24px; }
+  .prompt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .copy-btn { padding: 4px 12px; background: #1e2235; border: 1px solid #2d3148; border-radius: 6px; color: #c4ccdf; font-size: 11px; cursor: pointer; }
+  .copy-btn:hover { border-color: #3b82f6; color: #93c5fd; }
+  .copy-btn.copied { border-color: #10b981; color: #6ee7b7; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div>
+      <h1>VLMX-SH2</h1>
+      <div class="subtitle">DSL Shell Architecture</div>
+    </div>
+
+    <div class="section">
+      <h2>View Presets</h2>
+      <div id="presets"></div>
+    </div>
+
+    <div class="section">
+      <h2>Layers</h2>
+      <div id="layers"></div>
+    </div>
+
+    <div class="section">
+      <h2>Connections</h2>
+      <div id="connTypes"></div>
+    </div>
+
+    <div>
+      <h2>Comments (<span id="commentCount">0</span>)</h2>
+      <div id="commentsList"><div class="no-comments">Click a component to add feedback</div></div>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas-area" id="canvasArea">
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="zoom(1.2)" title="Zoom in">+</button>
+      <button class="zoom-btn" onclick="zoom(1/1.2)" title="Zoom out">&minus;</button>
+      <button class="zoom-btn" onclick="resetZoom()" title="Reset">&#8634;</button>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="prompt-area">
+    <div class="prompt-header">
+      <h2 style="margin:0">Prompt Output</h2>
+      <button class="copy-btn" id="copyBtn" onclick="copyPrompt()">Copy</button>
+    </div>
+    <div class="prompt-text" id="promptText">Adjust layers and add comments to generate a prompt.</div>
+  </div>
+</div>
+
+<!-- Comment Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <div class="modal-file" id="modalFile"></div>
+    <textarea id="modalText" placeholder="Add your feedback or request about this component..."></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn primary" onclick="saveComment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────
+
+const LAYERS = {
+  ui:       { label: 'UI / Presentation', color: '#dbeafe', stroke: '#3b82f6' },
+  app:      { label: 'Application',       color: '#fef3c7', stroke: '#f59e0b' },
+  parser:   { label: 'Parser Pipeline',   color: '#f3e8ff', stroke: '#a855f7' },
+  dsl:      { label: 'DSL Vocabulary',     color: '#dcfce7', stroke: '#22c55e' },
+  handler:  { label: 'Handlers',          color: '#fce7f3', stroke: '#ec4899' },
+  model:    { label: 'Models',            color: '#e0f2fe', stroke: '#0ea5e9' },
+  storage:  { label: 'Storage',           color: '#fef9c3', stroke: '#eab308' },
+  schema:   { label: 'Schemas / Entities', color: '#f1f5f9', stroke: '#64748b' },
+};
+
+const CONN_TYPES = {
+  'data-flow':  { label: 'Data Flow',   color: '#3b82f6', dash: '' },
+  'call':       { label: 'Function Call', color: '#10b981', dash: '6,3' },
+  'event':      { label: 'Event / Signal', color: '#ef4444', dash: '4,4' },
+  'generates':  { label: 'Generates',   color: '#f97316', dash: '8,4' },
+  'depends':    { label: 'Dependency',   color: '#6b7280', dash: '2,2' },
+};
+
+const nodes = [
+  // UI Layer (y ~40)
+  { id: 'app',            label: 'VLMX App',         subtitle: 'ui/app.py',                       x: 80,  y: 40, w: 120, h: 44, layer: 'ui' },
+  { id: 'main-screen',    label: 'MainScreen',        subtitle: 'ui/screens/main/',                x: 230, y: 40, w: 130, h: 44, layer: 'ui' },
+  { id: 'cmd-block',      label: 'CommandBlock',       subtitle: 'ui/widgets/command_block.py',     x: 390, y: 40, w: 130, h: 44, layer: 'ui' },
+  { id: 'form-wizard-ui', label: 'FormWizard',         subtitle: 'ui/widgets/form_wizard.py',       x: 550, y: 40, w: 120, h: 44, layer: 'ui' },
+  { id: 'entity-mgr',     label: 'EntityManager',      subtitle: 'ui/widgets/dynamic_entity_manager.py', x: 700, y: 40, w: 140, h: 44, layer: 'ui' },
+  { id: 'formatters',     label: 'Formatters',         subtitle: 'ui/formatters/',                  x: 870, y: 40, w: 110, h: 44, layer: 'ui' },
+
+  // Application Layer (y ~130)
+  { id: 'executor',       label: 'CommandExecutor',    subtitle: 'core/executor.py',                x: 160, y: 130, w: 150, h: 44, layer: 'app' },
+  { id: 'builder',        label: 'CommandBuilder',     subtitle: 'core/builder.py',                 x: 420, y: 130, w: 150, h: 44, layer: 'app' },
+  { id: 'router',         label: 'Router',             subtitle: 'core/router.py',                  x: 680, y: 130, w: 120, h: 44, layer: 'app' },
+
+  // Parser Layer (y ~220)
+  { id: 'parser',         label: 'Parser',             subtitle: 'parser/parser.py',                x: 80,  y: 220, w: 110, h: 44, layer: 'parser' },
+  { id: 'normalizer',     label: 'Normalizer',         subtitle: 'parser/normalizer.py',            x: 210, y: 220, w: 110, h: 44, layer: 'parser' },
+  { id: 'tokenizer',      label: 'Tokenizer',          subtitle: 'parser/tokenizer.py',             x: 340, y: 220, w: 110, h: 44, layer: 'parser' },
+  { id: 'classifier',     label: 'Classifier',         subtitle: 'parser/classifier.py',            x: 470, y: 220, w: 110, h: 44, layer: 'parser' },
+  { id: 'recognizer',     label: 'Recognizer',         subtitle: 'parser/recognizer.py',            x: 600, y: 220, w: 110, h: 44, layer: 'parser' },
+  { id: 'interpreter',    label: 'Interpreter',        subtitle: 'parser/interpreter.py',           x: 730, y: 220, w: 110, h: 44, layer: 'parser' },
+  { id: 'splitter',       label: 'Splitter',           subtitle: 'parser/splitter.py',              x: 860, y: 220, w: 100, h: 44, layer: 'parser' },
+  { id: 'filter-parser',  label: 'FilterParser',       subtitle: 'parser/filter.py',                x: 980, y: 220, w: 110, h: 44, layer: 'parser' },
+
+  // DSL Layer (y ~310)
+  { id: 'registry',       label: 'Word Registry',      subtitle: 'dsl/registry.py',                 x: 200, y: 310, w: 130, h: 44, layer: 'dsl' },
+  { id: 'generator',      label: 'Generator',          subtitle: 'dsl/generator.py',                x: 380, y: 310, w: 120, h: 44, layer: 'dsl' },
+  { id: 'actions-dsl',    label: 'Actions',            subtitle: 'dsl/actions.py',                  x: 540, y: 310, w: 100, h: 44, layer: 'dsl' },
+  { id: 'macros',         label: 'Macros',             subtitle: 'dsl/macros.py',                   x: 680, y: 310, w: 100, h: 44, layer: 'dsl' },
+  { id: 'views-dsl',      label: 'Views & Tools',      subtitle: 'dsl/views.py + tools.py',         x: 820, y: 310, w: 130, h: 44, layer: 'dsl' },
+
+  // Handler Layer (y ~400)
+  { id: 'crud',           label: 'CRUD Handlers',      subtitle: 'handlers/crud.py',                x: 140, y: 400, w: 140, h: 44, layer: 'handler' },
+  { id: 'nav-handler',    label: 'Navigation',         subtitle: 'handlers/navigation.py',          x: 330, y: 400, w: 120, h: 44, layer: 'handler' },
+  { id: 'wizard-handler', label: 'Wizard',             subtitle: 'handlers/wizard.py',              x: 500, y: 400, w: 110, h: 44, layer: 'handler' },
+  { id: 'apps-handler',   label: 'Apps',               subtitle: 'handlers/apps.py',                x: 660, y: 400, w: 100, h: 44, layer: 'handler' },
+  { id: 'diagnostics',    label: 'Diagnostics',        subtitle: 'diagnostics/',                    x: 820, y: 400, w: 120, h: 44, layer: 'handler' },
+
+  // Model Layer (y ~490)
+  { id: 'context-model',  label: 'Context',            subtitle: 'models/context.py',               x: 100, y: 490, w: 110, h: 44, layer: 'model' },
+  { id: 'words-model',    label: 'Words',              subtitle: 'models/words.py',                 x: 250, y: 490, w: 100, h: 44, layer: 'model' },
+  { id: 'parsed-cmd',     label: 'ParsedCommand',      subtitle: 'models/parser/command.py',        x: 400, y: 490, w: 140, h: 44, layer: 'model' },
+  { id: 'token-models',   label: 'Token Models',       subtitle: 'models/parser/',                  x: 580, y: 490, w: 130, h: 44, layer: 'model' },
+  { id: 'response-models',label: 'Responses',          subtitle: 'models/responses/',               x: 750, y: 490, w: 120, h: 44, layer: 'model' },
+  { id: 'validation-models',label: 'Validation',       subtitle: 'models/validation/',              x: 910, y: 490, w: 120, h: 44, layer: 'model' },
+
+  // Storage Layer (y ~580)
+  { id: 'storage-iface',  label: 'StorageInterface',   subtitle: 'storage/database.py',             x: 250, y: 580, w: 150, h: 44, layer: 'storage' },
+  { id: 'storage-filters',label: 'Filters',            subtitle: 'storage/filters.py',              x: 450, y: 580, w: 110, h: 44, layer: 'storage' },
+  { id: 'storage-maps',   label: 'Mappings',           subtitle: 'storage/mappings.py',             x: 610, y: 580, w: 110, h: 44, layer: 'storage' },
+
+  // Schema Layer (y ~670)
+  { id: 'entity-base',    label: 'EntityModel',        subtitle: 'schemas/base.py',                 x: 200, y: 670, w: 130, h: 44, layer: 'schema' },
+  { id: 'schema-base',    label: 'SchemaModel',        subtitle: 'schemas/base.py',                 x: 380, y: 670, w: 130, h: 44, layer: 'schema' },
+  { id: 'company-db',     label: 'CompanyDatabase',    subtitle: 'schemas/company.py',              x: 570, y: 670, w: 150, h: 44, layer: 'schema' },
+  { id: 'json-files',     label: 'JSON Files',         subtitle: 'data/{company}/*.json',           x: 780, y: 670, w: 120, h: 44, layer: 'schema' },
+];
+
+const connections = [
+  // UI internal
+  { from: 'app', to: 'main-screen', type: 'call', label: 'mount' },
+  { from: 'main-screen', to: 'cmd-block', type: 'call', label: 'render' },
+  { from: 'main-screen', to: 'form-wizard-ui', type: 'event', label: 'open modal' },
+  { from: 'main-screen', to: 'entity-mgr', type: 'event', label: 'open modal' },
+  { from: 'main-screen', to: 'formatters', type: 'call', label: 'format result' },
+
+  // UI → App
+  { from: 'main-screen', to: 'executor', type: 'data-flow', label: 'user input' },
+  { from: 'form-wizard-ui', to: 'executor', type: 'data-flow', label: 'form data' },
+
+  // App internal
+  { from: 'executor', to: 'parser', type: 'call', label: 'parse()' },
+  { from: 'executor', to: 'builder', type: 'call', label: 'build cmd' },
+  { from: 'executor', to: 'router', type: 'call', label: 'dispatch' },
+  { from: 'builder', to: 'parsed-cmd', type: 'data-flow', label: 'produces' },
+  { from: 'router', to: 'crud', type: 'call', label: 'route' },
+  { from: 'router', to: 'nav-handler', type: 'call', label: 'route' },
+  { from: 'router', to: 'wizard-handler', type: 'call', label: 'route' },
+  { from: 'router', to: 'apps-handler', type: 'call', label: 'route' },
+
+  // Parser pipeline
+  { from: 'parser', to: 'normalizer', type: 'data-flow', label: 'stage 0' },
+  { from: 'normalizer', to: 'tokenizer', type: 'data-flow', label: 'stage 1' },
+  { from: 'tokenizer', to: 'classifier', type: 'data-flow', label: 'stage 2' },
+  { from: 'classifier', to: 'recognizer', type: 'data-flow', label: 'stage 3' },
+  { from: 'recognizer', to: 'interpreter', type: 'data-flow', label: 'stage 4' },
+  { from: 'interpreter', to: 'splitter', type: 'data-flow', label: 'stage 5' },
+  { from: 'splitter', to: 'filter-parser', type: 'data-flow', label: 'stage 6' },
+
+  // Parser ↔ DSL
+  { from: 'recognizer', to: 'registry', type: 'depends', label: 'lookup' },
+  { from: 'normalizer', to: 'macros', type: 'depends', label: 'expand' },
+  { from: 'interpreter', to: 'registry', type: 'depends', label: 'context check' },
+
+  // DSL internal
+  { from: 'generator', to: 'registry', type: 'generates', label: 'auto-gen words' },
+  { from: 'actions-dsl', to: 'registry', type: 'generates', label: 'register' },
+  { from: 'views-dsl', to: 'registry', type: 'generates', label: 'register' },
+  { from: 'generator', to: 'company-db', type: 'depends', label: 'read schemas' },
+
+  // Handlers → Storage
+  { from: 'crud', to: 'storage-iface', type: 'call', label: 'CRUD ops' },
+  { from: 'crud', to: 'storage-filters', type: 'call', label: 'apply filters' },
+  { from: 'crud', to: 'diagnostics', type: 'call', label: 'validate' },
+  { from: 'wizard-handler', to: 'response-models', type: 'data-flow', label: 'FormRequest' },
+  { from: 'nav-handler', to: 'context-model', type: 'data-flow', label: 'new context' },
+
+  // Handlers → Models
+  { from: 'crud', to: 'response-models', type: 'data-flow', label: 'CommandResult' },
+
+  // Storage → Schema
+  { from: 'storage-iface', to: 'json-files', type: 'data-flow', label: 'read/write' },
+  { from: 'storage-maps', to: 'entity-base', type: 'depends', label: 'entity map' },
+  { from: 'storage-maps', to: 'company-db', type: 'depends', label: 'table list' },
+
+  // Schema internal
+  { from: 'company-db', to: 'entity-base', type: 'depends', label: 'extends' },
+  { from: 'company-db', to: 'schema-base', type: 'depends', label: 'extends' },
+
+  // Model cross-refs
+  { from: 'words-model', to: 'registry', type: 'depends', label: 'types' },
+  { from: 'token-models', to: 'words-model', type: 'depends', label: 'uses' },
+  { from: 'diagnostics', to: 'validation-models', type: 'depends', label: 'uses' },
+
+  // Results back to UI
+  { from: 'router', to: 'response-models', type: 'data-flow', label: 'HandlerResult' },
+];
+
+const PRESETS = {
+  'full': { label: 'Full System', layers: Object.keys(LAYERS) },
+  'command': { label: 'Command Flow', layers: ['ui', 'app', 'parser', 'handler'] },
+  'parsing': { label: 'Parser Pipeline', layers: ['parser', 'dsl', 'model'] },
+  'data': { label: 'Data & Storage', layers: ['handler', 'storage', 'schema', 'model'] },
+  'frontend': { label: 'UI Layer', layers: ['ui', 'app', 'model'] },
+};
+
+// ── State ─────────────────────────────────────────────
+
+const state = {
+  layers: Object.fromEntries(Object.keys(LAYERS).map(k => [k, true])),
+  connTypes: Object.fromEntries(Object.keys(CONN_TYPES).map(k => [k, true])),
+  comments: [],
+  activePreset: 'full',
+  zoom: 1,
+  panX: 0, panY: 0,
+  dragging: false, dragStart: null,
+};
+
+// ── Render Controls ───────────────────────────────────
+
+function renderPresets() {
+  const el = document.getElementById('presets');
+  el.innerHTML = Object.entries(PRESETS).map(([k, v]) =>
+    `<button class="preset-btn ${state.activePreset === k ? 'active' : ''}" onclick="applyPreset('${k}')">${v.label}</button>`
+  ).join('');
+}
+
+function renderLayers() {
+  const el = document.getElementById('layers');
+  el.innerHTML = Object.entries(LAYERS).map(([k, v]) =>
+    `<label class="check-row"><input type="checkbox" ${state.layers[k] ? 'checked' : ''} onchange="toggleLayer('${k}', this.checked)"><span class="color-dot" style="background:${v.color};border:1px solid ${v.stroke}"></span>${v.label}</label>`
+  ).join('');
+}
+
+function renderConnTypes() {
+  const el = document.getElementById('connTypes');
+  el.innerHTML = Object.entries(CONN_TYPES).map(([k, v]) =>
+    `<label class="check-row"><input type="checkbox" ${state.connTypes[k] ? 'checked' : ''} onchange="toggleConn('${k}', this.checked)"><span class="line-sample" style="background:${v.color}"></span>${v.label}</label>`
+  ).join('');
+}
+
+function renderComments() {
+  const el = document.getElementById('commentsList');
+  document.getElementById('commentCount').textContent = state.comments.length;
+  if (!state.comments.length) {
+    el.innerHTML = '<div class="no-comments">Click a component to add feedback</div>';
+    return;
+  }
+  el.innerHTML = state.comments.map((c, i) =>
+    `<div class="comment-item"><span class="target">${c.targetLabel}</span> <span class="file">${c.targetFile}</span><button class="del-btn" onclick="deleteComment(${i})">&times;</button><div class="text">${esc(c.text)}</div></div>`
+  ).join('');
+}
+
+function renderLegend() {
+  const el = document.getElementById('legend');
+  const items = Object.entries(LAYERS).filter(([k]) => state.layers[k]).map(([k, v]) =>
+    `<div class="legend-item"><span class="color-dot" style="background:${v.color};border:1px solid ${v.stroke}"></span>${v.label}</div>`
+  );
+  el.innerHTML = items.join('');
+}
+
+// ── SVG Rendering ─────────────────────────────────────
+
+function renderDiagram() {
+  const svg = document.getElementById('svg');
+  const visibleLayers = new Set(Object.keys(state.layers).filter(k => state.layers[k]));
+  const visibleNodes = nodes.filter(n => visibleLayers.has(n.layer));
+  const visibleIds = new Set(visibleNodes.map(n => n.id));
+  const visibleConns = connections.filter(c =>
+    visibleIds.has(c.from) && visibleIds.has(c.to) && state.connTypes[c.type]
+  );
+
+  const commentedIds = new Set(state.comments.map(c => c.target));
+
+  // Build SVG
+  let defs = '<defs>';
+  Object.entries(CONN_TYPES).forEach(([k, v]) => {
+    defs += `<marker id="arrow-${k}" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="${v.color}"/></marker>`;
+  });
+  defs += '</defs>';
+
+  let conns = visibleConns.map(c => {
+    const fn = nodes.find(n => n.id === c.from);
+    const tn = nodes.find(n => n.id === c.to);
+    const ct = CONN_TYPES[c.type];
+    const x1 = fn.x + fn.w / 2, y1 = fn.y + fn.h;
+    const x2 = tn.x + tn.w / 2, y2 = tn.y;
+
+    // Use side connections for same-row nodes
+    let path;
+    if (Math.abs(fn.y - tn.y) < 20) {
+      const fromRight = fn.x < tn.x;
+      const sx = fromRight ? fn.x + fn.w : fn.x;
+      const sy = fn.y + fn.h / 2;
+      const ex = fromRight ? tn.x : tn.x + tn.w;
+      const ey = tn.y + tn.h / 2;
+      const cp = Math.abs(ex - sx) * 0.4;
+      path = `M${sx},${sy} C${sx + (fromRight?cp:-cp)},${sy} ${ex - (fromRight?cp:-cp)},${ey} ${ex},${ey}`;
+    } else {
+      const cp = Math.abs(y2 - y1) * 0.5;
+      path = `M${x1},${y1} C${x1},${y1 + cp} ${x2},${y2 - cp} ${x2},${y2}`;
+    }
+
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const dashAttr = ct.dash ? ` stroke-dasharray="${ct.dash}"` : '';
+
+    return `<path d="${path}" class="conn-line" stroke="${ct.color}" marker-end="url(#arrow-${c.type})"${dashAttr}/>` +
+      (c.label ? `<text x="${mx}" y="${my - 4}" class="conn-label" text-anchor="middle">${c.label}</text>` : '');
+  }).join('');
+
+  let nodesSvg = visibleNodes.map(n => {
+    const layer = LAYERS[n.layer];
+    const commented = commentedIds.has(n.id);
+    const strokeColor = commented ? '#f59e0b' : layer.stroke;
+    const strokeW = commented ? 2.5 : 1.5;
+    return `<g onclick="openModal('${n.id}')" style="cursor:pointer">` +
+      `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="${layer.color}" stroke="${strokeColor}" stroke-width="${strokeW}" class="node-rect"/>` +
+      `<text x="${n.x + n.w/2}" y="${n.y + 18}" class="node-label" text-anchor="middle">${n.label}</text>` +
+      `<text x="${n.x + n.w/2}" y="${n.y + 32}" class="node-sub" text-anchor="middle">${n.subtitle}</text>` +
+      `</g>`;
+  }).join('');
+
+  svg.innerHTML = `<g transform="translate(${state.panX},${state.panY}) scale(${state.zoom})">${defs}${conns}${nodesSvg}</g>`;
+}
+
+// ── Interactions ──────────────────────────────────────
+
+function applyPreset(key) {
+  state.activePreset = key;
+  const preset = PRESETS[key];
+  Object.keys(state.layers).forEach(k => state.layers[k] = preset.layers.includes(k));
+  updateAll();
+}
+
+function toggleLayer(key, val) {
+  state.layers[key] = val;
+  state.activePreset = '';
+  updateAll();
+}
+
+function toggleConn(key, val) {
+  state.connTypes[key] = val;
+  updateAll();
+}
+
+let modalNodeId = null;
+
+function openModal(nodeId) {
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  modalNodeId = nodeId;
+  document.getElementById('modalTitle').textContent = node.label;
+  document.getElementById('modalFile').textContent = 'src/vlmx_sh2/' + node.subtitle;
+  document.getElementById('modalText').value = '';
+  document.getElementById('modal').classList.add('show');
+  setTimeout(() => document.getElementById('modalText').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+  modalNodeId = null;
+}
+
+function saveComment() {
+  const text = document.getElementById('modalText').value.trim();
+  if (!text) { closeModal(); return; }
+  const node = nodes.find(n => n.id === modalNodeId);
+  state.comments.push({
+    id: Date.now(),
+    target: modalNodeId,
+    targetLabel: node.label,
+    targetFile: 'src/vlmx_sh2/' + node.subtitle,
+    text
+  });
+  closeModal();
+  updateAll();
+}
+
+function deleteComment(idx) {
+  state.comments.splice(idx, 1);
+  updateAll();
+}
+
+function zoom(factor) {
+  state.zoom = Math.max(0.3, Math.min(3, state.zoom * factor));
+  renderDiagram();
+}
+
+function resetZoom() {
+  state.zoom = 1; state.panX = 0; state.panY = 0;
+  renderDiagram();
+}
+
+// Pan with mouse drag
+const canvas = document.getElementById('canvasArea');
+canvas.addEventListener('pointerdown', e => {
+  if (e.target.closest('g[onclick]')) return;
+  state.dragging = true;
+  state.dragStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+  canvas.style.cursor = 'grabbing';
+});
+window.addEventListener('pointermove', e => {
+  if (!state.dragging) return;
+  state.panX = e.clientX - state.dragStart.x;
+  state.panY = e.clientY - state.dragStart.y;
+  renderDiagram();
+});
+window.addEventListener('pointerup', () => {
+  state.dragging = false;
+  canvas.style.cursor = '';
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom(e.deltaY < 0 ? 1.1 : 1/1.1);
+}, { passive: false });
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Prompt ────────────────────────────────────────────
+
+function updatePrompt() {
+  const el = document.getElementById('promptText');
+  const visibleLayerNames = Object.entries(state.layers).filter(([,v]) => v).map(([k]) => LAYERS[k].label);
+  const allVisible = visibleLayerNames.length === Object.keys(LAYERS).length;
+
+  let parts = [];
+  parts.push(`This is the VLMX-SH2 architecture — a DSL shell for managing business entities through natural language commands.`);
+
+  if (!allVisible && visibleLayerNames.length > 0) {
+    parts.push(`Currently viewing: ${visibleLayerNames.join(', ')}.`);
+  }
+
+  if (state.comments.length) {
+    parts.push('\nFeedback on specific components:\n');
+    state.comments.forEach(c => {
+      parts.push(`**${c.targetLabel}** (${c.targetFile}):\n${c.text}\n`);
+    });
+  }
+
+  el.textContent = state.comments.length ? parts.join('\n') : 'Adjust layers and add comments to generate a prompt.';
+}
+
+function copyPrompt() {
+  const text = document.getElementById('promptText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Init ──────────────────────────────────────────────
+
+function updateAll() {
+  renderPresets();
+  renderLayers();
+  renderConnTypes();
+  renderComments();
+  renderLegend();
+  renderDiagram();
+  updatePrompt();
+}
+
+updateAll();
+</script>
+</body>
+</html>

@@ -1,553 +1,108 @@
 # File: src/vlmx_sh2/storage/database.py
 """
-Data persistence layer.
+Data persistence layer — public facade.
 
-Handles JSON file-based storage for schemas with context-aware paths.
-Public API: StorageInterface class and get_company_folder_path utility.
-Private functions are prefixed with _ and should not be imported directly.
+StorageInterface delegates every call to the active backend (JSON by
+default).  Call ``set_backend(StorageBackendType.SQLITE)`` to switch.
+
+The import path ``from ..storage.database import StorageInterface`` is
+the stable public API that handler modules depend on.
 """
 
-# Public API - only these should be imported
+# Public API — only these should be imported by consumers
 __all__ = ["StorageInterface", "get_company_folder_path", "find_company_candidates"]
 
-import json
-import os
-import shutil
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from ..utils.entity_defaults import create_default_entity_data_simple
+from typing import Any, Dict, List
 
 from ..models.context import Context
-from vlmx_sh2.enums import Cardinality
 from ..models.responses import StorageResult
-from .mappings import get_entity_json_filename
-from ..utils.context_helpers import is_sys
+from .backend import StorageBackend, StorageBackendType
+from .json_backend import JsonBackend
+from .paths import get_company_folder_path, get_data_directory_path  # noqa: F401 — re-exported
+from .result_helpers import success_result
 
 
-# ==================== PATH UTILITIES ====================
+# ==================== ACTIVE BACKEND ====================
 
-def get_data_directory_path(context: Context) -> Path:
-    """Get the path to the data directory based on context."""
-    if is_sys(context):
-        base_path = context.sys_path or Path.cwd()
-        return base_path / "data"
+_backend: StorageBackend = JsonBackend()
+
+
+def set_backend(backend_type: StorageBackendType) -> None:
+    """Switch the active storage backend.
+
+    Importing and instantiating the SQLite backend is deferred so that
+    SQLModel is only required when actually selected.
+    """
+    global _backend
+    if backend_type == StorageBackendType.JSON:
+        _backend = JsonBackend()
+    elif backend_type == StorageBackendType.SQLITE:
+        from .sqlite_backend import SqliteBackend
+        _backend = SqliteBackend()
     else:
-        return context.org_db_path.parent.parent if context.org_db_path else Path.cwd() / "data"
+        raise ValueError(f"Unknown backend type: {backend_type!r}")
 
 
-def get_company_folder_path(company_name: str, context: Context) -> Path:
-    """Get the path to a specific company's folder."""
-    return get_data_directory_path(context) / company_name.lower()
+def get_backend() -> StorageBackend:
+    """Return the currently active backend instance."""
+    return _backend
 
 
-# ==================== HELPER FUNCTIONS ====================
+# ==================== RESULT WRAPPER ====================
 
-def _safe_json_load(file_path: Path) -> Optional[Dict[str, Any]]:
-    """Safely load JSON file with error handling."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError, FileNotFoundError):
-        return None
-
-
-def _safe_json_save(file_path: Path, data: Any) -> bool:
-    """Safely save JSON data with atomic write and error handling."""
-    temp_path = None
-    try:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Write to temporary file first for atomic operation
-        temp_path = file_path.with_suffix('.json.tmp')
-        with open(temp_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, default=str, ensure_ascii=False)
-        
-        # Atomically replace the target file
-        os.replace(temp_path, file_path)
-        return True
-    except (IOError, OSError, TypeError, ValueError, Exception) as e:
-        # Clean up temp file if it was created but operation failed
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
-        return False
-
-
-def _success_result(message: str, **data) -> Dict[str, Any]:
-    """Create success result dictionary."""
-    return {"success": True, "message": message, **data}
-
-
-def _error_result(error: str) -> Dict[str, Any]:
-    """Create error result dictionary."""
-    return {"success": False, "error": error}
-
-
-def _wrap_storage_result(func_result: Optional[Dict[str, Any]], entity_type: str, 
+def _wrap_storage_result(result: Dict[str, Any], entity_type: str,
                         operation: str) -> StorageResult:
-    """Convert function result to StorageResult with standardized error handling."""
-    if func_result is None:
-        return StorageResult(
-            success=False,
-            error=f"Failed to {operation} {entity_type}: Unknown error"
-        )
-    
-    if not isinstance(func_result, dict):
-        return StorageResult(
-            success=False,
-            error=f"Invalid storage result format for {entity_type}"
-        )
-    
-    if func_result.get("success"):
+    """Convert a standardized backend dict to a ``StorageResult``.
+
+    Both backends use ``success_result()`` / ``error_result()`` from
+    ``result_helpers``, so we can rely on the dict always having a
+    ``"success"`` key plus either ``"message"`` (on success) or
+    ``"error"`` (on failure).
+    """
+    if result["success"]:
         return StorageResult(
             success=True,
-            data=func_result,
-            message=func_result.get("message", f"Successfully {operation}d {entity_type}")
+            data=result,
+            message=result["message"],
         )
-    else:
-        return StorageResult(
-            success=False,
-            error=func_result.get("error", f"Failed to {operation} {entity_type}"),
-            message=func_result.get("message")
-        )
+    return StorageResult(
+        success=False,
+        error=result["error"],
+    )
 
 
-# ==================== RAW STORAGE OPERATIONS ====================
-
-def load_entity_json(entity_name: str, company_name: str, context: Context) -> Optional[Dict[str, Any]]:
-    """Load JSON data for any entity type."""
-    json_filename = get_entity_json_filename(entity_name)
-    if not json_filename:
-        return None
-    
-    company_folder = get_company_folder_path(company_name, context)
-    entity_file = company_folder / json_filename
-    return _safe_json_load(entity_file)
-
-
-def save_entity_json(entity_name: str, entity_data: Dict[str, Any], 
-                    company_name: str, context: Context) -> Dict[str, Any]:
-    """Save JSON data for any entity type."""
-    json_filename = get_entity_json_filename(entity_name)
-    if not json_filename:
-        return _error_result(f"Unknown entity type: {entity_name}")
-    
-    company_folder = get_company_folder_path(company_name, context)
-    entity_file = company_folder / json_filename
-    
-    if _safe_json_save(entity_file, entity_data):
-        return _success_result(f"Successfully saved {entity_name} data", file_path=str(entity_file))
-    else:
-        return _error_result(f"Failed to save {entity_name} data")
-
-
-def entity_exists(entity_name: str, company_name: str, context: Context) -> bool:
-    """Check if an entity JSON file exists for a company."""
-    json_filename = get_entity_json_filename(entity_name)
-    if not json_filename:
-        return False
-    
-    company_folder = get_company_folder_path(company_name, context)
-    entity_file = company_folder / json_filename
-    return entity_file.exists()
-
-
-# Use shared utility function from utils.entity_defaults
-_create_default_entity_data = create_default_entity_data_simple
-
-
-def _create_company_entities(company_folder: Path, schema_class) -> List[str]:
-    """Create all entity files for a new company using provided schema class."""
-    created_files = []
-    
-    for entity_class in schema_class.tables:
-        if entity_class.__name__ == 'OrganizationEntity':
-            continue
-        
-        entity_word_id = entity_class.get_entity_word_id()
-        json_filename = f"{entity_word_id}.json"
-        entity_file = company_folder / json_filename
-        
-        # Determine data structure based on cardinality
-        if hasattr(entity_class, 'cardinality') and entity_class.cardinality == Cardinality.SINGLE:
-            default_data = _create_default_entity_data(entity_class)
-        else:
-            default_data = []
-        
-        if _safe_json_save(entity_file, default_data):
-            created_files.append(json_filename)
-    
-    return created_files
-
-
-def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> Dict[str, Any]:
-    """Generic entity creation - works for ANY entity type."""
-    try:
-        # Company has special creation flow (folder + entity files)
-        if entity_type == 'company':
-            company_name = data.get('name')
-            if not company_name:
-                return _error_result("Company name is required")
-            
-            company_folder = get_company_folder_path(company_name, context)
-            if company_folder.exists() and company_folder.is_dir():
-                return _error_result(f"Company '{company_name}' already exists")
-            
-            # Parse incorporation date if provided
-            if 'incorporation' in data and data['incorporation']:
-                try:
-                    incorporation = datetime.strptime(data['incorporation'], "%Y-%m-%d").date()
-                    data['incorporation'] = incorporation.isoformat()
-                except (ValueError, TypeError):
-                    pass
-            
-            # Get schema class dynamically
-            from ..dsl.registry import get_schema_class
-            schema_class = get_schema_class(entity_type)
-            if not schema_class:
-                return _error_result(f"Unknown schema type: {entity_type}")
-            
-            # Find OrganizationEntity in schema tables
-            organization_entity_class = None
-            for entity_class in schema_class.tables:
-                if entity_class.__name__ == 'OrganizationEntity':
-                    organization_entity_class = entity_class
-                    break
-            
-            if not organization_entity_class:
-                return _error_result(f"OrganizationEntity not found in {entity_type} schema")
-            
-            # Create organization data with defaults
-            base_data = {
-                "id": None,
-                "name": data.get('name'),
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-            }
-            base_data.update(data)
-            
-            try:
-                company_instance = organization_entity_class(**base_data)
-                organization_data = company_instance.model_dump()
-            except Exception as e:
-                return _error_result(f"Invalid company data: {str(e)}")
-            
-            # Create company directory and files
-            company_folder.mkdir(parents=True, exist_ok=True)
-            
-            org_file = company_folder / "company.json"
-            if not _safe_json_save(org_file, organization_data):
-                return _error_result("Failed to save company data")
-            
-            created_files = ["company.json"] + _create_company_entities(company_folder, schema_class)
-            
-            return _success_result(
-                f"Successfully created company '{company_name}'",
-                company=organization_data,
-                folder_path=str(company_folder)
-            )
-        else:
-            # For other schemas, need company context
-            if is_sys(context) or not context.org_name:
-                return _error_result("Must be in organization context to create non-company schemas")
-            
-            return save_entity_json(entity_type, data, context.org_name, context)
-            
-    except Exception as e:
-        return _error_result(f"Failed to create {entity_type}: {str(e)}")
-
-
-def load_entity(entity_type: str, company_name: str, context: Context) -> Optional[Dict[str, Any]]:
-    """Generic entity loading - works for ANY entity type."""
-    try:
-        if entity_type == 'company':
-            company_folder = get_company_folder_path(company_name, context)
-            org_file = company_folder / "company.json"
-            return _safe_json_load(org_file)
-        else:
-            return load_entity_json(entity_type, company_name, context)
-    except Exception:
-        return None
-
-
-def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, context: Context) -> Dict[str, Any]:
-    """Generic entity saving - works for ANY entity type."""
-    try:
-        if entity_type == 'company':
-            company_folder = get_company_folder_path(company_name, context)
-            if not (company_folder.exists() and company_folder.is_dir()):
-                return _error_result(f"Company '{company_name}' not found")
-            
-            org_file = company_folder / "company.json"
-            organization_data = _safe_json_load(org_file)
-            if organization_data is None:
-                return _error_result(f"Could not load organization data for '{company_name}'")
-            
-            # Parse incorporation date if being updated
-            if 'incorporation' in data and data['incorporation']:
-                try:
-                    incorporation = datetime.strptime(data['incorporation'], "%Y-%m-%d").date()
-                    data['incorporation'] = incorporation.isoformat()
-                except (ValueError, TypeError):
-                    pass
-            
-            # Update and save data
-            organization_data.update(data)
-            organization_data['updated_at'] = datetime.now().isoformat()
-            
-            if _safe_json_save(org_file, organization_data):
-                return _success_result(
-                    f"Successfully updated company '{company_name}'",
-                    company=organization_data,
-                    folder_path=str(company_folder)
-                )
-            else:
-                return _error_result("Failed to save company data")
-        else:
-            return save_entity_json(entity_type, data, company_name, context)
-    except Exception as e:
-        return _error_result(f"Failed to save {entity_type}: {str(e)}")
-
-
-def delete_entity(entity_type: str, entity_name: str, context: Context) -> Dict[str, Any]:
-    """Generic entity deletion - works for ANY entity type."""
-    try:
-        if entity_type == 'company':
-            company_folder = get_company_folder_path(entity_name, context)
-            if not (company_folder.exists() and company_folder.is_dir()):
-                return _error_result(f"Company '{entity_name}' not found")
-            
-            # Load company data before deletion
-            org_file = company_folder / "company.json"
-            company_data = _safe_json_load(org_file)
-            
-            # Remove the entire folder
-            shutil.rmtree(company_folder)
-            
-            # Count remaining companies
-            data_dir = get_data_directory_path(context)
-            remaining_count = sum(1 for item in data_dir.iterdir() if item.is_dir()) if data_dir.exists() else 0
-            
-            return _success_result(
-                f"Successfully deleted company '{entity_name}'",
-                deleted_company=company_data,
-                remaining_companies=remaining_count,
-                folder_path=str(company_folder)
-            )
-        else:
-            json_filename = get_entity_json_filename(entity_type)
-            if not json_filename:
-                return _error_result(f"Unknown entity type: {entity_type}")
-            
-            company_folder = get_company_folder_path(entity_name, context)
-            entity_file = company_folder / json_filename
-            
-            if entity_file.exists():
-                os.remove(entity_file)
-                return _success_result(f"Successfully deleted {entity_type} data")
-            else:
-                return _error_result(f"Entity '{entity_type}' not found")
-                
-    except Exception as e:
-        return _error_result(f"Failed to delete {entity_type}: {str(e)}")
-
-
-# ==================== QUERY OPERATIONS ====================
-
-def list_companies(context: Context) -> Dict[str, Any]:
-    """List all companies by scanning folders in the data directory."""
-    try:
-        data_dir = get_data_directory_path(context)
-        companies = []
-        
-        if data_dir.exists():
-            for folder in data_dir.iterdir():
-                if folder.is_dir():
-                    org_file = folder / "company.json"
-                    org_data = _safe_json_load(org_file)
-                    if org_data:
-                        companies.append(org_data)
-        
-        return _success_result(
-            f"Found {len(companies)} companies",
-            companies=companies,
-            count=len(companies),
-            data_directory=str(data_dir)
-        )
-    except Exception as e:
-        return _error_result(f"Failed to list companies: {str(e)}")
-
-
-def load_all_entities(entity_type: str, company_name: str, context: Context) -> List[Dict[str, Any]]:
-    """Load ALL records for a dynamic entity type."""
-    try:
-        json_filename = get_entity_json_filename(entity_type)
-        if not json_filename:
-            return []
-        
-        company_folder = get_company_folder_path(company_name, context)
-        entity_file = company_folder / json_filename
-        
-        data = _safe_json_load(entity_file)
-        if data is None:
-            return []
-        
-        # Return list for arrays, wrap dict in list for consistency
-        return data if isinstance(data, list) else [data] if isinstance(data, dict) else []
-    except Exception:
-        return []
-
-
-def update_dynamic_entity_record(entity_type: str, record_id: str, updated_fields: Dict[str, Any], 
-                                company_name: str, context: Context) -> Dict[str, Any]:
-    """Update a specific record within a dynamic entity array."""
-    try:
-        all_records = load_all_entities(entity_type, company_name, context)
-        if not all_records:
-            return _error_result(f"No {entity_type} records found for company '{company_name}'")
-        
-        # Find and update the target record
-        for i, record in enumerate(all_records):
-            if str(record.get('id', '')) == str(record_id):
-                target_record = record.copy()
-                target_record.update(updated_fields)
-                target_record['updated_at'] = datetime.now().isoformat()
-                all_records[i] = target_record
-                
-                # Save updated array
-                json_filename = get_entity_json_filename(entity_type)
-                if not json_filename:
-                    return _error_result(f"Unknown entity type: {entity_type}")
-                
-                company_folder = get_company_folder_path(company_name, context)
-                entity_file = company_folder / json_filename
-                
-                if _safe_json_save(entity_file, all_records):
-                    return _success_result(
-                        f"Successfully updated {entity_type} record (ID: {record_id})",
-                        updated_record=target_record,
-                        file_path=str(entity_file)
-                    )
-                else:
-                    return _error_result(f"Failed to save {entity_type} record")
-        
-        return _error_result(f"Record with ID '{record_id}' not found in {entity_type}")
-    except Exception as e:
-        return _error_result(f"Failed to update {entity_type} record: {str(e)}")
-
-
-def save_entity_array(entity_type: str, entity_array: List[Dict[str, Any]], 
-                     company_name: str, context: Context) -> Dict[str, Any]:
-    """Save an array of schemas for multi-record entity types."""
-    try:
-        json_filename = get_entity_json_filename(entity_type)
-        if not json_filename:
-            return _error_result(f"Unknown entity type: {entity_type}")
-        
-        company_folder = get_company_folder_path(company_name, context)
-        entity_file = company_folder / json_filename
-        
-        if _safe_json_save(entity_file, entity_array):
-            return _success_result(
-                f"Successfully saved {len(entity_array)} {entity_type} records",
-                file_path=str(entity_file)
-            )
-        else:
-            return _error_result(f"Failed to save {entity_type} array")
-    except Exception as e:
-        return _error_result(f"Failed to save {entity_type} array: {str(e)}")
-
+# ==================== CONVENIENCE FREE FUNCTIONS ====================
+# Re-exported so existing ``from ..storage.database import …`` lines
+# in handler modules keep working without modification.
 
 def find_company_candidates(search_name: str, context: Context) -> List[str]:
     """Find all companies that partially match the search name."""
-    data_dir = get_data_directory_path(context)
-    if not data_dir.exists():
-        return []
-    
-    search_name_lower = search_name.lower().strip()
-    
-    # Get all company folders
-    try:
-        company_folders = [item.name for item in data_dir.iterdir() if item.is_dir()]
-    except (OSError, PermissionError):
-        return []
-    
-    if not company_folders:
-        return []
-    
-    # Find partial matches on first word (case insensitive)
-    search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
-    if not search_first_word:
-        return []
-    
-    partial_matches = []
-    for company_name in company_folders:
-        company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
-        if company_first_word == search_first_word:
-            partial_matches.append(company_name)
-    
-    return partial_matches
-
-
-def find_company_by_name(search_name: str, context: Context) -> Optional[str]:
-    """Find a company using intelligent matching."""
-    data_dir = get_data_directory_path(context)
-    if not data_dir.exists():
-        return None
-    
-    search_name_lower = search_name.lower().strip()
-    
-    # Get all company folders
-    try:
-        company_folders = [item.name for item in data_dir.iterdir() if item.is_dir()]
-    except (OSError, PermissionError):
-        return None
-    
-    if not company_folders:
-        return None
-    
-    # Try exact match (case insensitive)
-    for company_name in company_folders:
-        if company_name.lower() == search_name_lower:
-            return company_name
-    
-    # Try partial match on first word (case insensitive)
-    search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
-    if search_first_word:
-        partial_matches = []
-        for company_name in company_folders:
-            company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
-            if company_first_word == search_first_word:
-                partial_matches.append(company_name)
-        
-        # Only return a match if there's exactly one
-        if len(partial_matches) == 1:
-            return partial_matches[0]
-        # If multiple matches, return None to let caller handle disambiguation
-    
-    return None
+    return _backend.find_company_candidates(search_name, context)
 
 
 # ==================== STORAGE INTERFACE ====================
 
 class StorageInterface:
-    """Single point of access for all storage operations."""
-    
+    """Single point of access for all storage operations.
+
+    Every method delegates to ``_backend`` (the active StorageBackend)
+    and wraps the raw dict result into a ``StorageResult``.
+    """
+
     @staticmethod
     def create_entity(entity_type: str, data: Dict[str, Any], context: Context) -> StorageResult:
         """Create a new entity with standardized error handling."""
         try:
-            result = create_entity(entity_type, data, context)
+            result = _backend.create_entity(entity_type, data, context)
             return _wrap_storage_result(result, entity_type, "create")
         except Exception as e:
             return StorageResult(success=False, error=f"Exception during create {entity_type}: {str(e)}")
-    
+
     @staticmethod
     def load_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
         """Load an entity with standardized error handling."""
         try:
-            result = load_entity(entity_type, company_name, context)
+            result = _backend.load_entity(entity_type, company_name, context)
             if result is None:
                 return StorageResult(
                     success=False,
@@ -556,93 +111,71 @@ class StorageInterface:
             return StorageResult(success=True, data=result, message=f"Successfully loaded {entity_type}")
         except Exception as e:
             return StorageResult(success=False, error=f"Exception during load {entity_type}: {str(e)}")
-    
-    @staticmethod  
+
+    @staticmethod
     def save_entity(entity_type: str, data: Dict[str, Any], company_name: str, context: Context) -> StorageResult:
         """Save an entity with standardized error handling."""
         try:
-            result = save_entity(entity_type, data, company_name, context)
+            result = _backend.save_entity(entity_type, data, company_name, context)
             return _wrap_storage_result(result, entity_type, "save")
         except Exception as e:
             return StorageResult(success=False, error=f"Exception during save {entity_type}: {str(e)}")
-    
+
     @staticmethod
     def delete_entity(entity_type: str, company_name: str, context: Context) -> StorageResult:
         """Delete an entity with standardized error handling."""
         try:
-            result = delete_entity(entity_type, company_name, context)
+            result = _backend.delete_entity(entity_type, company_name, context)
             return _wrap_storage_result(result, entity_type, "delete")
         except Exception as e:
             return StorageResult(success=False, error=f"Exception during delete {entity_type}: {str(e)}")
-    
+
     @staticmethod
     def list_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
-        """List schemas with standardized error handling."""
+        """List entities with standardized error handling."""
         try:
             if entity_type == 'company':
-                result = list_companies(context)
+                result = _backend.list_companies(context)
             else:
-                result = load_all_entities(entity_type, company_name, context)
-                if isinstance(result, list):
-                    result = {"success": True, "data": result, "count": len(result)}
-            
-            if result is None:
-                return StorageResult(success=False, error=f"Failed to list {entity_type}: Unknown error")
-            
-            if isinstance(result, list):
-                return StorageResult(
-                    success=True,
-                    data={"schemas": result, "count": len(result)},
-                    message=f"Successfully listed {len(result)} {entity_type} schemas"
+                records = _backend.load_all_entities(entity_type, company_name, context)
+                result = success_result(
+                    f"Found {len(records)} {entity_type} records",
+                    data=records,
+                    count=len(records),
                 )
-            
-            if not isinstance(result, dict):
-                return StorageResult(success=False, error=f"Invalid storage result format for list {entity_type}")
-                
-            if result.get("success", True):
-                return StorageResult(
-                    success=True,
-                    data=result,
-                    message=result.get("message", f"Successfully listed {entity_type} schemas")
-                )
-            else:
-                return StorageResult(
-                    success=False,
-                    error=result.get("error", f"Failed to list {entity_type}"),
-                    message=result.get("message")
-                )
+            return _wrap_storage_result(result, entity_type, "list")
         except Exception as e:
             return StorageResult(success=False, error=f"Exception during list {entity_type}: {str(e)}")
-    
+
     @staticmethod
     def entity_exists(entity_type: str, company_name: str, context: Context) -> bool:
         """Check if an entity exists with standardized error handling."""
         try:
-            return entity_exists(entity_type, company_name, context)
+            return _backend.entity_exists(entity_type, company_name, context)
         except Exception:
             return False
-    
+
     @staticmethod
     def load_all_entities(entity_type: str, company_name: str, context: Context) -> StorageResult:
         """Load all entities with standardized error handling."""
         try:
-            result = load_all_entities(entity_type, company_name, context)
+            records = _backend.load_all_entities(entity_type, company_name, context)
             return StorageResult(
                 success=True,
-                data=result,
-                message=f"Successfully loaded {len(result)} {entity_type} records"
+                data=records,
+                message=f"Successfully loaded {len(records)} {entity_type} records"
             )
         except Exception as e:
             return StorageResult(success=False, error=f"Exception during load all {entity_type}: {str(e)}")
-    
+
     @staticmethod
     def find_company_by_name(search_name: str, context: Context) -> StorageResult:
         """Find company by name with standardized error handling."""
         try:
-            company_name = find_company_by_name(search_name, context)
+            company_name = _backend.find_company_by_name(search_name, context)
             if company_name is None:
                 # Check if there are partial matches for disambiguation
-                candidates = find_company_candidates(search_name, context)
+                candidates = _backend.find_company_candidates(search_name, context)
                 if candidates:
                     candidates_str = ', '.join(f"'{name}'" for name in candidates)
                     return StorageResult(
@@ -655,18 +188,17 @@ class StorageInterface:
                         success=False,
                         error=f"Company '{search_name}' not found"
                     )
-            
-            # Construct company data with path information  
+
+            # Load company data via the active backend
+            org_data = _backend.load_entity('company', company_name, context)
             company_folder = get_company_folder_path(company_name, context)
-            org_file = company_folder / "company.json"
-            org_data = _safe_json_load(org_file)
 
             company_data = {
                 "name": company_name,
                 "id": org_data.get("id") if org_data else None,
-                "db_path": str(org_file)
+                "db_path": str(company_folder / "company.json"),
             }
-            
+
             return StorageResult(
                 success=True,
                 data=company_data,
