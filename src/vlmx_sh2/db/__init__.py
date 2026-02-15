@@ -27,5 +27,5 @@ from .result_helpers import success_result, error_result
 # NOTE: SQLite engine utilities and legacy free functions are NOT
 # imported here to keep startup fast.  Import directly when needed:
 #
-#   from vlmx_sh2.storage.engine import get_engine, create_tables
-#   from vlmx_sh2.storage.sqlite_backend import sqlite_create_entity
+#   from vlmx_sh2.db.engine import get_engine, create_tables
+#   from vlmx_sh2.db.sqlite_backend import sqlite_create_entity

@@ -17,7 +17,7 @@ from ...core.enums.core import ContextLevel
 from ...core.models.context import Context
 from ...core.models.parser.command import ParsedCommand
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
-from ...storage.database import StorageInterface
+from ...db.database import StorageInterface
 
 # =============================================================================
 # 1. Atomic Navigation Functions
@@ -52,7 +52,7 @@ async def _navigate_to_app(app_name: str, context: Context) -> HandlerResult:
         )
 
     # Import here to avoid circular imports
-    from ...lang.words.registry import TOOL_WORDS, VIEW_WORDS
+    from ...dsl.words.registry import TOOL_WORDS, VIEW_WORDS
 
     # Look up app in VIEW_WORDS and TOOL_WORDS
     app_word = VIEW_WORDS.get(app_name) or TOOL_WORDS.get(app_name)

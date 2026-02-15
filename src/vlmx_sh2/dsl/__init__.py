@@ -18,8 +18,8 @@ Current codebase note:
   become the stable home of the language frontend.
 
 Re-exports:
-- AST filter types (canonical): `vlmx_sh2.lang.FilterExpression`, etc.
-- IR command types (canonical): `vlmx_sh2.lang.IRCommand`, etc.
+- AST filter types (canonical): `vlmx_sh2.dsl.FilterExpression`, etc.
+- IR command types (canonical): `vlmx_sh2.dsl.IRCommand`, etc.
 
 Non-goals:
 - No handler registration or engine dispatch wiring should live here.
@@ -28,7 +28,7 @@ Non-goals:
 from __future__ import annotations
 
 # AST (pure syntax trees)
-from vlmx_sh2.lang.ast.filters import (
+from vlmx_sh2.dsl.ast.filters import (
     FilterCondition,
     FilterExpression,
     LogicalOperator,
@@ -36,7 +36,7 @@ from vlmx_sh2.lang.ast.filters import (
 )
 
 # IR (stable executable intent contract)
-from vlmx_sh2.lang.ir.command import (
+from vlmx_sh2.dsl.ir.command import (
     IRCommand,
     IRCommandOrigin,
     IRTargetKind,

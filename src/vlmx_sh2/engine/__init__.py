@@ -4,7 +4,7 @@ Engine package.
 This package contains the execution layer of VLMX-SH2.
 
 Responsibilities:
-- Accept stable, serializable IR (`vlmx_sh2.lang.ir.*`)
+- Accept stable, serializable IR (`vlmx_sh2.dsl.ir.*`)
 - Route IR commands to registered handlers
 - Execute handlers safely and return UI-agnostic results/requests
 - Provide a single entrypoint (`CommandExecutor`) for the UI layer

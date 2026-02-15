@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from vlmx_sh2.core.enums import Operator
-from vlmx_sh2.lang.ast.filters import LogicalOperator, ValueExpression
+from vlmx_sh2.dsl.ast.filters import LogicalOperator, ValueExpression
 
 
 def test_basic_functionality():

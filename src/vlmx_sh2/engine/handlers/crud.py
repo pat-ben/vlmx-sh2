@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from vlmx_sh2.core.enums import Cardinality
 
 from ...core.constants import SYSTEM_FIELDS
-from ...lang.ir.command import IRCommand
+from ...dsl.ir.command import IRCommand
 from ...core.models.context import Context
 from ...core.models.parser.command import ParsedCommand
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
@@ -39,8 +39,8 @@ from ...core.models.words import (
     ViewWord,
     WordType,
 )
-from ...storage.database import StorageInterface
-from ...storage.filters import apply_filters
+from ...db.database import StorageInterface
+from ...db.filters import apply_filters
 from ...core.utils.context_helpers import is_sys
 from ...core.utils.entity_defaults import create_default_entity_data
 from ..legacy_adapter import to_legacy_parsed_command

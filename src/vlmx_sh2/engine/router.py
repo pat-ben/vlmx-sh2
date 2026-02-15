@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable, Dict, Optional
 
-from ..lang.ir.command import IRCommand
+from ..dsl.ir.command import IRCommand
 from ..core.models.context import Context
 from ..core.models.responses import ErrorResult, HandlerResult
 

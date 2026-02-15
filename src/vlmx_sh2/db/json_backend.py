@@ -126,7 +126,7 @@ class JsonBackend:
                         pass
 
                 # Get schema class dynamically
-                from ..lang.words.registry import get_schema_class
+                from ..dsl.words.registry import get_schema_class
 
                 schema_class = get_schema_class(entity_type)
                 if not schema_class:

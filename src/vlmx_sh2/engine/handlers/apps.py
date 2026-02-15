@@ -5,7 +5,7 @@ Engine boundary: these handlers accept stable IR and may adapt to legacy ParsedC
 internals during the migration.
 """
 
-from ...lang.ir.command import IRCommand
+from ...dsl.ir.command import IRCommand
 from ...core.models.context import Context
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
 from ...core.models.words import ToolWord, ViewWord

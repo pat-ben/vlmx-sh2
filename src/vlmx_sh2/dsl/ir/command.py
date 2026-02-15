@@ -11,7 +11,7 @@ Design goals:
 - Engine-facing: engine should depend on these types only, not on parser tokens.
 
 Notes:
-- Filters are represented as AST from `vlmx_sh2.lang.ast.filters` (pure data).
+- Filters are represented as AST from `vlmx_sh2.dsl.ast.filters` (pure data).
 - This IR does not attempt to preserve full token-level fidelity; that stays in
   parser outputs and diagnostics. IR is the normalized, executable intent.
 """

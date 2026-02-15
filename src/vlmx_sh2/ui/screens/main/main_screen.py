@@ -7,7 +7,6 @@ from textual.widgets import Footer, Header, Label, OptionList
 
 from vlmx_sh2.ui.formatters.results import format_command_result
 
-from ....engine.executor import CommandExecutor
 from ....core.enums.core import ContextLevel
 from ....core.models.context import Context
 from ....core.models.responses import (
@@ -17,7 +16,8 @@ from ....core.models.responses import (
     PickerRequest,
     QueryRequest,
 )
-from ....storage.database import StorageInterface
+from ....db.database import StorageInterface
+from ....engine.executor import CommandExecutor
 from ...widgets.command_block import CommandBlock
 
 

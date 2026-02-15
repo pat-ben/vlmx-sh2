@@ -12,8 +12,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from vlmx_sh2.core.enums import Operator
-from vlmx_sh2.lang.ast.filters import FilterCondition, LogicalOperator, ValueExpression
-from vlmx_sh2.storage.filters import _apply_operator, _evaluate_value_expression
+from vlmx_sh2.db.filters import _apply_operator, _evaluate_value_expression
+from vlmx_sh2.dsl.ast.filters import FilterCondition, LogicalOperator, ValueExpression
 
 
 def test_simple_values():

@@ -109,7 +109,7 @@ class DynamicEntityScreen(ModalScreen):
         """Refresh the screen with updated data."""
         try:
             # Reload records from database
-            from ....storage.database import StorageInterface
+            from ....db.database import StorageInterface
 
             context = self.main_screen.context
             company_name = (

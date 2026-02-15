@@ -5,7 +5,7 @@ Data persistence layer — public facade.
 StorageInterface delegates every call to the active backend (JSON by
 default).  Call ``set_backend(StorageBackendType.SQLITE)`` to switch.
 
-The import path ``from ..storage.database import StorageInterface`` is
+The import path ``from ..db.database import StorageInterface`` is
 the stable public API that handler modules depend on.
 """
 
@@ -72,7 +72,7 @@ def _wrap_storage_result(result: Dict[str, Any], entity_type: str,
 
 
 # ==================== CONVENIENCE FREE FUNCTIONS ====================
-# Re-exported so existing ``from ..storage.database import …`` lines
+# Re-exported so existing ``from ..db.database import …`` lines
 # in handler modules keep working without modification.
 
 def find_company_candidates(search_name: str, context: Context) -> List[str]:
