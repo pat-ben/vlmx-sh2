@@ -22,7 +22,7 @@ This module intentionally avoids importing engine/router/handlers.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from vlmx_sh2.core.models.parser.filtering import FilterExpression
 from vlmx_sh2.core.models.words import (
