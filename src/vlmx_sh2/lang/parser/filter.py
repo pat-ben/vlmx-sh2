@@ -31,9 +31,9 @@ from typing import List, Optional
 
 from vlmx_sh2.core.enums import Bracket, IssueStage, QueryWord, RangeWord
 
-from ...diag import Validator
 from ...core.models.parser import InterpretedToken, SplitResult
 from ...core.models.validation import ValidationContext
+from ...diag import Validator
 from ..ast.filters import (
     FilterCondition,
     FilterExpression,
@@ -537,9 +537,13 @@ class Filter:
         ):
             # Consume end value
             end_value_token = self._consume_token()
-            return ValueExpression(
-                range_start=start_value, range_end=end_value_token.text
-            )
+            end_text = end_value_token.text if end_value_token is not None else None
+            if end_text is None:
+                self._add_error(
+                    "Expected range end value after 'to' in range expression"
+                )
+                return None
+            return ValueExpression(range_start=start_value, range_end=end_text)
         else:
             # Open-ended range: 2022..
             return ValueExpression(range_start=start_value, range_end=None)
@@ -567,7 +571,11 @@ class Filter:
             return None
 
         end_value_token = self._consume_token()
-        return ValueExpression(range_start=None, range_end=end_value_token.text)
+        end_text = end_value_token.text if end_value_token is not None else None
+        if end_text is None:
+            self._add_error("Expected value after 'to' in range expression")
+            return None
+        return ValueExpression(range_start=None, range_end=end_text)
 
     # =============================================================================
     # Token Type Detection Utilities

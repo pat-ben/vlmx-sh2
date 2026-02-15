@@ -12,8 +12,7 @@ from .filtering import FilterExpression
 from ..validation import ValidationContext
 
 if TYPE_CHECKING:
-    from .interpretation import InterpretedToken
-    from .recognition import RecognizedToken
+    pass
 
 
 class TokensResult(BaseModel):

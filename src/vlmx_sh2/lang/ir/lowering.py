@@ -24,16 +24,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from vlmx_sh2.lang.ast.filters import FilterExpression
-from vlmx_sh2.lang.ir.command import (
-    IRCommand,
-    IRCommandOrigin,
-    IRTargetKind,
-    IRTargetRef,
-)
-
-# We can consult the word registry for ID/kind mapping, but we must not return those objects.
-from vlmx_sh2.lang.words.registry import get_word
+from vlmx_sh2.core.models.parser.filtering import FilterExpression
 from vlmx_sh2.core.models.words import (
     ActionWord,
     EntityWord,
@@ -44,6 +35,15 @@ from vlmx_sh2.core.models.words import (
     ViewWord,
     WordType,
 )
+from vlmx_sh2.lang.ir.command import (
+    IRCommand,
+    IRCommandOrigin,
+    IRTargetKind,
+    IRTargetRef,
+)
+
+# We can consult the word registry for ID/kind mapping, but we must not return those objects.
+from vlmx_sh2.lang.words.registry import get_word
 
 if TYPE_CHECKING:
     from vlmx_sh2.core.models.parser.interpretation import InterpretedToken
@@ -212,7 +212,8 @@ def _extract_target_ref(tokens: List["InterpretedToken"]) -> IRTargetRef:
 
     w = target_token.word
     kind = _word_to_target_kind(w)
-    return IRTargetRef(kind=kind, id=w.id, name=None)
+    w_id = getattr(w, "id", None)
+    return IRTargetRef(kind=kind, id=w_id, name=None)
 
 
 def _extract_target_name(tokens: List["InterpretedToken"]) -> Optional[str]:
@@ -328,10 +329,9 @@ def _word_to_target_kind(word: Any) -> IRTargetKind:
         return IRTargetKind.ENTITY
     if wt == WordType.FIELD:
         return IRTargetKind.FIELD
-    if wt == WordType.VIEW:
-        return IRTargetKind.VIEW
-    if wt == WordType.TOOL:
-        return IRTargetKind.TOOL
+    if wt == WordType.APP:
+        # Views and tools are both treated as "APP" at the word layer; disambiguate by instance type below.
+        pass
 
     # Fallback by instance type
     if isinstance(word, SchemaWord):

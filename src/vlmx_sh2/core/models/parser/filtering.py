@@ -6,7 +6,7 @@ applied to list and show commands for schemas with cardinality.MULTIPLE.
 """
 
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional
 from pydantic import BaseModel, Field
 
 from vlmx_sh2.core.enums import Operator
