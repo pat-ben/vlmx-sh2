@@ -1,23 +1,22 @@
 """
-Business domain schemas.
+Core SQLModel schemas.
 
-Contains entity definitions for business objects like companies,
-funds, and their related data. This package is the extension point
-for plugins to add custom entity types.
+This package contains shared SQLModel schema definitions and entities.
+Import these from `vlmx_sh2.core.schemas`.
 """
 
 from .base import EntityModel, SchemaModel
 from .company import (
-    CompanyDatabase,
-    OrganizationEntity,
     AddressEntity,
-    MetadataEntity,
     BrandEntity,
+    CompanyDatabase,
+    CompetitorsEntity,
+    MetadataEntity,
+    NewsEntity,
     OfferingEntity,
+    OrganizationEntity,
     TargetEntity,
     ValuesEntity,
-    NewsEntity,
-    CompetitorsEntity,
 )
 
 __all__ = [
