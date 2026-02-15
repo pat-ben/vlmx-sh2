@@ -14,14 +14,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from vlmx_sh2.enums import Cardinality
+
 from ..models.context import Context
 from ..utils.context_helpers import is_sys
 from ..utils.entity_defaults import create_default_entity_data_simple
-from vlmx_sh2.enums import Cardinality
 from .mappings import get_entity_json_filename
 from .paths import get_company_folder_path, get_data_directory_path
 from .result_helpers import error_result, success_result
-
 
 # ==================== PRIVATE HELPERS ====================
 
@@ -31,7 +31,7 @@ _create_default_entity_data = create_default_entity_data_simple
 def _safe_json_load(file_path: Path) -> Optional[Dict[str, Any]]:
     """Safely load JSON file with error handling."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, IOError, FileNotFoundError):
         return None
@@ -44,8 +44,8 @@ def _safe_json_save(file_path: Path, data: Any) -> bool:
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Write to temporary file first for atomic operation
-        temp_path = file_path.with_suffix('.json.tmp')
-        with open(temp_path, 'w', encoding='utf-8') as f:
+        temp_path = file_path.with_suffix(".json.tmp")
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, default=str, ensure_ascii=False)
 
         # Atomically replace the target file
@@ -63,7 +63,7 @@ def _create_company_entities(company_folder: Path, schema_class) -> List[str]:
     created_files = []
 
     for entity_class in schema_class.tables:
-        if entity_class.__name__ == 'OrganizationEntity':
+        if entity_class.__name__ == "OrganizationEntity":
             continue
 
         entity_word_id = entity_class.get_entity_word_id()
@@ -71,7 +71,10 @@ def _create_company_entities(company_folder: Path, schema_class) -> List[str]:
         entity_file = company_folder / json_filename
 
         # Determine data structure based on cardinality
-        if hasattr(entity_class, 'cardinality') and entity_class.cardinality == Cardinality.SINGLE:
+        if (
+            hasattr(entity_class, "cardinality")
+            and entity_class.cardinality == Cardinality.SINGLE
+        ):
             default_data = _create_default_entity_data(entity_class)
         else:
             default_data = []
@@ -103,8 +106,8 @@ class JsonBackend:
         """Generic entity creation — works for ANY entity type."""
         try:
             # Company has special creation flow (folder + entity files)
-            if entity_type == 'company':
-                company_name = data.get('name')
+            if entity_type == "company":
+                company_name = data.get("name")
                 if not company_name:
                     return error_result("Company name is required")
 
@@ -113,15 +116,18 @@ class JsonBackend:
                     return error_result(f"Company '{company_name}' already exists")
 
                 # Parse incorporation date if provided
-                if 'incorporation' in data and data['incorporation']:
+                if "incorporation" in data and data["incorporation"]:
                     try:
-                        incorporation = datetime.strptime(data['incorporation'], "%Y-%m-%d").date()
-                        data['incorporation'] = incorporation.isoformat()
+                        incorporation = datetime.strptime(
+                            data["incorporation"], "%Y-%m-%d"
+                        ).date()
+                        data["incorporation"] = incorporation.isoformat()
                     except (ValueError, TypeError):
                         pass
 
                 # Get schema class dynamically
-                from ..dsl.registry import get_schema_class
+                from ..lang.words.registry import get_schema_class
+
                 schema_class = get_schema_class(entity_type)
                 if not schema_class:
                     return error_result(f"Unknown schema type: {entity_type}")
@@ -129,17 +135,19 @@ class JsonBackend:
                 # Find OrganizationEntity in schema tables
                 organization_entity_class = None
                 for entity_class in schema_class.tables:
-                    if entity_class.__name__ == 'OrganizationEntity':
+                    if entity_class.__name__ == "OrganizationEntity":
                         organization_entity_class = entity_class
                         break
 
                 if not organization_entity_class:
-                    return error_result(f"OrganizationEntity not found in {entity_type} schema")
+                    return error_result(
+                        f"OrganizationEntity not found in {entity_type} schema"
+                    )
 
                 # Create organization data with defaults
                 base_data = {
                     "id": None,
-                    "name": data.get('name'),
+                    "name": data.get("name"),
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
                 }
@@ -158,7 +166,9 @@ class JsonBackend:
                 if not _safe_json_save(org_file, organization_data):
                     return error_result("Failed to save company data")
 
-                created_files = ["company.json"] + _create_company_entities(company_folder, schema_class)
+                created_files = ["company.json"] + _create_company_entities(
+                    company_folder, schema_class
+                )
 
                 return success_result(
                     f"Successfully created company '{company_name}'",
@@ -168,9 +178,13 @@ class JsonBackend:
             else:
                 # For other schemas, need company context
                 if is_sys(context) or not context.org_name:
-                    return error_result("Must be in organization context to create non-company schemas")
+                    return error_result(
+                        "Must be in organization context to create non-company schemas"
+                    )
 
-                return self._save_entity_json(entity_type, data, context.org_name, context)
+                return self._save_entity_json(
+                    entity_type, data, context.org_name, context
+                )
 
         except Exception as e:
             return error_result(f"Failed to create {entity_type}: {str(e)}")
@@ -183,7 +197,7 @@ class JsonBackend:
     ) -> Optional[Dict[str, Any]]:
         """Generic entity loading — works for ANY entity type."""
         try:
-            if entity_type == 'company':
+            if entity_type == "company":
                 company_folder = get_company_folder_path(company_name, context)
                 org_file = company_folder / "company.json"
                 return _safe_json_load(org_file)
@@ -201,7 +215,7 @@ class JsonBackend:
     ) -> Dict[str, Any]:
         """Generic entity saving — works for ANY entity type."""
         try:
-            if entity_type == 'company':
+            if entity_type == "company":
                 company_folder = get_company_folder_path(company_name, context)
                 if not (company_folder.exists() and company_folder.is_dir()):
                     return error_result(f"Company '{company_name}' not found")
@@ -209,19 +223,23 @@ class JsonBackend:
                 org_file = company_folder / "company.json"
                 organization_data = _safe_json_load(org_file)
                 if organization_data is None:
-                    return error_result(f"Could not load organization data for '{company_name}'")
+                    return error_result(
+                        f"Could not load organization data for '{company_name}'"
+                    )
 
                 # Parse incorporation date if being updated
-                if 'incorporation' in data and data['incorporation']:
+                if "incorporation" in data and data["incorporation"]:
                     try:
-                        incorporation = datetime.strptime(data['incorporation'], "%Y-%m-%d").date()
-                        data['incorporation'] = incorporation.isoformat()
+                        incorporation = datetime.strptime(
+                            data["incorporation"], "%Y-%m-%d"
+                        ).date()
+                        data["incorporation"] = incorporation.isoformat()
                     except (ValueError, TypeError):
                         pass
 
                 # Update and save data
                 organization_data.update(data)
-                organization_data['updated_at'] = datetime.now().isoformat()
+                organization_data["updated_at"] = datetime.now().isoformat()
 
                 if _safe_json_save(org_file, organization_data):
                     return success_result(
@@ -244,7 +262,7 @@ class JsonBackend:
     ) -> Dict[str, Any]:
         """Generic entity deletion — works for ANY entity type."""
         try:
-            if entity_type == 'company':
+            if entity_type == "company":
                 company_folder = get_company_folder_path(entity_name, context)
                 if not (company_folder.exists() and company_folder.is_dir()):
                     return error_result(f"Company '{entity_name}' not found")
@@ -258,7 +276,11 @@ class JsonBackend:
 
                 # Count remaining companies
                 data_dir = get_data_directory_path(context)
-                remaining_count = sum(1 for item in data_dir.iterdir() if item.is_dir()) if data_dir.exists() else 0
+                remaining_count = (
+                    sum(1 for item in data_dir.iterdir() if item.is_dir())
+                    if data_dir.exists()
+                    else 0
+                )
 
                 return success_result(
                     f"Successfully deleted company '{entity_name}'",
@@ -305,7 +327,13 @@ class JsonBackend:
                 return []
 
             # Return list for arrays, wrap dict in list for consistency
-            return data if isinstance(data, list) else [data] if isinstance(data, dict) else []
+            return (
+                data
+                if isinstance(data, list)
+                else [data]
+                if isinstance(data, dict)
+                else []
+            )
         except Exception:
             return []
 
@@ -347,14 +375,16 @@ class JsonBackend:
         try:
             all_records = self.load_all_entities(entity_type, company_name, context)
             if not all_records:
-                return error_result(f"No {entity_type} records found for company '{company_name}'")
+                return error_result(
+                    f"No {entity_type} records found for company '{company_name}'"
+                )
 
             # Find and update the target record
             for i, record in enumerate(all_records):
-                if str(record.get('id', '')) == str(record_id):
+                if str(record.get("id", "")) == str(record_id):
                     target_record = record.copy()
                     target_record.update(updated_fields)
-                    target_record['updated_at'] = datetime.now().isoformat()
+                    target_record["updated_at"] = datetime.now().isoformat()
                     all_records[i] = target_record
 
                     # Save updated array
@@ -374,7 +404,9 @@ class JsonBackend:
                     else:
                         return error_result(f"Failed to save {entity_type} record")
 
-            return error_result(f"Record with ID '{record_id}' not found in {entity_type}")
+            return error_result(
+                f"Record with ID '{record_id}' not found in {entity_type}"
+            )
         except Exception as e:
             return error_result(f"Failed to update {entity_type} record: {str(e)}")
 
@@ -435,7 +467,9 @@ class JsonBackend:
 
         # Get all company folders
         try:
-            company_folders = [item.name for item in data_dir.iterdir() if item.is_dir()]
+            company_folders = [
+                item.name for item in data_dir.iterdir() if item.is_dir()
+            ]
         except (OSError, PermissionError):
             return None
 
@@ -448,11 +482,17 @@ class JsonBackend:
                 return company_name
 
         # Try partial match on first word (case insensitive)
-        search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
+        search_first_word = (
+            search_name_lower.split()[0] if search_name_lower.split() else ""
+        )
         if search_first_word:
             partial_matches = []
             for company_name in company_folders:
-                company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
+                company_first_word = (
+                    company_name.lower().split()[0]
+                    if company_name.lower().split()
+                    else ""
+                )
                 if company_first_word == search_first_word:
                     partial_matches.append(company_name)
 
@@ -477,7 +517,9 @@ class JsonBackend:
 
         # Get all company folders
         try:
-            company_folders = [item.name for item in data_dir.iterdir() if item.is_dir()]
+            company_folders = [
+                item.name for item in data_dir.iterdir() if item.is_dir()
+            ]
         except (OSError, PermissionError):
             return []
 
@@ -485,13 +527,17 @@ class JsonBackend:
             return []
 
         # Find partial matches on first word (case insensitive)
-        search_first_word = search_name_lower.split()[0] if search_name_lower.split() else ""
+        search_first_word = (
+            search_name_lower.split()[0] if search_name_lower.split() else ""
+        )
         if not search_first_word:
             return []
 
         partial_matches = []
         for company_name in company_folders:
-            company_first_word = company_name.lower().split()[0] if company_name.lower().split() else ""
+            company_first_word = (
+                company_name.lower().split()[0] if company_name.lower().split() else ""
+            )
             if company_first_word == search_first_word:
                 partial_matches.append(company_name)
 
@@ -530,6 +576,8 @@ class JsonBackend:
         entity_file = company_folder / json_filename
 
         if _safe_json_save(entity_file, entity_data):
-            return success_result(f"Successfully saved {entity_name} data", file_path=str(entity_file))
+            return success_result(
+                f"Successfully saved {entity_name} data", file_path=str(entity_file)
+            )
         else:
             return error_result(f"Failed to save {entity_name} data")

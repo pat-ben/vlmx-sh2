@@ -5,6 +5,10 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Label, OptionList
 
+from vlmx_sh2.ui.formatters.results import format_command_result
+
+from ....engine.executor import CommandExecutor
+from ....enums.core import ContextLevel
 from ....models.context import Context
 from ....models.responses import (
     CommandResult,
@@ -13,11 +17,8 @@ from ....models.responses import (
     PickerRequest,
     QueryRequest,
 )
-from ....enums.core import ContextLevel
-from ....core.executor import CommandExecutor
-from vlmx_sh2.ui.formatters.results import format_command_result
-from ...widgets.command_block import CommandBlock
 from ....storage.database import StorageInterface
+from ...widgets.command_block import CommandBlock
 
 
 class MainScreen(Screen):
@@ -161,8 +162,8 @@ class MainScreen(Screen):
         """Handle form wizard request by showing an interactive form."""
         try:
             # Import here to avoid circular imports
-            from ..modal.form_wizard_screen import FormWizardScreen
             from ...widgets.form_wizard import FormWizard
+            from ..modal.form_wizard_screen import FormWizardScreen
 
             # Create the form wizard widget
             form_wizard = FormWizard(wizard_request)

@@ -5,6 +5,9 @@ Provides the main() function that initializes and runs the Textual
 application, with proper error handling and graceful shutdown.
 """
 
+# Importing engine handlers performs action_id -> handler registration for the IR router.
+# This keeps runtime wiring out of IR and ensures the engine can dispatch commands.
+from .engine import handlers  # noqa: F401
 from .ui.app import VLMX
 
 

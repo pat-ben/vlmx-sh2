@@ -370,7 +370,7 @@ class DynamicEntityManager(Widget):
     def _load_record_form(self, record_data: Dict[str, Any]) -> None:
         """Load the form with record data for editing."""
         try:
-            from ...dsl import get_word
+            from ...words import get_word
             from ...models.words import EntityWord
             from ...utils.field_specs import build_field_specs
             
@@ -421,7 +421,7 @@ class DynamicEntityManager(Widget):
     def _load_new_record_form(self) -> None:
         """Load an empty form for creating a new record."""
         try:
-            from ...dsl import get_word
+            from ...words import get_word
             from ...models.words import EntityWord
             from ...utils.field_specs import build_field_specs
             
