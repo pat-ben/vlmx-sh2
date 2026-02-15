@@ -16,9 +16,9 @@ from typing import Any, Dict, List, Optional
 
 from vlmx_sh2.core.enums import Cardinality
 
-from ..models.context import Context
-from ..utils.context_helpers import is_sys
-from ..utils.entity_defaults import create_default_entity_data_simple
+from ..core.models.context import Context
+from ..core.utils.context_helpers import is_sys
+from ..core.utils.entity_defaults import create_default_entity_data_simple
 from .mappings import get_entity_json_filename
 from .paths import get_company_folder_path, get_data_directory_path
 from .result_helpers import error_result, success_result

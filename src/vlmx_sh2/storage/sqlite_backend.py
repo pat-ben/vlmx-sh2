@@ -13,9 +13,9 @@ from typing import Any, Dict, List, Optional, Type
 
 from sqlmodel import Session, select
 
-from ..models.context import Context
-from ..schemas.base import EntityModel
-from ..schemas.company import CompanyDatabase
+from ..core.models.context import Context
+from ..core.schemas.base import EntityModel
+from ..core.schemas.company import CompanyDatabase
 from vlmx_sh2.core.enums import Cardinality
 from .paths import get_company_folder_path, get_data_directory_path
 from .engine import get_engine, create_tables, get_session, get_company_db_path
@@ -183,7 +183,7 @@ def sqlite_create_entity(entity_type: str, data: Dict[str, Any],
             )
         else:
             # Non-company entities require an org context
-            from ..utils.context_helpers import is_sys
+            from ..core.utils.context_helpers import is_sys
             if is_sys(context) or not context.org_name:
                 return error_result(
                     "Must be in organization context to create non-company entities"

@@ -10,7 +10,7 @@ from textual.app import ComposeResult
 from textual.widgets import Input, Button, Label, Static, TextArea, Checkbox, Select
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
-from ...models.responses import FormRequest, FieldSpec
+from ...core.models.responses import FormRequest, FieldSpec
 
 
 class FormWizard(Widget):

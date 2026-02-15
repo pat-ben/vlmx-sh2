@@ -10,8 +10,8 @@ from __future__ import annotations
 from typing import Awaitable, Callable, Dict, Optional
 
 from ..lang.ir.command import IRCommand
-from ..models.context import Context
-from ..models.responses import ErrorResult, HandlerResult
+from ..core.models.context import Context
+from ..core.models.responses import ErrorResult, HandlerResult
 
 # -----------------------------------------------------------------------------
 # Handler registry (engine-side)

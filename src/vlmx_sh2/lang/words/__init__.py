@@ -12,7 +12,7 @@ Public API:
     get_words_by_type: Get words filtered by type
 """
 
-from ...models.words import WordType
+from ...core.models.words import WordType
 from .registry import WORD_REGISTRY, get_all_words, get_word, get_words_by_type
 
 __all__ = [

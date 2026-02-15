@@ -18,9 +18,9 @@ from vlmx_sh2.core.enums import Cardinality
 
 from ...core.constants import SYSTEM_FIELDS
 from ...lang.ir.command import IRCommand
-from ...models.context import Context
-from ...models.parser.command import ParsedCommand
-from ...models.responses import (
+from ...core.models.context import Context
+from ...core.models.parser.command import ParsedCommand
+from ...core.models.responses import (
     ColumnSpec,
     ErrorResult,
     FieldSpec,
@@ -29,7 +29,7 @@ from ...models.responses import (
     PickerRequest,
 )
 from ...storage.database import StorageInterface
-from ...utils.field_specs import build_column_specs, build_field_specs
+from ...core.utils.field_specs import build_column_specs, build_field_specs
 from ..legacy_adapter import to_legacy_parsed_command
 from .utils import _validation_error, get_company_name_from_context
 

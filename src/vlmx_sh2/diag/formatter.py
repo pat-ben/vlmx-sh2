@@ -9,8 +9,8 @@ error messages with position arrows and actionable suggestions.
 from typing import List, Optional, Tuple, Union
 from enum import Enum
 
-from ..models.validation import ValidationIssue, ValidationContext
-from ..enums import IssueSeverity, IssueStage
+from ..core.models.validation import ValidationIssue, ValidationContext
+from ..core.enums import IssueSeverity, IssueStage
 from .resolver import PositionResolver
 from .suggestions import SuggestionEngine
 

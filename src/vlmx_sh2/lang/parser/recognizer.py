@@ -22,9 +22,9 @@ from vlmx_sh2.core.enums import (
 )
 
 from ...diag import Validator
-from ...models.parser import ClassifiedToken, RecognizedToken
-from ...models.validation import ValidationContext
-from ...models.words import Word, WordType
+from ...core.models.parser import ClassifiedToken, RecognizedToken
+from ...core.models.validation import ValidationContext
+from ...core.models.words import Word, WordType
 from ..words import get_all_words, get_word
 
 

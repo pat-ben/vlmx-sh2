@@ -9,8 +9,8 @@ before the input is broken into tokens.
 """
 
 from ...diag.validator import Validator
-from ...enums import IssueStage
-from ...models.validation import ValidationContext
+from ...core.enums import IssueStage
+from ...core.models.validation import ValidationContext
 from ..words.macros import expand_macros
 
 # =============================================================================

@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, runtime_checkable
 
 from typing import Protocol
 
-from ..models.context import Context
+from ..core.models.context import Context
 
 
 class StorageBackendType(str, Enum):

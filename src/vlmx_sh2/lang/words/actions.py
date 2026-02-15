@@ -8,7 +8,7 @@ while EntityWord and FieldWord objects are auto-generated.
 
 from typing import List
 
-from ...models.words import ActionCategory, ActionWord, CRUDOperation, ExecutionType
+from ...core.models.words import ActionCategory, ActionWord, CRUDOperation, ExecutionType
 
 # ==================== ACTION WORDS ====================
 

@@ -6,9 +6,9 @@ internals during the migration.
 """
 
 from ...lang.ir.command import IRCommand
-from ...models.context import Context
-from ...models.responses import CommandResult, ErrorResult, HandlerResult
-from ...models.words import ToolWord, ViewWord
+from ...core.models.context import Context
+from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
+from ...core.models.words import ToolWord, ViewWord
 from ..legacy_adapter import to_legacy_parsed_command
 from .utils import validate_target_context, validate_target_exists
 

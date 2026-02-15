@@ -13,10 +13,10 @@ Navigation commands:
 
 from typing import Callable, Dict, Optional
 
-from ...enums.core import ContextLevel
-from ...models.context import Context
-from ...models.parser.command import ParsedCommand
-from ...models.responses import CommandResult, ErrorResult, HandlerResult
+from ...core.enums.core import ContextLevel
+from ...core.models.context import Context
+from ...core.models.parser.command import ParsedCommand
+from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
 from ...storage.database import StorageInterface
 
 # =============================================================================

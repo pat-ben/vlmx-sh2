@@ -9,8 +9,8 @@ owns them.
 
 from pathlib import Path
 
-from ..models.context import Context
-from ..utils.context_helpers import is_sys
+from ..core.models.context import Context
+from ..core.utils.context_helpers import is_sys
 
 
 def get_data_directory_path(context: Context) -> Path:

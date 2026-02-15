@@ -7,17 +7,17 @@ validation with fine-grained position tracking.
 """
 
 from typing import Any, List, Union, Protocol, TypeVar, TypedDict, TYPE_CHECKING
-from ..models.validation import ValidationContext
-from ..models.parser.token import Token
-from ..models.parser.classification import ClassifiedToken
-from ..models.parser.recognition import RecognizedToken
-from ..enums import IssueStage
+from ..core.models.validation import ValidationContext
+from ..core.models.parser.token import Token
+from ..core.models.parser.classification import ClassifiedToken
+from ..core.models.parser.recognition import RecognizedToken
+from ..core.enums import IssueStage
 from .rules import get_text_rules_for_stage, get_token_rules_for_stage
 
 if TYPE_CHECKING:
     from .suggestions import SuggestionEngine
-    from ..models.context import Context
-    from ..models.validation.rule import ValidationRule
+    from ..core.models.context import Context
+    from ..core.models.validation.rule import ValidationRule
 
 
 class ValidationInputs(TypedDict, total=False):

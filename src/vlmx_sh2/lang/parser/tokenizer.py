@@ -9,8 +9,8 @@ from typing import List
 from vlmx_sh2.core.enums import Bracket, IssueStage, Operator
 
 from ...diag import Validator
-from ...models.parser import Token
-from ...models.validation import ValidationContext
+from ...core.models.parser import Token
+from ...core.models.validation import ValidationContext
 
 # Shared constants (also used by Classifier, next stage)
 BRACKET_VALUES = {bracket.value for bracket in Bracket}

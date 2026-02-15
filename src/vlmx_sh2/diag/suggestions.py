@@ -7,7 +7,7 @@ including token-level and command-level suggestions.
 """
 
 from typing import List
-from ..models.parser import ParseResult, TokenType
+from ..core.models.parser import ParseResult, TokenType
 
 
 class SuggestionEngine:

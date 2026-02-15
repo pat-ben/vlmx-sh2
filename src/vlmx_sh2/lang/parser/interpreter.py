@@ -12,11 +12,11 @@ This stage operates on recognized tokens and makes the DSL "smart" by:
 
 from typing import List, Optional, Tuple
 
-from ...enums.core import ContextLevel
-from ...enums.parser import Operator, TokenType
-from ...models.context import Context
-from ...models.parser import InterpretedToken, RecognizedToken
-from ...models.words import ActionWord, EntityWord, FieldWord, Word, WordType
+from ...core.enums.core import ContextLevel
+from ...core.enums.parser import Operator, TokenType
+from ...core.models.context import Context
+from ...core.models.parser import InterpretedToken, RecognizedToken
+from ...core.models.words import ActionWord, EntityWord, FieldWord, Word, WordType
 
 
 class Interpreter:

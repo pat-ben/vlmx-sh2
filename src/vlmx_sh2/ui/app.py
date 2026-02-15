@@ -2,8 +2,8 @@
 
 from textual.app import App
 
-from ..models.context import Context
-from ..enums.core import ContextLevel
+from ..core.models.context import Context
+from ..core.enums.core import ContextLevel
 from .screens import MainScreen
 
 

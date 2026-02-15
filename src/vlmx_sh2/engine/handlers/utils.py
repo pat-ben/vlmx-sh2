@@ -9,15 +9,15 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from pydantic import BaseModel
 
-from ...enums.context_rules import (
+from ...core.enums.context_rules import (
     get_allowed_target_names_for_context,
     is_target_allowed_in_context,
 )
-from ...enums.core import ContextLevel
-from ...models.context import Context
-from ...models.parser.command import ParsedCommand
-from ...models.responses import CommandResult, ErrorResult, HandlerResult, StorageResult
-from ...models.words import EntityWord, FieldWord, SchemaWord, TargetWord, WordType
+from ...core.enums.core import ContextLevel
+from ...core.models.context import Context
+from ...core.models.parser.command import ParsedCommand
+from ...core.models.responses import CommandResult, ErrorResult, HandlerResult, StorageResult
+from ...core.models.words import EntityWord, FieldWord, SchemaWord, TargetWord, WordType
 
 # =============================================================================
 # 1. Context & Data Utilities (Basic Context & Data Processing)

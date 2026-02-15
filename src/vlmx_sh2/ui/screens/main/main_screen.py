@@ -8,9 +8,9 @@ from textual.widgets import Footer, Header, Label, OptionList
 from vlmx_sh2.ui.formatters.results import format_command_result
 
 from ....engine.executor import CommandExecutor
-from ....enums.core import ContextLevel
-from ....models.context import Context
-from ....models.responses import (
+from ....core.enums.core import ContextLevel
+from ....core.models.context import Context
+from ....core.models.responses import (
     CommandResult,
     ErrorResult,
     FormRequest,

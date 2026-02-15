@@ -11,7 +11,7 @@ from textual.app import ComposeResult
 from textual.widgets import Button, Static
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
-from ...models.responses import PickerRequest
+from ...core.models.responses import PickerRequest
 
 
 class RecordPicker(Widget):

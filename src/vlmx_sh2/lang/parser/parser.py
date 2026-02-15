@@ -32,9 +32,9 @@ What Parser Does NOT Do:
 
 from typing import List, Optional
 
-from ...models.context import Context
-from ...models.parser import TokensResult
-from ...models.validation import ValidationContext
+from ...core.models.context import Context
+from ...core.models.parser import TokensResult
+from ...core.models.validation import ValidationContext
 from ..ast.filters import FilterExpression
 from .classifier import Classifier
 from .filter import Filter

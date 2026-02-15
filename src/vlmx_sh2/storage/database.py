@@ -14,8 +14,8 @@ __all__ = ["StorageInterface", "get_company_folder_path", "find_company_candidat
 
 from typing import Any, Dict, List
 
-from ..models.context import Context
-from ..models.responses import StorageResult
+from ..core.models.context import Context
+from ..core.models.responses import StorageResult
 from .backend import StorageBackend, StorageBackendType
 from .json_backend import JsonBackend
 from .paths import get_company_folder_path, get_data_directory_path  # noqa: F401 — re-exported

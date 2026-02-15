@@ -11,7 +11,7 @@ import sys
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from vlmx_sh2.enums import Operator
+from vlmx_sh2.core.enums import Operator
 from vlmx_sh2.lang.ast.filters import LogicalOperator, ValueExpression
 
 

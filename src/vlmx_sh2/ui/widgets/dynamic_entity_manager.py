@@ -12,9 +12,9 @@ from textual.app import ComposeResult
 from textual.widgets import Button, Static, DataTable, Input
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
-from ...models.responses import PickerRequest
+from ...core.models.responses import PickerRequest
 from .form_wizard import FormWizard
-from ...models.responses import FormRequest
+from ...core.models.responses import FormRequest
 from ...core.constants import SYSTEM_FIELDS
 
 
@@ -371,8 +371,8 @@ class DynamicEntityManager(Widget):
         """Load the form with record data for editing."""
         try:
             from ...words import get_word
-            from ...models.words import EntityWord
-            from ...utils.field_specs import build_field_specs
+            from ...core.models.words import EntityWord
+            from ...core.utils.field_specs import build_field_specs
             
             # Get entity model
             entity_word = get_word(self.picker_request.entity_id)
@@ -422,8 +422,8 @@ class DynamicEntityManager(Widget):
         """Load an empty form for creating a new record."""
         try:
             from ...words import get_word
-            from ...models.words import EntityWord
-            from ...utils.field_specs import build_field_specs
+            from ...core.models.words import EntityWord
+            from ...core.utils.field_specs import build_field_specs
             
             # Get entity model
             entity_word = get_word(self.picker_request.entity_id)

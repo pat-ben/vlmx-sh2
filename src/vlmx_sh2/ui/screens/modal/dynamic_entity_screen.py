@@ -7,7 +7,7 @@ Provides a split-screen interface for managing multi-record dynamic schemas.
 from textual.app import ComposeResult
 from textual.screen import ModalScreen
 
-from ....models.responses import PickerRequest
+from ....core.models.responses import PickerRequest
 from ...widgets.dynamic_entity_manager import DynamicEntityManager
 
 

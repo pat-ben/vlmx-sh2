@@ -9,8 +9,8 @@ Available only in APP context (cd app/).
 
 from typing import List
 
-from ...enums.core import ContextLevel
-from ...models.words import ToolWord
+from ...core.enums.core import ContextLevel
+from ...core.models.words import ToolWord
 
 TOOL_WORDS_LIST: List[ToolWord] = [
     ToolWord(

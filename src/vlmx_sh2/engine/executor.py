@@ -10,8 +10,8 @@ from typing import Any, Dict, Optional
 
 from ..lang.ir.lowering import lower_from_tokens_result, lower_from_wizard
 from ..lang.parser.parser import Parser
-from ..models.context import Context
-from ..models.responses import ErrorResult, HandlerResult
+from ..core.models.context import Context
+from ..core.models.responses import ErrorResult, HandlerResult
 from .router import Router
 
 

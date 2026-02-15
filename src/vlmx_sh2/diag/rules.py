@@ -27,9 +27,9 @@ Each rule defines:
 """
 
 from typing import List
-from ..models.validation import ValidationRule
-from ..models.words import WordType
-from ..enums import IssueStage, TokenType, ValueContext, TokenClass
+from ..core.models.validation import ValidationRule
+from ..core.models.words import WordType
+from ..core.enums import IssueStage, TokenType, ValueContext, TokenClass
 
 
 # =============================================================================

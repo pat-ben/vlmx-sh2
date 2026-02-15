@@ -6,7 +6,7 @@ from textual.widgets import Label, Input
 from textual.css.query import NoMatches
 from textual.message import Message
 
-from ...models.context import Context
+from ...core.models.context import Context
 
 
 class CommandBlock(VerticalGroup):

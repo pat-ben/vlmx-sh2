@@ -11,7 +11,7 @@ from typing import Dict
 from sqlmodel import SQLModel, Session, create_engine
 from sqlalchemy import Engine
 
-from ..models.context import Context
+from ..core.models.context import Context
 from .paths import get_company_folder_path
 
 

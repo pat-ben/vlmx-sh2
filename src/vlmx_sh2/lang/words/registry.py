@@ -8,10 +8,10 @@ between database models and DSL word registrations.
 
 from typing import Dict
 
-from ...enums.context_rules import is_target_allowed_in_context
-from ...enums.core import ContextLevel
-from ...models.words import Word, WordType
-from ...schemas.company import CompanyDatabase
+from ...core.enums.context_rules import is_target_allowed_in_context
+from ...core.enums.core import ContextLevel
+from ...core.models.words import Word, WordType
+from ...core.schemas.company import CompanyDatabase
 from .actions import ACTION_WORDS_LIST
 from .generator import (
     generate_entity_words,

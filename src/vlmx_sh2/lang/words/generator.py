@@ -9,9 +9,9 @@ between database models and DSL word registrations.
 from collections import defaultdict
 from typing import Dict, List, Type
 
-from ...enums.core import ContextLevel
-from ...enums.forms import TypeOrg
-from ...models.words import (
+from ...core.enums.core import ContextLevel
+from ...core.enums.forms import TypeOrg
+from ...core.models.words import (
     EntityWord,
     FieldWord,
     ModuleWord,
@@ -19,12 +19,12 @@ from ...models.words import (
     ToolWord,
     ViewWord,
 )
-from ...schemas.base import EntityModel, SchemaModel
+from ...core.schemas.base import EntityModel, SchemaModel
 
 
 def generate_schema_words() -> Dict[str, SchemaWord]:
     """Generate SchemaWord objects for all organization types."""
-    from ...schemas.company import CompanyDatabase
+    from ...core.schemas.company import CompanyDatabase
 
     schema_words = {}
 

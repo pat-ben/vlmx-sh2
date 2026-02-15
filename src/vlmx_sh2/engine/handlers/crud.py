@@ -26,10 +26,10 @@ from vlmx_sh2.core.enums import Cardinality
 
 from ...core.constants import SYSTEM_FIELDS
 from ...lang.ir.command import IRCommand
-from ...models.context import Context
-from ...models.parser.command import ParsedCommand
-from ...models.responses import CommandResult, ErrorResult, HandlerResult
-from ...models.words import (
+from ...core.models.context import Context
+from ...core.models.parser.command import ParsedCommand
+from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
+from ...core.models.words import (
     EntityWord,
     FieldWord,
     ModuleWord,
@@ -41,8 +41,8 @@ from ...models.words import (
 )
 from ...storage.database import StorageInterface
 from ...storage.filters import apply_filters
-from ...utils.context_helpers import is_sys
-from ...utils.entity_defaults import create_default_entity_data
+from ...core.utils.context_helpers import is_sys
+from ...core.utils.entity_defaults import create_default_entity_data
 from ..legacy_adapter import to_legacy_parsed_command
 from .utils import (
     format_entity_data_for_display,

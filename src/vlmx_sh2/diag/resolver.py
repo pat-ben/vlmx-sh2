@@ -11,7 +11,7 @@ user input only when displaying errors to users.
 """
 
 from typing import Optional, Tuple
-from ..models.validation import ValidationIssue
+from ..core.models.validation import ValidationIssue
 
 
 class PositionResolver:
