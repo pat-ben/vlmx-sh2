@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from vlmx_sh2.enums import Cardinality
+from vlmx_sh2.core.enums import Cardinality
 
 from ..models.context import Context
 from ..utils.context_helpers import is_sys

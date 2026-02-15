@@ -21,7 +21,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from vlmx_sh2.enums import Operator
+from vlmx_sh2.core.enums import Operator
 
 
 class LogicalOperator(str, Enum):

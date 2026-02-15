@@ -2,7 +2,7 @@
 
 from typing import List, Dict, Any, Union
 from ..models.parser.filtering import FilterExpression, FilterCondition, LogicalOperator, ValueExpression
-from vlmx_sh2.enums import Operator
+from vlmx_sh2.core.enums import Operator
 
 
 class FilterApplicationError(Exception):

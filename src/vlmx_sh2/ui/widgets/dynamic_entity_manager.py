@@ -15,7 +15,7 @@ from textual.message import Message
 from ...models.responses import PickerRequest
 from .form_wizard import FormWizard
 from ...models.responses import FormRequest
-from ...constants import SYSTEM_FIELDS
+from ...core.constants import SYSTEM_FIELDS
 
 
 CSS = """

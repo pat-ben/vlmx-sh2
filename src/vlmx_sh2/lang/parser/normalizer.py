@@ -8,7 +8,7 @@ This stage operates on raw strings and performs text-level transformations
 before the input is broken into tokens.
 """
 
-from ...diagnostics.validator import Validator
+from ...diag.validator import Validator
 from ...enums import IssueStage
 from ...models.validation import ValidationContext
 from ..words.macros import expand_macros

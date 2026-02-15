@@ -6,9 +6,9 @@ Extracts raw text blocks without position metadata. Delegates validation to Vali
 
 from typing import List
 
-from vlmx_sh2.enums import Bracket, IssueStage, Operator
+from vlmx_sh2.core.enums import Bracket, IssueStage, Operator
 
-from ...diagnostics import Validator
+from ...diag import Validator
 from ...models.parser import Token
 from ...models.validation import ValidationContext
 

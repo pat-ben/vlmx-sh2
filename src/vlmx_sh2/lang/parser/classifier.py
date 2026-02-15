@@ -7,10 +7,10 @@ This stage does not look at semantic, only structure.
 
 from typing import List
 
-from vlmx_sh2.diagnostics.validator import Validator
-from vlmx_sh2.enums import Bracket, IssueStage, Operator, TokenClass
-from vlmx_sh2.models.parser import ClassifiedToken, Token
-from vlmx_sh2.models.validation import ValidationContext
+from vlmx_sh2.diag.validator import Validator
+from vlmx_sh2.core.enums import Bracket, IssueStage, Operator, TokenClass
+from vlmx_sh2.core.models.parser import ClassifiedToken, Token
+from vlmx_sh2.core.models.validation import ValidationContext
 
 from .tokenizer import BRACKET_VALUES, Tokenizer
 

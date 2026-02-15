@@ -14,9 +14,9 @@ from typing import Any, Dict, List, Optional, Type
 
 from pydantic import BaseModel, Field
 
-from vlmx_sh2.enums import Cardinality
+from vlmx_sh2.core.enums import Cardinality
 
-from ...constants import SYSTEM_FIELDS
+from ...core.constants import SYSTEM_FIELDS
 from ...lang.ir.command import IRCommand
 from ...models.context import Context
 from ...models.parser.command import ParsedCommand

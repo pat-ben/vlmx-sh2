@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 from ..models.context import Context
 from ..schemas.base import EntityModel
 from ..schemas.company import CompanyDatabase
-from vlmx_sh2.enums import Cardinality
+from vlmx_sh2.core.enums import Cardinality
 from .paths import get_company_folder_path, get_data_directory_path
 from .engine import get_engine, create_tables, get_session, get_company_db_path
 from .result_helpers import error_result, success_result

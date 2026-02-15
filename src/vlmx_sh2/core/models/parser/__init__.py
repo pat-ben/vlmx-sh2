@@ -9,7 +9,7 @@ Provides stage-based models for the parsing pipeline:
 - Enums: All parser-related enums
 """
 
-from vlmx_sh2.enums import Operator, QueryWord, Bracket, TokenClass, TokenType, ValueContext
+from vlmx_sh2.core.enums import Operator, QueryWord, Bracket, TokenClass, TokenType, ValueContext
 from .token import Token
 from .classification import ClassifiedToken
 from .recognition import RecognizedToken

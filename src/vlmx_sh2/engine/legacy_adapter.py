@@ -29,8 +29,8 @@ from typing import Optional
 
 from vlmx_sh2.lang.ir.command import IRCommand, IRTargetKind
 from vlmx_sh2.lang.words.registry import get_word
-from vlmx_sh2.models.parser.command import ParsedCommand
-from vlmx_sh2.models.words import (
+from vlmx_sh2.core.models.parser.command import ParsedCommand
+from vlmx_sh2.core.models.words import (
     ActionWord,
     EntityWord,
     FieldWord,

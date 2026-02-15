@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel, model_validator
 from pydantic.config import ConfigDict
 
-from ..enums.core import ContextLevel
+from ..enums import ContextLevel
 
 
 

@@ -7,7 +7,7 @@ Contains structural classification with quotes stripped and operators identified
 from typing import Optional
 from pydantic import BaseModel, Field
 
-from vlmx_sh2.enums.parser import TokenClass, Operator, Bracket
+from vlmx_sh2.core.enums import TokenClass, Operator, Bracket
 
 
 class ClassifiedToken(BaseModel):

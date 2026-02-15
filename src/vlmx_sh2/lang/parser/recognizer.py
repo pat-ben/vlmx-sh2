@@ -12,7 +12,7 @@ Converts ClassifiedToken objects to RecognizedToken objects by:
 
 from typing import Dict, List, Optional
 
-from vlmx_sh2.enums import (
+from vlmx_sh2.core.enums import (
     IssueStage,
     QueryWord,
     RangeWord,
@@ -21,7 +21,7 @@ from vlmx_sh2.enums import (
     ValueContext,
 )
 
-from ...diagnostics import Validator
+from ...diag import Validator
 from ...models.parser import ClassifiedToken, RecognizedToken
 from ...models.validation import ValidationContext
 from ...models.words import Word, WordType

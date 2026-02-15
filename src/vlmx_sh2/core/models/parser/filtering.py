@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Optional, Any
 from pydantic import BaseModel, Field
 
-from vlmx_sh2.enums import Operator
+from vlmx_sh2.core.enums import Operator
 
 
 class LogicalOperator(str, Enum):

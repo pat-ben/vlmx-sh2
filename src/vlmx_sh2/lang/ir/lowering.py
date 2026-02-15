@@ -34,7 +34,7 @@ from vlmx_sh2.lang.ir.command import (
 
 # We can consult the word registry for ID/kind mapping, but we must not return those objects.
 from vlmx_sh2.lang.words.registry import get_word
-from vlmx_sh2.models.words import (
+from vlmx_sh2.core.models.words import (
     ActionWord,
     EntityWord,
     FieldWord,
@@ -46,8 +46,8 @@ from vlmx_sh2.models.words import (
 )
 
 if TYPE_CHECKING:
-    from vlmx_sh2.models.parser.interpretation import InterpretedToken
-    from vlmx_sh2.models.parser.tokens_result import TokensResult
+    from vlmx_sh2.core.models.parser.interpretation import InterpretedToken
+    from vlmx_sh2.core.models.parser.tokens_result import TokensResult
 
 
 # -----------------------------------------------------------------------------

@@ -347,7 +347,7 @@ def _check_bracket_balance(tokens: List) -> bool:
         
         # For ClassifiedToken, only process if it's actually a bracket
         if hasattr(token, 'token_class'):
-            from vlmx_sh2.enums import TokenClass
+            from vlmx_sh2.core.enums import TokenClass
             if token.token_class != TokenClass.BRACKET:
                 continue  # Skip non-bracket classified tokens
         
@@ -469,7 +469,7 @@ def _get_unknown_word_suggestion(token, **kwargs) -> str:
     # Note: Could be passed in kwargs for efficiency
     suggestion_engine = kwargs.get('suggestion_engine')
     if not suggestion_engine:
-        from ..diagnostics.suggestions import SuggestionEngine
+        from ..diag.suggestions import SuggestionEngine
         suggestion_engine = SuggestionEngine()
     
     # Generate suggestions for this token
@@ -561,7 +561,7 @@ def _has_nested_brackets(token, tokens: List) -> bool:
     if tokens and token != tokens[0]:
         return False
     
-    from vlmx_sh2.enums import Bracket
+    from vlmx_sh2.core.enums import Bracket
     
     # Find opening bracket
     bracket_open_index = None
@@ -608,7 +608,7 @@ def _has_multiple_filter_sections(token, tokens: List) -> bool:
     if tokens and token != tokens[0]:
         return False
     
-    from vlmx_sh2.enums import Bracket
+    from vlmx_sh2.core.enums import Bracket
     
     # Count opening brackets
     open_count = 0
@@ -638,7 +638,7 @@ def _has_empty_filter(token, tokens: List) -> bool:
     if tokens and token != tokens[0]:
         return False
     
-    from vlmx_sh2.enums import Bracket
+    from vlmx_sh2.core.enums import Bracket
     
     # Find bracket pair
     bracket_open_index = None

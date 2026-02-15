@@ -7,7 +7,7 @@ Contains both structural (from classifier) and semantic (from recognizer) classi
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
 
-from vlmx_sh2.enums import TokenType, ValueContext, TokenClass, Operator, Bracket, QueryWord, RangeWord
+from vlmx_sh2.core.enums import TokenType, ValueContext, TokenClass, Operator, Bracket, QueryWord, RangeWord
 from ..words import Word, WordType
 
 

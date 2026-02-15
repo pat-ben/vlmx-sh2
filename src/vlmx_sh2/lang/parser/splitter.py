@@ -11,10 +11,10 @@ Filter tokens: Everything inside brackets [...] (excluding brackets themselves)
 
 from typing import List, Optional
 
-from vlmx_sh2.diagnostics import Validator
-from vlmx_sh2.enums import Bracket, IssueStage
-from vlmx_sh2.models.parser import InterpretedToken, SplitResult
-from vlmx_sh2.models.validation import ValidationContext
+from vlmx_sh2.diag import Validator
+from vlmx_sh2.core.enums import Bracket, IssueStage
+from vlmx_sh2.core.models.parser import InterpretedToken, SplitResult
+from vlmx_sh2.core.models.validation import ValidationContext
 
 
 class Splitter:

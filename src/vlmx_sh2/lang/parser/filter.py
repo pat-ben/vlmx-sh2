@@ -29,9 +29,9 @@ Operator precedence (highest to lowest):
 
 from typing import List, Optional
 
-from vlmx_sh2.enums import Bracket, IssueStage, QueryWord, RangeWord
+from vlmx_sh2.core.enums import Bracket, IssueStage, QueryWord, RangeWord
 
-from ...diagnostics import Validator
+from ...diag import Validator
 from ...models.parser import InterpretedToken, SplitResult
 from ...models.validation import ValidationContext
 from ..ast.filters import (

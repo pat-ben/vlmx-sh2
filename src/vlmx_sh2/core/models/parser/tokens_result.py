@@ -76,7 +76,7 @@ class TokensResult(BaseModel):
     @property
     def errors(self) -> List[str]:
         """Get formatted error messages from validation context."""
-        from ...diagnostics import DiagnosticFormatter
+        from ...diag import DiagnosticFormatter
         formatter = DiagnosticFormatter()
         
         formatted_errors = []
@@ -90,7 +90,7 @@ class TokensResult(BaseModel):
     @property
     def suggestions(self) -> List[str]:
         """Get formatted suggestions from validation context."""
-        from ...diagnostics import DiagnosticFormatter
+        from ...diag import DiagnosticFormatter
         formatter = DiagnosticFormatter()
         return formatter.get_formatted_suggestions(self.validation_context)
     
