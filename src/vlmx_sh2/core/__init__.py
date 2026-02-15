@@ -11,9 +11,10 @@ across the project, including:
 - `constants.py`: shared constants
 
 Guideline:
-    Application/runtime code should import from `vlmx_sh2.core.*` rather than
-    legacy top-level packages.
+    Application/runtime code should import from `vlmx_sh2.core.*`.
 """
+
+from . import enums, models, schemas, utils
 
 __all__ = [
     "enums",

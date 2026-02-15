@@ -5,7 +5,7 @@ Represents a single error, warning, or info message from any parsing stage
 with rich diagnostic information for Nushell-quality error reporting.
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
