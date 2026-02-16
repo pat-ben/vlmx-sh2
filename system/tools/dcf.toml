@@ -1,0 +1,60 @@
+# DCF — Discounted Cash Flow Valuation
+# Reads company fundamentals, asks for financial assumptions,
+# and computes an enterprise valuation estimate.
+
+[tool]
+id = "dcf"
+name = "DCF"
+description = "Discounted Cash Flow - Enterprise valuation based on projected cash flows"
+aliases = ["discounted-cash-flow", "valuation"]
+source = "system"
+version = "1.0"
+schema = "company"
+
+# ── Dependencies ──────────────────────────────────────────────
+# Entity fields the tool reads automatically from stored data.
+# These must exist and have values before the tool can run.
+
+[dependencies]
+core = { organization = ["name", "currency"], metadata = ["stage", "sector"] }
+# Future: financials = { financials = ["revenue", "ebitda", "capex"] }
+
+# ── Parameters ────────────────────────────────────────────────
+# Values the user provides at runtime via a wizard/form.
+# Not stored as entity data — they are settings for this run.
+
+[parameters.revenue]
+type = "float"
+description = "Current annual revenue"
+required = true
+
+[parameters.growth_rate]
+type = "float"
+description = "Expected annual growth rate (%)"
+required = true
+
+[parameters.discount_rate]
+type = "float"
+description = "Weighted average cost of capital (%)"
+required = true
+default = 10.0
+
+[parameters.terminal_multiple]
+type = "float"
+description = "Terminal value exit multiple"
+required = true
+default = 10.0
+
+[parameters.projection_years]
+type = "int"
+description = "Number of projection years"
+required = false
+default = 5
+
+# ── Targets ───────────────────────────────────────────────────
+# Entity fields the tool writes its results to.
+# These fields are owned by the tool — users should not edit them.
+# The entity may not exist yet (will be created when tools are implemented).
+
+[targets]
+# Future: valuation = { valuation = ["dcf_value", "projected_cashflows", "terminal_value"] }

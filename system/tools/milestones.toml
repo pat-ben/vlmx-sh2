@@ -1,0 +1,41 @@
+# Milestones — Company Progress Tracker
+# Reads current company data completeness and stage information,
+# asks for planning parameters, and generates a milestone timeline.
+
+[tool]
+id = "milestones"
+name = "Milestones"
+description = "Company milestone tracker - Progress assessment and timeline planning"
+aliases = ["ms", "timeline", "roadmap"]
+source = "system"
+version = "1.0"
+schema = "company"
+
+# ── Dependencies ──────────────────────────────────────────────
+# Entity fields the tool reads automatically from stored data.
+# Milestones reads broadly to assess overall company maturity.
+
+[dependencies]
+core = { organization = ["name", "type", "legal", "incorporation"], metadata = ["stage", "round", "phase"] }
+branding = { brand = ["vision", "mission"] }
+
+# ── Parameters ────────────────────────────────────────────────
+# Values the user provides at runtime via a wizard/form.
+
+[parameters.target_stage]
+type = "string"
+description = "Target company stage to plan toward (e.g. seed, series_a, growth)"
+required = true
+
+[parameters.horizon_months]
+type = "int"
+description = "Planning horizon in months"
+required = false
+default = 12
+
+# ── Targets ───────────────────────────────────────────────────
+# Entity fields the tool writes its results to.
+# The milestones entity does not exist yet — placeholder for future.
+
+[targets]
+# Future: milestones = { milestones = ["timeline", "next_milestone", "completion_score"] }
