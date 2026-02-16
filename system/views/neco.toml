@@ -1,0 +1,17 @@
+# NECO — Non-Equity Company Overview
+# A broad company profile without financial or equity data.
+# Covers identity, brand, offerings, and market positioning.
+
+[view]
+id = "neco"
+name = "NECO"
+description = "Non-Equity Company Overview - Core company info without financials"
+aliases = ["non-equity", "basic"]
+source = "system"
+version = "1.0"
+schema = "company"
+
+[entities]
+core = ["organization", "address", "metadata"]
+branding = ["brand", "offering", "target", "values"]
+market = ["news"]

@@ -1,0 +1,16 @@
+# Innosuisse — Innovation Funding Application
+# Focused on what the company builds, who it serves, and brand identity.
+# Used to prepare Swiss innovation grant applications.
+
+[view]
+id = "innosuisse"
+name = "Innosuisse"
+description = "Innovation funding application - Product, market fit, and brand"
+aliases = ["inno", "swiss-innovation"]
+source = "system"
+version = "1.0"
+schema = "company"
+
+[entities]
+core = ["organization", "metadata"]
+branding = ["brand", "offering", "target"]

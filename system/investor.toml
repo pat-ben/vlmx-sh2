@@ -1,0 +1,17 @@
+# Investor — Investor Report
+# Company fundamentals, positioning, and competitive landscape.
+# Used to prepare materials for investors and due diligence.
+
+[view]
+id = "investor"
+name = "Investor Report"
+description = "Investor-facing summary - Fundamentals, positioning, and competition"
+aliases = ["ir", "investment"]
+source = "system"
+version = "1.0"
+schema = "company"
+
+[entities]
+core = ["organization", "metadata"]
+branding = ["brand"]
+market = ["competitors", "news"]
