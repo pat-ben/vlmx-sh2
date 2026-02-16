@@ -232,6 +232,10 @@ class ViewWord(TargetWord):
     entities: List[str] = Field(
         default_factory=list, description="Entity IDs this view displays"
     )
+    schema_id: str = Field(
+        default="company",
+        description="Which schema type this view applies to (e.g. company, fund)"
+    )
 
 
 # ==================== TOOL WORD MODEL ====================

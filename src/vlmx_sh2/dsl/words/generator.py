@@ -178,13 +178,15 @@ def generate_module_words(schema: Type[SchemaModel]) -> Dict[str, ModuleWord]:
 
 def generate_view_words() -> Dict[str, ViewWord]:
     """
-    Generate ViewWord objects from manual definitions.
+    Generate ViewWord objects from TOML configuration files.
 
     Views are available only in APP context.
     """
-    from .views import VIEW_WORDS_LIST
+    from .view_loader import load_views_from_directory
+    from .paths import get_system_views_dir
 
-    return {view.id: view for view in VIEW_WORDS_LIST}
+    views = load_views_from_directory(get_system_views_dir())
+    return {view.id: view for view in views}
 
 
 def generate_tool_words() -> Dict[str, ToolWord]:
