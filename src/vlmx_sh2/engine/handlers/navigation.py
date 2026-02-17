@@ -15,9 +15,9 @@ from typing import Callable, Dict, Optional
 
 from ...core.enums.core import ContextLevel
 from ...core.models.context import Context
-from ...core.models.parser.command import ParsedCommand
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
 from ...db.database import StorageInterface
+from ...dsl.ir.command import IRCommand
 
 # =============================================================================
 # 1. Atomic Navigation Functions
@@ -198,7 +198,7 @@ _NAVIGATE_UP: Dict[ContextLevel, Callable[[Context], HandlerResult]] = {
 
 
 async def navigate_handler(
-    parsed_command: ParsedCommand, context: Context
+    ir_command: IRCommand, context: Context
 ) -> HandlerResult:
     """
     Navigate between contexts.
@@ -212,7 +212,7 @@ async def navigate_handler(
         cd <company>/     -> ORG (enter company) - from SYS only
         cd <app_name>/    -> APP (enter view/tool) - from ORG or APP
     """
-    target_path = (parsed_command.target_name or "").strip()
+    target_path = (ir_command.target_name or "").strip()
     lookup_path = target_path.rstrip("/")
 
     # Handle special paths

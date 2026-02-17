@@ -7,8 +7,7 @@ semantics with create/drop for structure and add/delete/reset for content.
 
 Engine boundary:
 - Public handlers in this module accept stable IR (`IRCommand`).
-- During migration, we adapt IR -> legacy `ParsedCommand` internally so the bulk
-  of existing CRUD logic remains unchanged.
+- IRCommand is the sole contract between dsl/ and engine/.
 """
 
 # =============================================================================
@@ -27,29 +26,21 @@ from vlmx_sh2.dsl.ast.filters import FilterExpression
 
 from ...core.constants import SYSTEM_FIELDS
 from ...core.models.context import Context
-from ...core.models.parser.command import ParsedCommand
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
 from ...core.models.words import (
-    EntityWord,
-    FieldWord,
     ModuleWord,
-    SchemaWord,
     TargetWord,
-    TargetWordUnion,
     ToolWord,
     ViewWord,
-    WordType,
 )
+from ...core.registry import get_entity_class
 from ...core.utils.context_helpers import is_sys
 from ...core.utils.entity_defaults import create_default_entity_data
 from ...db.database import StorageInterface, StorageRecord
 from ...db.filters import apply_filters
-from ...dsl.ir.command import IRCommand
-from ..legacy_adapter import to_legacy_parsed_command
+from ...dsl.ir.command import IRCommand, IRTargetKind
 from .utils import (
     format_entity_data_for_display,
-    get_entity_type_string,
-    get_target_id,
     handle_storage_result,
     validate_field_values_present,
     validate_org_context,
@@ -69,26 +60,21 @@ from .utils import (
 
 async def create_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Create schema or entity structure."""
-    parsed_command: ParsedCommand = to_legacy_parsed_command(ir_command)
-
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target = cast(TargetWordUnion, parsed_command.target)
-
-    # Validate target is allowed in current context
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
-    target_id = get_target_id(cast(SchemaWord | EntityWord | FieldWord, target))
-    target_name = parsed_command.target_name
-    field_values = parsed_command.field_values
+    target_id = ir_command.target.id
+    target_name = ir_command.target_name
+    field_values = dict(ir_command.assignments)
 
-    target_type = type(parsed_command.target)
-    handler = _CREATE_TARGET_HANDLERS.get(target_type)
+    handler = _CREATE_TARGET_HANDLERS.get(ir_command.target.kind)
     if handler:
         return await handler(target_id, target_name, field_values, context)
 
@@ -100,25 +86,20 @@ async def create_handler(ir_command: IRCommand, context: Context) -> HandlerResu
 
 async def drop_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Drop schema or entity structure."""
-    parsed_command: ParsedCommand = to_legacy_parsed_command(ir_command)
-
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target = cast(TargetWordUnion, parsed_command.target)
-
-    # Validate target is allowed in current context
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
-    target_id = get_target_id(cast(SchemaWord | EntityWord | FieldWord, target))
-    target_name = parsed_command.target_name
+    target_id = ir_command.target.id
+    target_name = ir_command.target_name
 
-    target_type = type(parsed_command.target)
-    handler = _DROP_TARGET_HANDLERS.get(target_type)
+    handler = _DROP_TARGET_HANDLERS.get(ir_command.target.kind)
     if handler:
         return await handler(target_id, target_name, context)
 
@@ -130,22 +111,17 @@ async def drop_handler(ir_command: IRCommand, context: Context) -> HandlerResult
 
 async def add_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Add or set field values."""
-    parsed_command: ParsedCommand = to_legacy_parsed_command(ir_command)
-
-    # Validate target exists
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target = cast(TargetWordUnion, parsed_command.target)
-
-    # Validate target is allowed in current context
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
-    error = validate_field_values_present(parsed_command)
+    error = validate_field_values_present(ir_command)
     if error:
         return error
 
@@ -154,10 +130,10 @@ async def add_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
         return error
 
     assert company_name is not None  # Validated by validate_org_context
-    assert parsed_command.target_model is not None  # Required for add operations
-    entity_type = get_entity_type_string(parsed_command.target_model)
-    fields = parsed_command.field_values
-    filters = parsed_command.filters
+    entity_type = ir_command.target.id
+    entity_model = get_entity_class(entity_type)
+    fields = dict(ir_command.assignments)
+    filters = ir_command.filters
 
     return await _add_field_values(
         entity_type=entity_type,
@@ -165,35 +141,31 @@ async def add_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
         filters=filters,
         company_name=company_name,
         context=context,
-        entity_model=parsed_command.target_model,
+        entity_model=entity_model,
     )
 
 
 async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Delete data (content, not structure)."""
-    parsed_command: ParsedCommand = to_legacy_parsed_command(ir_command)
-
-    # Validate target exists
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target = cast(TargetWordUnion, parsed_command.target)
-
-    # Validate target is allowed in current context
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
-    # Check if word type supports delete
-    # TODO: This could be refactored to dispatch tables in the future
-    target = parsed_command.target
-    if target.word_type not in [WordType.SCHEMA, WordType.ENTITY, WordType.FIELD]:
+    # Check if target kind supports delete
+    if ir_command.target.kind not in (
+        IRTargetKind.SCHEMA,
+        IRTargetKind.ENTITY,
+        IRTargetKind.FIELD,
+    ):
         supported_types = ["schema", "entity", "field"]
-        word_type_value: str = target.word_type.value
         return ErrorResult(
-            errors=[f"'delete' does not support {word_type_value}"],
+            errors=[f"'delete' does not support {ir_command.target.kind.value}"],
             suggestions=[f"'delete' works with: {', '.join(supported_types)}"],
         )
 
@@ -202,10 +174,10 @@ async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResu
         return error
 
     assert company_name is not None  # Validated by validate_org_context
-    assert parsed_command.target_model is not None  # Required for delete operations
-    entity_type = get_entity_type_string(parsed_command.target_model)
-    field_names = parsed_command.field_names
-    filters = parsed_command.filters
+    entity_type = ir_command.target.id
+    entity_model = get_entity_class(entity_type)
+    field_names = list(ir_command.field_names)
+    filters = ir_command.filters
 
     if field_names:
         return await _delete_field_values(
@@ -218,8 +190,8 @@ async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResu
 
     elif filters:
         cardinality = (
-            getattr(parsed_command.target_model, "cardinality", Cardinality.SINGLE)
-            if parsed_command.target_model
+            getattr(entity_model, "cardinality", Cardinality.SINGLE)
+            if entity_model
             else Cardinality.SINGLE
         )
         if cardinality == Cardinality.SINGLE:
@@ -240,18 +212,13 @@ async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResu
 
 async def reset_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Reset entity or fields to default values."""
-    parsed_command: ParsedCommand = to_legacy_parsed_command(ir_command)
-
-    # Validate target exists
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target = cast(TargetWordUnion, parsed_command.target)
-
-    # Validate target is allowed in current context
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
@@ -260,10 +227,16 @@ async def reset_handler(ir_command: IRCommand, context: Context) -> HandlerResul
         return error
 
     assert company_name is not None  # Validated by validate_org_context
-    assert parsed_command.target_model is not None  # Required for reset operations
-    entity_type = get_entity_type_string(parsed_command.target_model)
-    field_names = parsed_command.field_names
-    filters = parsed_command.filters
+    entity_type = ir_command.target.id
+    entity_model = get_entity_class(entity_type)
+    field_names = list(ir_command.field_names)
+    filters = ir_command.filters
+
+    if not entity_model:
+        return ErrorResult(
+            errors=[f"No entity model found for '{entity_type}'"],
+            suggestions=["Check entity name"],
+        )
 
     if field_names:
         return await _reset_field_values(
@@ -272,46 +245,37 @@ async def reset_handler(ir_command: IRCommand, context: Context) -> HandlerResul
             filters=filters,
             company_name=company_name,
             context=context,
-            entity_model=parsed_command.target_model,
+            entity_model=entity_model,
         )
     else:
         return await _reset_entity_content(
             entity_type=entity_type,
             company_name=company_name,
             context=context,
-            entity_model=parsed_command.target_model,
+            entity_model=entity_model,
         )
 
 
 async def show_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Display data with optional field selection and filtering."""
-    parsed_command: ParsedCommand = to_legacy_parsed_command(ir_command)
-
-    # Validate target exists
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target = cast(TargetWordUnion, parsed_command.target)
-
-    # Validate target is allowed in current context
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
-    # Handle by target type using dispatch table
-    target = parsed_command.target
-
-    # Get handler based on target type
-    handler = _SHOW_TARGET_HANDLERS.get(type(target))
+    # Get handler based on target kind
+    handler = _SHOW_TARGET_HANDLERS.get(ir_command.target.kind)
     if handler:
-        return await handler(parsed_command, context)
+        return await handler(ir_command, context)
 
-    supported_types = ["schema", "entity", "field", "module", "app"]
-    word_type_value: str = target.word_type.value
+    supported_types = ["schema", "entity", "field", "module", "view", "tool"]
     return ErrorResult(
-        errors=[f"'show' does not support {word_type_value}"],
+        errors=[f"'show' does not support {ir_command.target.kind.value}"],
         suggestions=[f"Supported types: {', '.join(supported_types)}"],
     )
 
@@ -504,26 +468,6 @@ async def _show_schema_info(
                 cast(dict[str, Any], load_result.data)
             ),
         },
-    )
-
-
-async def _create_entity_structure(
-    entity_word: EntityWord, context: Context
-) -> HandlerResult:
-    """Create entity structure (future implementation)."""
-    return _not_yet_supported_error(
-        "Entity structure creation",
-        "Use existing entity types or wait for future implementation",
-    )
-
-
-async def _drop_entity_structure(
-    entity_word: EntityWord, context: Context
-) -> HandlerResult:
-    """Drop entity structure (future implementation)."""
-    return _not_yet_supported_error(
-        "Entity structure deletion",
-        "Use existing entity types or wait for future implementation",
     )
 
 
@@ -963,76 +907,76 @@ async def _show_app(target: TargetWord, context: Context) -> HandlerResult:
 # Dispatch Tables (Replace if/elif chains)
 # =============================================================================
 
-# (no-op) typing imports are already handled at the top of the file
-
 _GenericHandler = Callable[..., Awaitable[HandlerResult]]
 
-# Target-type dispatch tables (async)
-_CREATE_TARGET_HANDLERS: dict[type[Any], _GenericHandler] = {
-    SchemaWord: _create_schema,
+# Target-kind dispatch tables (async) — keyed by IRTargetKind
+_CREATE_TARGET_HANDLERS: dict[IRTargetKind, _GenericHandler] = {
+    IRTargetKind.SCHEMA: _create_schema,
 }
 
-_DROP_TARGET_HANDLERS: dict[type[Any], _GenericHandler] = {
-    SchemaWord: _drop_schema,
+_DROP_TARGET_HANDLERS: dict[IRTargetKind, _GenericHandler] = {
+    IRTargetKind.SCHEMA: _drop_schema,
 }
 
-_SHOW_TARGET_HANDLERS: dict[type[Any], _GenericHandler] = {}
+_SHOW_TARGET_HANDLERS: dict[IRTargetKind, _GenericHandler] = {}
 
 
-def _register_show_handler(word_type: type[Any]):
-    """Decorator to register show handlers by word type."""
+def _register_show_handler(target_kind: IRTargetKind):
+    """Decorator to register show handlers by IRTargetKind."""
 
     def decorator(func: _GenericHandler):
-        _SHOW_TARGET_HANDLERS[word_type] = func
+        _SHOW_TARGET_HANDLERS[target_kind] = func
         return func
 
     return decorator
 
 
-@_register_show_handler(ModuleWord)
+@_register_show_handler(IRTargetKind.MODULE)
 async def _handle_show_module(
-    parsed_command: ParsedCommand, context: Context
+    ir_command: IRCommand, context: Context
 ) -> HandlerResult:
-    target = parsed_command.target
-    assert isinstance(target, ModuleWord)
-    return await _show_module(target, context)
+    from ...dsl.words.registry import get_word
+
+    word = get_word(ir_command.target.id)
+    if not isinstance(word, ModuleWord):
+        return ErrorResult(errors=[f"'{ir_command.target.id}' is not a module"])
+    return await _show_module(word, context)
 
 
-@_register_show_handler(ViewWord)
-@_register_show_handler(ToolWord)
+@_register_show_handler(IRTargetKind.VIEW)
+@_register_show_handler(IRTargetKind.TOOL)
 async def _handle_show_app(
-    parsed_command: ParsedCommand, context: Context
+    ir_command: IRCommand, context: Context
 ) -> HandlerResult:
-    target = parsed_command.target
-    assert isinstance(target, (ViewWord, ToolWord))
-    return await _show_app(target, context)
+    from ...dsl.words.registry import get_word
+
+    word = get_word(ir_command.target.id)
+    if not isinstance(word, (ViewWord, ToolWord)):
+        return ErrorResult(errors=[f"'{ir_command.target.id}' is not a view or tool"])
+    return await _show_app(word, context)
 
 
-@_register_show_handler(SchemaWord)
+@_register_show_handler(IRTargetKind.SCHEMA)
 async def _handle_show_schema(
-    parsed_command: ParsedCommand, context: Context
+    ir_command: IRCommand, context: Context
 ) -> HandlerResult:
-    target = parsed_command.target
-    assert isinstance(target, SchemaWord)
-    target_id = get_target_id(target)
-    target_name = parsed_command.target_name
-    return await _show_schema_info(target_id, target_name, context)
+    return await _show_schema_info(ir_command.target.id, ir_command.target_name, context)
 
 
-@_register_show_handler(EntityWord)
-@_register_show_handler(FieldWord)
+@_register_show_handler(IRTargetKind.ENTITY)
+@_register_show_handler(IRTargetKind.FIELD)
 async def _handle_show_entity(
-    parsed_command: ParsedCommand, context: Context
+    ir_command: IRCommand, context: Context
 ) -> HandlerResult:
     company_name, error = validate_org_context(context)
     if error:
         return error
 
     assert company_name is not None
-    assert parsed_command.target_model is not None
-    entity_type = get_entity_type_string(parsed_command.target_model)
-    field_names = parsed_command.field_names
-    filters = parsed_command.filters
+    entity_type = ir_command.target.id
+    entity_model = get_entity_class(entity_type)
+    field_names = list(ir_command.field_names) or None
+    filters = ir_command.filters
 
     return await _show_entity(
         entity_type=entity_type,
@@ -1040,5 +984,5 @@ async def _handle_show_entity(
         filters=filters,
         company_name=company_name,
         context=context,
-        entity_model=parsed_command.target_model,
+        entity_model=entity_model,
     )

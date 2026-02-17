@@ -15,20 +15,24 @@ from ...core.enums.context_rules import (
 )
 from ...core.enums.core import ContextLevel
 from ...core.models.context import Context
-from ...core.models.parser.command import ParsedCommand
 from ...core.models.responses import (
     CommandResult,
     ErrorResult,
     HandlerResult,
     StorageResult,
 )
-from ...core.models.words import (
-    EntityWord,
-    FieldWord,
-    SchemaWord,
-    TargetWordUnion,
-    WordType,
-)
+from ...dsl.ir.command import IRCommand, IRTargetKind
+
+# Mapping from IRTargetKind to WordType.value strings used by context rules.
+# VIEW and TOOL both map to "app" because WordType.APP covers both.
+_IR_KIND_TO_WORD_TYPE: dict[IRTargetKind, str] = {
+    IRTargetKind.SCHEMA: "schema",
+    IRTargetKind.MODULE: "module",
+    IRTargetKind.ENTITY: "entity",
+    IRTargetKind.FIELD: "field",
+    IRTargetKind.VIEW: "app",
+    IRTargetKind.TOOL: "app",
+}
 
 # =============================================================================
 # 1. Context & Data Utilities (Basic Context & Data Processing)
@@ -78,11 +82,6 @@ def get_entity_type_string(target_model: Type[BaseModel]) -> str:
     return target_model.__name__.replace("Entity", "").lower()
 
 
-def get_target_id(target: Union[SchemaWord, EntityWord, FieldWord]) -> str:
-    """Get storage identifier from any target word."""
-    return target.id
-
-
 # =============================================================================
 # 3. Common Error Helpers (Shared Error Creation Functions)
 # =============================================================================
@@ -100,15 +99,15 @@ def _validation_error(
 # =============================================================================
 
 
-def validate_target_exists(parsed_command: ParsedCommand) -> Optional[ErrorResult]:
-    """Validate that parsed command has a target."""
+def validate_target_exists(ir_command: IRCommand) -> Optional[ErrorResult]:
+    """Validate that IR command has a target."""
     return (
-        _validation_error("No target specified") if not parsed_command.target else None
+        _validation_error("No target specified") if not ir_command.has_target else None
     )
 
 
 def validate_target_context(
-    target: TargetWordUnion, context: Context
+    target_kind: IRTargetKind, target_id: str, context: Context
 ) -> Optional[ErrorResult]:
     """
     Validate that target is allowed in current context.
@@ -120,15 +119,19 @@ def validate_target_context(
 
     Returns ErrorResult if invalid, None if valid.
     """
-    if is_target_allowed_in_context(target.word_type.value, context.level):
+    word_type_value = _IR_KIND_TO_WORD_TYPE.get(target_kind)
+    if word_type_value is None:
+        return None  # NONE kind — no context check needed
+
+    if is_target_allowed_in_context(word_type_value, context.level):
         return None
 
     # Build helpful error message
     allowed_names = get_allowed_target_names_for_context(context.level)
 
     # Suggest correct context for APP targets
-    if target.word_type.value == "app":
-        suggestion = f"Navigate to an app: cd {target.id}/"
+    if word_type_value == "app":
+        suggestion = f"Navigate to an app: cd {target_id}/"
     else:
         suggestion = "This should not happen in cumulative model"
 
@@ -141,7 +144,7 @@ def validate_target_context(
 
     return ErrorResult(
         errors=[
-            f"'{target.id}' ({target.word_type.value}) is not available in {level_name} context"
+            f"'{target_id}' ({word_type_value}) is not available in {level_name} context"
         ],
         suggestions=[
             f"Allowed in {level_name}: {', '.join(allowed_names)}",
@@ -163,12 +166,12 @@ def validate_org_context(
 
 
 def validate_field_values_present(
-    parsed_command: ParsedCommand,
+    ir_command: IRCommand,
 ) -> Optional[ErrorResult]:
-    """Validate that parsed command has field values."""
+    """Validate that IR command has field values (assignments)."""
     return (
         _validation_error("No fields specified")
-        if not parsed_command.field_values
+        if not ir_command.assignments
         else None
     )
 

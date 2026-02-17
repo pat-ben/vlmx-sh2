@@ -1,42 +1,42 @@
 """
 App handlers for views and tools.
 
-Engine boundary: these handlers accept stable IR and may adapt to legacy ParsedCommand
-internals during the migration.
+Engine boundary: these handlers accept stable IR directly.
 """
 
 from ...core.models.context import Context
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
-from ...core.models.words import TargetWordUnion, ToolWord, ViewWord
-from ...dsl.ir.command import IRCommand
-from ..legacy_adapter import to_legacy_parsed_command
+from ...dsl.ir.command import IRCommand, IRTargetKind
 from .utils import validate_target_context, validate_target_exists
 
 
 async def apply_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Apply/activate a view filter."""
-    parsed_command = to_legacy_parsed_command(ir_command)
-
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # validated by validate_target_exists
-
-    target = parsed_command.target
-    assert target is not None  # validated by validate_target_exists
-    assert isinstance(target, TargetWordUnion)
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
-    if not isinstance(parsed_command.target, ViewWord):
+    if ir_command.target.kind != IRTargetKind.VIEW:
         return ErrorResult(
             errors=["'apply' only works with views"],
             suggestions=["Use 'apply <view_name>' (e.g., 'apply neco')"],
         )
 
-    view = parsed_command.target
+    from ...dsl.words.registry import VIEW_WORDS
+
+    view = VIEW_WORDS.get(ir_command.target.id)
+    if not view:
+        return ErrorResult(
+            errors=[f"View '{ir_command.target.id}' not found"],
+            suggestions=[f"Available views: {', '.join(VIEW_WORDS.keys())}"],
+        )
+
     return CommandResult(
         success=True,
         message=f"Applied view: {view.id}",
@@ -50,29 +50,32 @@ async def apply_handler(ir_command: IRCommand, context: Context) -> HandlerResul
 
 async def run_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Execute a calculation tool."""
-    parsed_command = to_legacy_parsed_command(ir_command)
-
-    error = validate_target_exists(parsed_command)
+    error = validate_target_exists(ir_command)
     if error:
         return error
 
-    assert parsed_command.target is not None  # validated by validate_target_exists
-
-    target = parsed_command.target
-    assert target is not None  # validated by validate_target_exists
-    assert isinstance(target, TargetWordUnion)
-    context_error = validate_target_context(target, context)
+    context_error = validate_target_context(
+        ir_command.target.kind, ir_command.target.id, context
+    )
     if context_error:
         return context_error
 
-    if not isinstance(parsed_command.target, ToolWord):
+    if ir_command.target.kind != IRTargetKind.TOOL:
         return ErrorResult(
             errors=["'run' only works with tools"],
             suggestions=["Use 'run <tool_name>' (e.g., 'run dcf')"],
         )
 
-    tool = parsed_command.target
-    provided_params = parsed_command.field_values or {}
+    from ...dsl.words.registry import TOOL_WORDS
+
+    tool = TOOL_WORDS.get(ir_command.target.id)
+    if not tool:
+        return ErrorResult(
+            errors=[f"Tool '{ir_command.target.id}' not found"],
+            suggestions=[f"Available tools: {', '.join(TOOL_WORDS.keys())}"],
+        )
+
+    provided_params = dict(ir_command.assignments)
     missing_params = [p for p in tool.parameters if p not in provided_params]
 
     if missing_params:

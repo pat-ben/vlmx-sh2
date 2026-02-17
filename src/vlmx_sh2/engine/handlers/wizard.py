@@ -6,8 +6,7 @@ Returns FormRequest/PickerRequest models for UI interpretation.
 
 Engine boundary:
 - Public handlers accept stable IR (`IRCommand`).
-- During migration, we adapt IR -> legacy `ParsedCommand` internally so existing
-  wizard logic can remain mostly unchanged.
+- IRCommand is the sole contract between dsl/ and engine/.
 """
 
 from typing import Any, Dict, List, Optional, Type
@@ -17,9 +16,9 @@ from pydantic import BaseModel, Field
 from vlmx_sh2.core.enums import Cardinality
 
 from ...core.constants import SYSTEM_FIELDS
+from ...core.registry import get_entity_class
 from ...dsl.ir.command import IRCommand
 from ...core.models.context import Context
-from ...core.models.parser.command import ParsedCommand
 from ...core.models.responses import (
     ColumnSpec,
     ErrorResult,
@@ -30,7 +29,6 @@ from ...core.models.responses import (
 )
 from ...db.database import StorageInterface
 from ...core.utils.field_specs import build_column_specs, build_field_specs
-from ..legacy_adapter import to_legacy_parsed_command
 from .utils import _validation_error, get_company_name_from_context
 
 # =============================================================================
@@ -45,18 +43,16 @@ async def fill_handler(ir_command: IRCommand, context: Context) -> HandlerResult
     Creates form wizards for single cardinality schemas or record pickers
     for multiple cardinality schemas.
     """
-    parsed_command: ParsedCommand = to_legacy_parsed_command(ir_command)
-
     try:
-        entity_model = parsed_command.entity_model
+        entity_model = get_entity_class(ir_command.target.id) if ir_command.has_target else None
         if not entity_model:
             return _validation_error(
                 "No entity specified for fill command",
                 ["Specify an entity to fill, e.g.: fill news"],
             )
 
-        entity_type = _get_entity_type(entity_model)
-        entity_value = parsed_command.target.id if parsed_command.target else None
+        entity_type = ir_command.target.id
+        entity_value = ir_command.target.id
 
         # Validate organization context
         company_name = get_company_name_from_context(context)
@@ -95,7 +91,11 @@ async def fill_handler(ir_command: IRCommand, context: Context) -> HandlerResult
                 )
 
             # Create form with requested fields
-            requested_fields = _get_requested_fields(entity_model, parsed_command)
+            field_values = dict(ir_command.assignments)
+            field_names = list(ir_command.field_names)
+            requested_fields = _get_requested_fields(
+                entity_model, field_values, field_names
+            )
             if not requested_fields:
                 return _validation_error(
                     "No fillable fields available",
@@ -159,14 +159,16 @@ def _get_display_fields(entity_type: str, entity_model: Type[BaseModel]) -> List
 
 
 def _get_requested_fields(
-    entity_model: Type[BaseModel], parsed_command: ParsedCommand
+    entity_model: Type[BaseModel],
+    field_values: dict[str, str],
+    field_names: list[str],
 ) -> List[str]:
     """Determine which fields to include in the form."""
     # Priority: field_values > field_names > all model fields
-    if parsed_command.field_values:
-        return list(parsed_command.field_values.keys())
-    if parsed_command.field_names:
-        return parsed_command.field_names
+    if field_values:
+        return list(field_values.keys())
+    if field_names:
+        return field_names
 
     return [f for f in entity_model.model_fields.keys() if f not in SYSTEM_FIELDS]
 

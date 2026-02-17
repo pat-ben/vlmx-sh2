@@ -12,8 +12,7 @@ Responsibilities:
 Notes:
 - Handlers are registered via importing `vlmx_sh2.engine.handlers`.
   The application entrypoint should ensure that import happens once at startup.
-- Legacy adaptation (IR -> ParsedCommand) exists only to support incremental
-  handler refactors and should be removed once handlers are fully IR-native.
+- All handlers are IR-native: they accept `IRCommand` directly.
 """
 
 from __future__ import annotations
