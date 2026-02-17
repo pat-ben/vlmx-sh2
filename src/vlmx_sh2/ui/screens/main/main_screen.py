@@ -16,7 +16,6 @@ from ....core.models.responses import (
     PickerRequest,
     QueryRequest,
 )
-from ....db.database import StorageInterface
 from ....engine.executor import CommandExecutor
 from ...widgets.command_block import CommandBlock
 
@@ -45,11 +44,11 @@ class MainScreen(Screen):
         self.run_worker(self._populate_organisations_option_list, thread=True)
 
     def _populate_organisations_option_list(self):
-        storage_result = StorageInterface.list_entities("company", "", self.app.context)
-        company_list = storage_result.data["companies"]
-        company_names = [company["name"] for company in company_list]
+        from ...data_provider import UIDataProvider
+
+        orgs = UIDataProvider.get_organizations(self.app.context)
         orgs_option_list = self.query_one("#organisations-option-list")
-        orgs_option_list.add_options(company_names)
+        orgs_option_list.add_options([org.name for org in orgs])
 
     async def on_command_block_command_submitted(self, message):
         """Handle command submission from CommandBlock."""
