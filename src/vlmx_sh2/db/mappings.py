@@ -1,55 +1,46 @@
-"""Dynamic entity-to-file mappings from CompanyDatabase.tables."""
+"""Entity-to-file mappings, delegating to the core registry."""
 
 from typing import Dict, Optional
 
-
-DEFAULT_ENTITY = "company"
-_mappings_cache: Optional[Dict[str, str]] = None
-
-
-def _get_mappings() -> Dict[str, str]:
-    """Get entity mappings with lazy loading."""
-    global _mappings_cache
-    if _mappings_cache is None:
-        _mappings_cache = _generate_mappings()
-    return _mappings_cache
-
-
-def _generate_mappings() -> Dict[str, str]:
-    """Generate entity-to-file mappings from CompanyDatabase.tables."""
-    try:
-        from ..core.schemas.company import CompanyDatabase
-        
-        mappings = {}
-        for entity_class in CompanyDatabase.tables:
-            entity_name = entity_class.get_entity_word_id()
-            json_filename = f"{entity_name}.json"
-            
-            # Primary mapping
-            mappings[entity_name] = json_filename
-            
-            # Add aliases if available
-            if hasattr(entity_class, 'get_entity_aliases'):
-                for alias in entity_class.get_entity_aliases():
-                    mappings[alias] = json_filename
-        
-        return mappings
-        
-    except Exception as e:
-        print(f"Warning: Could not generate dynamic mappings: {e}")
-        return {"organization": "organization.json", "brand": "brand.json"}
-
+from ..core.registry import (
+    get_all_storage_mappings,
+    get_storage_mapping,
+    resolve_entity_alias,
+)
 
 def get_entity_json_filename(entity_word_id: str) -> Optional[str]:
-    """Get JSON filename for entity word ID."""
-    return _get_mappings().get(entity_word_id.lower())
+    """Get JSON filename for entity word ID (or alias)."""
+    key = entity_word_id.lower()
+
+    # Direct lookup
+    mapping = get_storage_mapping(key)
+    if mapping is not None:
+        return mapping.json_filename
+
+    # Try alias resolution
+    canonical = resolve_entity_alias(key)
+    if canonical is not None:
+        mapping = get_storage_mapping(canonical)
+        if mapping is not None:
+            return mapping.json_filename
+
+    return None
 
 
 def get_supported_entities() -> Dict[str, str]:
-    """Get all supported entity-to-file mappings."""
-    return _get_mappings().copy()
+    """Get all supported entity-to-file mappings (includes aliases)."""
+    result: Dict[str, str] = {}
+    for entity_id, mapping in get_all_storage_mappings().items():
+        result[entity_id] = mapping.json_filename
+        for alias in mapping.aliases:
+            result[alias] = mapping.json_filename
+    return result
 
 
 def is_supported_entity(entity_word_id: str) -> bool:
     """Check if entity word ID is supported."""
-    return entity_word_id.lower() in _get_mappings()
+    key = entity_word_id.lower()
+    if get_storage_mapping(key) is not None:
+        return True
+    canonical = resolve_entity_alias(key)
+    return canonical is not None and get_storage_mapping(canonical) is not None

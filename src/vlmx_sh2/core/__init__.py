@@ -14,11 +14,12 @@ Guideline:
     Application/runtime code should import from `vlmx_sh2.core.*`.
 """
 
-from . import enums, models, schemas, utils
+from . import enums, models, registry, schemas, utils
 
 __all__ = [
     "enums",
     "models",
+    "registry",
     "schemas",
     "utils",
 ]

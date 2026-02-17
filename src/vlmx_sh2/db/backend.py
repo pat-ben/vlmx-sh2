@@ -11,17 +11,20 @@ The StorageInterface layer is responsible for wrapping these into StorageResult.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, runtime_checkable
-
-from typing import Protocol
+from typing import Any, Dict, List, Protocol, runtime_checkable
 
 from ..core.models.context import Context
 
 
 class StorageBackendType(str, Enum):
     """Supported storage backend types."""
+
     JSON = "json"
     SQLITE = "sqlite"
+
+
+# Keep backend record typing aligned with `vlmx_sh2.db.database.StorageRecord`.
+StorageRecord = Dict[str, Any]
 
 
 @runtime_checkable
@@ -35,7 +38,7 @@ class StorageBackend(Protocol):
     def create_entity(
         self,
         entity_type: str,
-        data: Dict[str, Any],
+        data: StorageRecord,
         context: Context,
     ) -> Dict[str, Any]: ...
 
@@ -44,12 +47,12 @@ class StorageBackend(Protocol):
         entity_type: str,
         company_name: str,
         context: Context,
-    ) -> Optional[Dict[str, Any]]: ...
+    ) -> Dict[str, Any] | None: ...
 
     def save_entity(
         self,
         entity_type: str,
-        data: Dict[str, Any],
+        data: StorageRecord,
         company_name: str,
         context: Context,
     ) -> Dict[str, Any]: ...
@@ -66,12 +69,12 @@ class StorageBackend(Protocol):
         entity_type: str,
         company_name: str,
         context: Context,
-    ) -> List[Dict[str, Any]]: ...
+    ) -> List[StorageRecord]: ...
 
     def save_entity_array(
         self,
         entity_type: str,
-        entity_array: List[Dict[str, Any]],
+        entity_array: List[StorageRecord],
         company_name: str,
         context: Context,
     ) -> Dict[str, Any]: ...
@@ -85,7 +88,7 @@ class StorageBackend(Protocol):
         context: Context,
     ) -> Dict[str, Any]: ...
 
-    def list_companies(
+    def list_organizations(
         self,
         context: Context,
     ) -> Dict[str, Any]: ...
@@ -97,13 +100,13 @@ class StorageBackend(Protocol):
         context: Context,
     ) -> bool: ...
 
-    def find_company_by_name(
+    def find_organization_by_name(
         self,
         search_name: str,
         context: Context,
-    ) -> Optional[str]: ...
+    ) -> str | None: ...
 
-    def find_company_candidates(
+    def find_organization_candidates(
         self,
         search_name: str,
         context: Context,

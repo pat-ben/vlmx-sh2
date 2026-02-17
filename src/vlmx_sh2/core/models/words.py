@@ -65,6 +65,10 @@ class TargetWord(BaseWord):
     - APP: All targets (everything)
     """
 
+    # NOTE: Kept broad for runtime and to avoid invariant override errors in subclasses
+    # that narrow to Literal[WordType.*]. Concrete subclasses still set the actual value.
+    word_type: Any
+
     context: ContextLevel = Field(
         default=ContextLevel.ORG,
         description="Context level where this target is available",
@@ -109,7 +113,7 @@ class ActionWord(BaseWord):
     execution_type: ExecutionType = Field(
         default=ExecutionType.STANDARD, description="Type of execution for this action"
     )
-    handler: Any = Field(description="Function to handle this action")
+    handler: Any = Field(default=None, description="Function to handle this action")
     action_category: ActionCategory = Field(
         default=ActionCategory.CRUD,
         description="Broad category of what this action does (CRUD, NAVIGATION, SYSTEM, ANALYSIS, IMPORT_EXPORT)",
@@ -234,7 +238,7 @@ class ViewWord(TargetWord):
     )
     schema_id: str = Field(
         default="company",
-        description="Which schema type this view applies to (e.g. company, fund)"
+        description="Which schema type this view applies to (e.g. company, fund)",
     )
 
 

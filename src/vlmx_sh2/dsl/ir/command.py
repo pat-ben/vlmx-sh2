@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from vlmx_sh2.core.models.parser.filtering import FilterExpression
+from vlmx_sh2.dsl.ast.filters import FilterExpression
 
 
 class IRCommandOrigin(str, Enum):

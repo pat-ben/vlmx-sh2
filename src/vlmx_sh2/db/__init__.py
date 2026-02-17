@@ -2,12 +2,12 @@
 Data persistence layer.
 
 Public API:
-  - StorageInterface        — single facade for all storage operations
-  - StorageBackend          — protocol that backends implement
-  - StorageBackendType      — enum: JSON | SQLITE
-  - set_backend / get_backend — switch or inspect the active backend
-  - get_company_folder_path — shared path utility
-  - find_company_candidates — company search helper
+  - StorageInterface             — single facade for all storage operations
+  - StorageBackend               — protocol that backends implement
+  - StorageBackendType           — enum: JSON | SQLITE
+  - set_backend / get_backend    — switch or inspect the active backend
+  - get_company_folder_path      — shared path utility
+  - find_organization_candidates — organization search helper
 
 SQLite utilities (engine, legacy functions) are importable from their
 respective modules but NOT eagerly loaded here to avoid pulling in

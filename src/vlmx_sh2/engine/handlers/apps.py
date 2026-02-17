@@ -5,10 +5,10 @@ Engine boundary: these handlers accept stable IR and may adapt to legacy ParsedC
 internals during the migration.
 """
 
-from ...dsl.ir.command import IRCommand
 from ...core.models.context import Context
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
-from ...core.models.words import ToolWord, ViewWord
+from ...core.models.words import TargetWordUnion, ToolWord, ViewWord
+from ...dsl.ir.command import IRCommand
 from ..legacy_adapter import to_legacy_parsed_command
 from .utils import validate_target_context, validate_target_exists
 
@@ -21,7 +21,12 @@ async def apply_handler(ir_command: IRCommand, context: Context) -> HandlerResul
     if error:
         return error
 
-    context_error = validate_target_context(parsed_command.target, context)
+    assert parsed_command.target is not None  # validated by validate_target_exists
+
+    target = parsed_command.target
+    assert target is not None  # validated by validate_target_exists
+    assert isinstance(target, TargetWordUnion)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 
@@ -51,7 +56,12 @@ async def run_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     if error:
         return error
 
-    context_error = validate_target_context(parsed_command.target, context)
+    assert parsed_command.target is not None  # validated by validate_target_exists
+
+    target = parsed_command.target
+    assert target is not None  # validated by validate_target_exists
+    assert isinstance(target, TargetWordUnion)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 

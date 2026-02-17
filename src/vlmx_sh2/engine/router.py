@@ -7,11 +7,12 @@ to handlers using an internal registry (not ActionWord.handler).
 
 from __future__ import annotations
 
-from typing import Awaitable, Callable, Dict, Optional
+from collections.abc import Awaitable, Callable
+from typing import Dict, Optional
 
-from ..dsl.ir.command import IRCommand
 from ..core.models.context import Context
 from ..core.models.responses import ErrorResult, HandlerResult
+from ..dsl.ir.command import IRCommand
 
 # -----------------------------------------------------------------------------
 # Handler registry (engine-side)

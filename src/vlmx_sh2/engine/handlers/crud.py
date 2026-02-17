@@ -11,21 +11,21 @@ Engine boundary:
   of existing CRUD logic remains unchanged.
 """
 
-from datetime import datetime
-
 # =============================================================================
 # 1. Public Handler API (Main CRUD Entry Points)
 # =============================================================================
 # Dispatch Tables (Replace if/elif chains)
 # =============================================================================
-from typing import Any, Callable, Dict, List, Optional, Type
+from collections.abc import Awaitable, Callable
+from datetime import datetime
+from typing import Any, Optional, cast
 
 from pydantic import BaseModel
 
 from vlmx_sh2.core.enums import Cardinality
+from vlmx_sh2.dsl.ast.filters import FilterExpression
 
 from ...core.constants import SYSTEM_FIELDS
-from ...dsl.ir.command import IRCommand
 from ...core.models.context import Context
 from ...core.models.parser.command import ParsedCommand
 from ...core.models.responses import CommandResult, ErrorResult, HandlerResult
@@ -35,14 +35,16 @@ from ...core.models.words import (
     ModuleWord,
     SchemaWord,
     TargetWord,
+    TargetWordUnion,
     ToolWord,
     ViewWord,
     WordType,
 )
-from ...db.database import StorageInterface
-from ...db.filters import apply_filters
 from ...core.utils.context_helpers import is_sys
 from ...core.utils.entity_defaults import create_default_entity_data
+from ...db.database import StorageInterface
+from ...db.filters import apply_filters
+from ...dsl.ir.command import IRCommand
 from ..legacy_adapter import to_legacy_parsed_command
 from .utils import (
     format_entity_data_for_display,
@@ -55,32 +57,9 @@ from .utils import (
     validate_target_exists,
 )
 
-_ActionWordType = Type[SchemaWord] | Type[EntityWord] | Type[FieldWord]
-_CreateHandler = Callable[[str, Optional[str], Dict[str, Any], Context], HandlerResult]
-_DropHandler = Callable[[str, Optional[str], Context], HandlerResult]
-
-_CREATE_TARGET_HANDLERS: dict[_ActionWordType, _CreateHandler] = {}
-_DROP_TARGET_HANDLERS: dict[_ActionWordType, _DropHandler] = {}
-
-
-def _register_create_handler(word_type: _ActionWordType):
-    """Decorator to register create handlers by word type."""
-
-    def decorator(func: _CreateHandler):
-        _CREATE_TARGET_HANDLERS[word_type] = func
-        return func
-
-    return decorator
-
-
-def _register_drop_handler(word_type: _ActionWordType):
-    """Decorator to register drop handlers by word type."""
-
-    def decorator(func: _DropHandler):
-        _DROP_TARGET_HANDLERS[word_type] = func
-        return func
-
-    return decorator
+# NOTE: We intentionally do NOT maintain multiple dispatch-table systems here.
+# The only dispatch tables are defined near the bottom of this file under
+# "Dispatch Tables (Replace if/elif chains)" and are async-typed.
 
 
 # =============================================================================
@@ -96,13 +75,15 @@ async def create_handler(ir_command: IRCommand, context: Context) -> HandlerResu
     if error:
         return error
 
+    assert parsed_command.target is not None  # Validated by validate_target_exists
+    target = cast(TargetWordUnion, parsed_command.target)
+
     # Validate target is allowed in current context
-    context_error = validate_target_context(parsed_command.target, context)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target_id = get_target_id(parsed_command.target)
+    target_id = get_target_id(cast(Any, target))
     target_name = parsed_command.target_name
     field_values = parsed_command.field_values
 
@@ -125,13 +106,15 @@ async def drop_handler(ir_command: IRCommand, context: Context) -> HandlerResult
     if error:
         return error
 
+    assert parsed_command.target is not None  # Validated by validate_target_exists
+    target = cast(TargetWordUnion, parsed_command.target)
+
     # Validate target is allowed in current context
-    context_error = validate_target_context(parsed_command.target, context)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 
-    assert parsed_command.target is not None  # Validated by validate_target_exists
-    target_id = get_target_id(parsed_command.target)
+    target_id = get_target_id(cast(Any, target))
     target_name = parsed_command.target_name
 
     target_type = type(parsed_command.target)
@@ -154,8 +137,11 @@ async def add_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     if error:
         return error
 
+    assert parsed_command.target is not None  # Validated by validate_target_exists
+    target = cast(TargetWordUnion, parsed_command.target)
+
     # Validate target is allowed in current context
-    context_error = validate_target_context(parsed_command.target, context)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 
@@ -192,8 +178,11 @@ async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResu
     if error:
         return error
 
+    assert parsed_command.target is not None  # Validated by validate_target_exists
+    target = cast(TargetWordUnion, parsed_command.target)
+
     # Validate target is allowed in current context
-    context_error = validate_target_context(parsed_command.target, context)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 
@@ -257,8 +246,11 @@ async def reset_handler(ir_command: IRCommand, context: Context) -> HandlerResul
     if error:
         return error
 
+    assert parsed_command.target is not None  # Validated by validate_target_exists
+    target = cast(TargetWordUnion, parsed_command.target)
+
     # Validate target is allowed in current context
-    context_error = validate_target_context(parsed_command.target, context)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 
@@ -299,8 +291,11 @@ async def show_handler(ir_command: IRCommand, context: Context) -> HandlerResult
     if error:
         return error
 
+    assert parsed_command.target is not None  # Validated by validate_target_exists
+    target = cast(TargetWordUnion, parsed_command.target)
+
     # Validate target is allowed in current context
-    context_error = validate_target_context(parsed_command.target, context)
+    context_error = validate_target_context(target, context)
     if context_error:
         return context_error
 
@@ -358,7 +353,7 @@ def _validate_entity_exists(
     return None
 
 
-def _resolve_company_name(
+def _resolve_organization_name(
     name: Optional[str], context: Context
 ) -> tuple[Optional[str], Optional[ErrorResult]]:
     """
@@ -372,13 +367,19 @@ def _resolve_company_name(
             errors=["Company name required"], suggestions=["Specify company name"]
         )
 
-    result = StorageInterface.find_company_by_name(name, context)
+    result = StorageInterface.find_organization_by_name(name, context)
     if not result.success:
         return None, ErrorResult(
-            errors=[result.error],
+            errors=[result.error] if result.error is not None else ["Unknown error"],
             suggestions=["Check company name spelling or list existing companies"],
         )
-    actual_name = result.data["name"]
+    data = cast(dict[str, object], result.data or {})
+    actual_name = cast(Optional[str], data.get("name"))
+    if not actual_name:
+        return None, ErrorResult(
+            errors=["Company name could not be resolved"],
+            suggestions=["Check company name spelling or list existing companies"],
+        )
 
     return actual_name, None
 
@@ -389,7 +390,7 @@ def _resolve_company_name(
 
 
 async def _create_schema(
-    target_id: str, name: Optional[str], fields: Dict[str, Any], context: Context
+    target_id: str, name: Optional[str], fields: dict[str, Any], context: Context
 ) -> HandlerResult:
     """Create schema (organization database)."""
 
@@ -409,27 +410,7 @@ async def _create_schema(
             entity_type=entity_type, data=entity_data, context=context
         )
 
-        # Handle context switch for company creation (navigation behavior)
-        if entity_type == "company":
-            return handle_storage_result(
-                storage_result,
-                storage_result.message
-                or f"Created {entity_type} {entity_data['name']}",
-                entity_type,
-                {
-                    "entity_name": entity_data["name"],
-                    "fields": entity_data,
-                    "storage_result": storage_result.data,
-                    "context_switch": {
-                        "level": "ORG",
-                        "org_id": 1,
-                        "org_name": entity_data["name"],
-                        "org_db_path": None,
-                    },
-                },
-            )
-
-        # Return generic success result using utility
+        # All schema creation returns context_switch payload
         return handle_storage_result(
             storage_result,
             storage_result.message or f"Created {entity_type} {entity_data['name']}",
@@ -438,6 +419,12 @@ async def _create_schema(
                 "entity_name": entity_data["name"],
                 "fields": entity_data,
                 "storage_result": storage_result.data,
+                "context_switch": {
+                    "level": "ORG",
+                    "org_id": 1,
+                    "org_name": entity_data["name"],
+                    "org_db_path": None,
+                },
             },
         )
 
@@ -459,13 +446,13 @@ async def _drop_schema(
             suggestions=["Use 'cd' to navigate to system level first"],
         )
 
-    actual_company_name, error = _resolve_company_name(name, context)
+    actual_company_name, error = _resolve_organization_name(name, context)
     if error:
         return error
 
     assert (
         actual_company_name is not None
-    )  # Guaranteed by _resolve_company_name success
+    )  # Guaranteed by _resolve_organization_name success
     # Delete the entire entity
     delete_result = StorageInterface.delete_entity(
         target_id, actual_company_name, context
@@ -487,13 +474,13 @@ async def _show_schema_info(
 ) -> HandlerResult:
     """Show schema information."""
 
-    actual_company_name, error = _resolve_company_name(name, context)
+    actual_company_name, error = _resolve_organization_name(name, context)
     if error:
         return error
 
     assert (
         actual_company_name is not None
-    )  # Guaranteed by _resolve_company_name success
+    )  # Guaranteed by _resolve_organization_name success
     # Load schema data
     load_result = StorageInterface.load_entity(target_id, actual_company_name, context)
     if not load_result.success or not load_result.data:
@@ -543,11 +530,11 @@ async def _drop_entity_structure(
 
 async def _add_field_values(
     entity_type: str,
-    fields: Dict[str, str],
-    filters: Optional[Any],
+    fields: dict[str, str],
+    filters: FilterExpression | None,
     company_name: str,
     context: Context,
-    entity_model: Optional[Type[BaseModel]] = None,
+    entity_model: type[BaseModel] | None = None,
 ) -> HandlerResult:
     """Add/update field values, optionally filtered."""
 
@@ -633,8 +620,8 @@ async def _add_field_values(
 
 async def _delete_field_values(
     entity_type: str,
-    field_names: List[str],
-    filters: Optional[Any],
+    field_names: list[str],
+    filters: FilterExpression | None,
     company_name: str,
     context: Context,
 ) -> HandlerResult:
@@ -719,7 +706,7 @@ async def _delete_entity_content(
 
 
 async def _reset_entity_content(
-    entity_type: str, company_name: str, context: Context, entity_model: Type[BaseModel]
+    entity_type: str, company_name: str, context: Context, entity_model: type[BaseModel]
 ) -> HandlerResult:
     """Reset entity to defaults."""
 
@@ -746,11 +733,11 @@ async def _reset_entity_content(
 
 async def _reset_field_values(
     entity_type: str,
-    field_names: List[str],
-    filters: Optional[Any],
+    field_names: list[str],
+    filters: FilterExpression | None,
     company_name: str,
     context: Context,
-    entity_model: Type[BaseModel],
+    entity_model: type[BaseModel],
 ) -> HandlerResult:
     """Reset specific fields to defaults."""
 
@@ -805,11 +792,11 @@ async def _reset_field_values(
 
 async def _show_entity(
     entity_type: str,
-    field_names: Optional[List[str]],
-    filters: Optional[Any],
+    field_names: list[str] | None,
+    filters: FilterExpression | None,
     company_name: str,
     context: Context,
-    entity_model: Optional[Type[BaseModel]] = None,
+    entity_model: type[BaseModel] | None = None,
 ) -> HandlerResult:
     """Show entity data with optional field/row filtering."""
 
@@ -840,10 +827,14 @@ async def _show_entity(
             )
             if not all_records_result.success:
                 return ErrorResult(
-                    errors=[all_records_result.error],
+                    errors=[
+                        all_records_result.error
+                        if all_records_result.error is not None
+                        else "Failed to load records"
+                    ],
                     suggestions=["Check entity exists and database connection"],
                 )
-            all_records = all_records_result.data
+            all_records = cast(list[dict[str, object]], all_records_result.data or [])
 
             # Apply filters if present
             if filters:
@@ -963,27 +954,26 @@ async def _show_app(target: TargetWord, context: Context) -> HandlerResult:
 # Dispatch Tables (Replace if/elif chains)
 # =============================================================================
 
-from typing import Awaitable, Callable, Type
+# (no-op) typing imports are already handled at the top of the file
 
 _GenericHandler = Callable[..., Awaitable[HandlerResult]]
 
-_CREATE_TARGET_HANDLERS: dict[Type, _GenericHandler] = {
+# Target-type dispatch tables (async)
+_CREATE_TARGET_HANDLERS: dict[type[Any], _GenericHandler] = {
     SchemaWord: _create_schema,
 }
 
-_DROP_TARGET_HANDLERS: dict[Type, _GenericHandler] = {
+_DROP_TARGET_HANDLERS: dict[type[Any], _GenericHandler] = {
     SchemaWord: _drop_schema,
 }
 
-_SHOW_TARGET_HANDLERS: dict[
-    Type, Callable[[ParsedCommand, Context], HandlerResult]
-] = {}
+_SHOW_TARGET_HANDLERS: dict[type[Any], _GenericHandler] = {}
 
 
-def _register_show_handler(word_type: Type):
+def _register_show_handler(word_type: type[Any]):
     """Decorator to register show handlers by word type."""
 
-    def decorator(func: Callable[[ParsedCommand, Context], HandlerResult]):
+    def decorator(func: _GenericHandler):
         _SHOW_TARGET_HANDLERS[word_type] = func
         return func
 

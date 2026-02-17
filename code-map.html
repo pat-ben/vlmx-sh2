@@ -151,135 +151,151 @@
 
 const LAYERS = {
   ui:       { label: 'UI / Presentation', color: '#dbeafe', stroke: '#3b82f6' },
-  app:      { label: 'Application',       color: '#fef3c7', stroke: '#f59e0b' },
+  engine:   { label: 'Engine',            color: '#fef3c7', stroke: '#f59e0b' },
   parser:   { label: 'Parser Pipeline',   color: '#f3e8ff', stroke: '#a855f7' },
-  dsl:      { label: 'DSL Vocabulary',     color: '#dcfce7', stroke: '#22c55e' },
-  handler:  { label: 'Handlers',          color: '#fce7f3', stroke: '#ec4899' },
-  model:    { label: 'Models',            color: '#e0f2fe', stroke: '#0ea5e9' },
-  storage:  { label: 'Storage',           color: '#fef9c3', stroke: '#eab308' },
+  ir:       { label: 'IR / Words',        color: '#dcfce7', stroke: '#22c55e' },
+  core:     { label: 'Core Models',       color: '#e0f2fe', stroke: '#0ea5e9' },
+  storage:  { label: 'Storage',           color: '#fce7f3', stroke: '#ec4899' },
   schema:   { label: 'Schemas / Entities', color: '#f1f5f9', stroke: '#64748b' },
 };
 
 const CONN_TYPES = {
-  'data-flow':  { label: 'Data Flow',   color: '#3b82f6', dash: '' },
-  'call':       { label: 'Function Call', color: '#10b981', dash: '6,3' },
-  'event':      { label: 'Event / Signal', color: '#ef4444', dash: '4,4' },
-  'generates':  { label: 'Generates',   color: '#f97316', dash: '8,4' },
-  'depends':    { label: 'Dependency',   color: '#6b7280', dash: '2,2' },
+  'data-flow':  { label: 'Data Flow',      color: '#3b82f6', dash: '' },
+  'call':       { label: 'Function Call',   color: '#10b981', dash: '6,3' },
+  'pipeline':   { label: 'Pipeline Stage',  color: '#f97316', dash: '8,4' },
+  'registry':   { label: 'Registry Lookup', color: '#a855f7', dash: '4,4' },
+  'depends':    { label: 'Dependency',      color: '#6b7280', dash: '2,2' },
 };
 
 const nodes = [
   // UI Layer (y ~40)
-  { id: 'app',            label: 'VLMX App',         subtitle: 'ui/app.py',                       x: 80,  y: 40, w: 120, h: 44, layer: 'ui' },
-  { id: 'main-screen',    label: 'MainScreen',        subtitle: 'ui/screens/main/',                x: 230, y: 40, w: 130, h: 44, layer: 'ui' },
-  { id: 'cmd-block',      label: 'CommandBlock',       subtitle: 'ui/widgets/command_block.py',     x: 390, y: 40, w: 130, h: 44, layer: 'ui' },
-  { id: 'form-wizard-ui', label: 'FormWizard',         subtitle: 'ui/widgets/form_wizard.py',       x: 550, y: 40, w: 120, h: 44, layer: 'ui' },
-  { id: 'entity-mgr',     label: 'EntityManager',      subtitle: 'ui/widgets/dynamic_entity_manager.py', x: 700, y: 40, w: 140, h: 44, layer: 'ui' },
-  { id: 'formatters',     label: 'Formatters',         subtitle: 'ui/formatters/',                  x: 870, y: 40, w: 110, h: 44, layer: 'ui' },
+  { id: 'app',            label: 'VLMX App',           subtitle: 'ui/app.py',                               x: 80,  y: 40, w: 120, h: 44, layer: 'ui' },
+  { id: 'main-screen',    label: 'MainScreen',          subtitle: 'ui/screens/main/main_screen.py',          x: 230, y: 40, w: 130, h: 44, layer: 'ui' },
+  { id: 'cmd-block',      label: 'CommandBlock',         subtitle: 'ui/widgets/command_block.py',             x: 390, y: 40, w: 140, h: 44, layer: 'ui' },
+  { id: 'form-wizard-ui', label: 'FormWizardScreen',     subtitle: 'ui/screens/modal/form_wizard_screen.py',  x: 560, y: 40, w: 155, h: 44, layer: 'ui' },
+  { id: 'entity-mgr',     label: 'DynamicEntityMgr',     subtitle: 'ui/widgets/dynamic_entity_manager.py',    x: 745, y: 40, w: 155, h: 44, layer: 'ui' },
+  { id: 'formatters',     label: 'Formatters',           subtitle: 'ui/formatters/results.py',                x: 930, y: 40, w: 110, h: 44, layer: 'ui' },
 
-  // Application Layer (y ~130)
-  { id: 'executor',       label: 'CommandExecutor',    subtitle: 'core/executor.py',                x: 160, y: 130, w: 150, h: 44, layer: 'app' },
-  { id: 'builder',        label: 'CommandBuilder',     subtitle: 'core/builder.py',                 x: 420, y: 130, w: 150, h: 44, layer: 'app' },
-  { id: 'router',         label: 'Router',             subtitle: 'core/router.py',                  x: 680, y: 130, w: 120, h: 44, layer: 'app' },
+  // Engine Layer (y ~130)
+  { id: 'executor',       label: 'CommandExecutor',      subtitle: 'engine/executor.py',                      x: 140, y: 130, w: 160, h: 44, layer: 'engine' },
+  { id: 'router',         label: 'Router',               subtitle: 'engine/router.py',                        x: 370, y: 130, w: 120, h: 44, layer: 'engine' },
+  { id: 'crud',           label: 'CRUD Handlers',        subtitle: 'engine/handlers/crud.py',                 x: 540, y: 130, w: 145, h: 44, layer: 'engine' },
+  { id: 'nav-handler',    label: 'Nav Handler',          subtitle: 'engine/handlers/navigation.py',           x: 720, y: 130, w: 130, h: 44, layer: 'engine' },
+  { id: 'wizard-handler', label: 'Wizard Handler',       subtitle: 'engine/handlers/wizard.py',               x: 890, y: 130, w: 140, h: 44, layer: 'engine' },
+  { id: 'apps-handler',   label: 'Apps Handler',         subtitle: 'engine/handlers/apps.py',                 x: 1065, y: 130, w: 130, h: 44, layer: 'engine' },
 
-  // Parser Layer (y ~220)
-  { id: 'parser',         label: 'Parser',             subtitle: 'parser/parser.py',                x: 80,  y: 220, w: 110, h: 44, layer: 'parser' },
-  { id: 'normalizer',     label: 'Normalizer',         subtitle: 'parser/normalizer.py',            x: 210, y: 220, w: 110, h: 44, layer: 'parser' },
-  { id: 'tokenizer',      label: 'Tokenizer',          subtitle: 'parser/tokenizer.py',             x: 340, y: 220, w: 110, h: 44, layer: 'parser' },
-  { id: 'classifier',     label: 'Classifier',         subtitle: 'parser/classifier.py',            x: 470, y: 220, w: 110, h: 44, layer: 'parser' },
-  { id: 'recognizer',     label: 'Recognizer',         subtitle: 'parser/recognizer.py',            x: 600, y: 220, w: 110, h: 44, layer: 'parser' },
-  { id: 'interpreter',    label: 'Interpreter',        subtitle: 'parser/interpreter.py',           x: 730, y: 220, w: 110, h: 44, layer: 'parser' },
-  { id: 'splitter',       label: 'Splitter',           subtitle: 'parser/splitter.py',              x: 860, y: 220, w: 100, h: 44, layer: 'parser' },
-  { id: 'filter-parser',  label: 'FilterParser',       subtitle: 'parser/filter.py',                x: 980, y: 220, w: 110, h: 44, layer: 'parser' },
+  // Parser Pipeline Layer (y ~230)
+  { id: 'parser',         label: 'Parser',               subtitle: 'dsl/parser/parser.py',                    x: 60,  y: 230, w: 100, h: 44, layer: 'parser' },
+  { id: 'normalizer',     label: 'Normalizer',           subtitle: 'dsl/parser/normalizer.py',                x: 185, y: 230, w: 115, h: 44, layer: 'parser' },
+  { id: 'tokenizer',      label: 'Tokenizer',            subtitle: 'dsl/parser/tokenizer.py',                 x: 320, y: 230, w: 110, h: 44, layer: 'parser' },
+  { id: 'classifier',     label: 'Classifier',           subtitle: 'dsl/parser/classifier.py',                x: 450, y: 230, w: 110, h: 44, layer: 'parser' },
+  { id: 'recognizer',     label: 'Recognizer',           subtitle: 'dsl/parser/recognizer.py',                x: 580, y: 230, w: 115, h: 44, layer: 'parser' },
+  { id: 'interpreter',    label: 'Interpreter',          subtitle: 'dsl/parser/interpreter.py',               x: 715, y: 230, w: 120, h: 44, layer: 'parser' },
+  { id: 'splitter',       label: 'Splitter',             subtitle: 'dsl/parser/splitter.py',                  x: 855, y: 230, w: 100, h: 44, layer: 'parser' },
+  { id: 'filter-parser',  label: 'Filter',               subtitle: 'dsl/parser/filter.py',                    x: 975, y: 230, w: 100, h: 44, layer: 'parser' },
+  { id: 'diagnostics',    label: 'Diagnostics',          subtitle: 'diag/validator.py',                       x: 1100, y: 230, w: 115, h: 44, layer: 'parser' },
 
-  // DSL Layer (y ~310)
-  { id: 'registry',       label: 'Word Registry',      subtitle: 'dsl/registry.py',                 x: 200, y: 310, w: 130, h: 44, layer: 'dsl' },
-  { id: 'generator',      label: 'Generator',          subtitle: 'dsl/generator.py',                x: 380, y: 310, w: 120, h: 44, layer: 'dsl' },
-  { id: 'actions-dsl',    label: 'Actions',            subtitle: 'dsl/actions.py',                  x: 540, y: 310, w: 100, h: 44, layer: 'dsl' },
-  { id: 'macros',         label: 'Macros',             subtitle: 'dsl/macros.py',                   x: 680, y: 310, w: 100, h: 44, layer: 'dsl' },
-  { id: 'views-dsl',      label: 'Views & Tools',      subtitle: 'dsl/views.py + tools.py',         x: 820, y: 310, w: 130, h: 44, layer: 'dsl' },
+  // IR / Words Layer (y ~330)
+  { id: 'ir-command',     label: 'IRCommand',            subtitle: 'dsl/ir/command.py',                       x: 120, y: 330, w: 120, h: 44, layer: 'ir' },
+  { id: 'lowering',       label: 'Lowering',             subtitle: 'dsl/ir/lowering.py',                      x: 280, y: 330, w: 110, h: 44, layer: 'ir' },
+  { id: 'registry',       label: 'Word Registry',        subtitle: 'dsl/words/registry.py',                   x: 440, y: 330, w: 140, h: 44, layer: 'ir' },
+  { id: 'actions-dsl',    label: 'Action Words',         subtitle: 'dsl/words/actions.py',                    x: 620, y: 330, w: 130, h: 44, layer: 'ir' },
+  { id: 'generator',      label: 'Word Generator',       subtitle: 'dsl/words/generator.py',                  x: 790, y: 330, w: 140, h: 44, layer: 'ir' },
+  { id: 'macros',          label: 'Macros',               subtitle: 'dsl/words/macros.py',                     x: 970, y: 330, w: 100, h: 44, layer: 'ir' },
+  { id: 'filter-ast',     label: 'Filter AST',           subtitle: 'dsl/ast/filters.py',                      x: 1100, y: 330, w: 110, h: 44, layer: 'ir' },
 
-  // Handler Layer (y ~400)
-  { id: 'crud',           label: 'CRUD Handlers',      subtitle: 'handlers/crud.py',                x: 140, y: 400, w: 140, h: 44, layer: 'handler' },
-  { id: 'nav-handler',    label: 'Navigation',         subtitle: 'handlers/navigation.py',          x: 330, y: 400, w: 120, h: 44, layer: 'handler' },
-  { id: 'wizard-handler', label: 'Wizard',             subtitle: 'handlers/wizard.py',              x: 500, y: 400, w: 110, h: 44, layer: 'handler' },
-  { id: 'apps-handler',   label: 'Apps',               subtitle: 'handlers/apps.py',                x: 660, y: 400, w: 100, h: 44, layer: 'handler' },
-  { id: 'diagnostics',    label: 'Diagnostics',        subtitle: 'diagnostics/',                    x: 820, y: 400, w: 120, h: 44, layer: 'handler' },
+  // Core Models Layer (y ~430)
+  { id: 'context-model',  label: 'Context',              subtitle: 'core/models/context.py',                  x: 100, y: 430, w: 110, h: 44, layer: 'core' },
+  { id: 'words-model',    label: 'Word Models',          subtitle: 'core/models/words.py',                    x: 250, y: 430, w: 125, h: 44, layer: 'core' },
+  { id: 'token-models',   label: 'Token Models',         subtitle: 'core/models/parser/',                     x: 410, y: 430, w: 130, h: 44, layer: 'core' },
+  { id: 'response-models',label: 'Response Models',      subtitle: 'core/models/responses/',                  x: 580, y: 430, w: 145, h: 44, layer: 'core' },
+  { id: 'validation-models',label: 'Validation',         subtitle: 'core/models/validation/',                 x: 760, y: 430, w: 120, h: 44, layer: 'core' },
+  { id: 'enums',          label: 'Enums',                subtitle: 'core/enums/',                              x: 920, y: 430, w: 100, h: 44, layer: 'core' },
+  { id: 'constants',      label: 'Constants',            subtitle: 'core/constants.py',                        x: 1060, y: 430, w: 110, h: 44, layer: 'core' },
 
-  // Model Layer (y ~490)
-  { id: 'context-model',  label: 'Context',            subtitle: 'models/context.py',               x: 100, y: 490, w: 110, h: 44, layer: 'model' },
-  { id: 'words-model',    label: 'Words',              subtitle: 'models/words.py',                 x: 250, y: 490, w: 100, h: 44, layer: 'model' },
-  { id: 'parsed-cmd',     label: 'ParsedCommand',      subtitle: 'models/parser/command.py',        x: 400, y: 490, w: 140, h: 44, layer: 'model' },
-  { id: 'token-models',   label: 'Token Models',       subtitle: 'models/parser/',                  x: 580, y: 490, w: 130, h: 44, layer: 'model' },
-  { id: 'response-models',label: 'Responses',          subtitle: 'models/responses/',               x: 750, y: 490, w: 120, h: 44, layer: 'model' },
-  { id: 'validation-models',label: 'Validation',       subtitle: 'models/validation/',              x: 910, y: 490, w: 120, h: 44, layer: 'model' },
+  // Storage Layer (y ~530)
+  { id: 'storage-iface',  label: 'StorageInterface',     subtitle: 'db/database.py',                          x: 180, y: 530, w: 155, h: 44, layer: 'storage' },
+  { id: 'json-backend',   label: 'JSON Backend',         subtitle: 'db/json_backend.py',                      x: 390, y: 530, w: 135, h: 44, layer: 'storage' },
+  { id: 'sqlite-backend', label: 'SQLite Backend',       subtitle: 'db/sqlite_backend.py',                    x: 570, y: 530, w: 140, h: 44, layer: 'storage' },
+  { id: 'storage-filters',label: 'DB Filters',           subtitle: 'db/filters.py',                           x: 755, y: 530, w: 115, h: 44, layer: 'storage' },
+  { id: 'storage-maps',   label: 'Mappings',             subtitle: 'db/mappings.py',                          x: 910, y: 530, w: 110, h: 44, layer: 'storage' },
+  { id: 'db-paths',       label: 'Paths',                subtitle: 'db/paths.py',                             x: 1065, y: 530, w: 100, h: 44, layer: 'storage' },
 
-  // Storage Layer (y ~580)
-  { id: 'storage-iface',  label: 'StorageInterface',   subtitle: 'storage/database.py',             x: 250, y: 580, w: 150, h: 44, layer: 'storage' },
-  { id: 'storage-filters',label: 'Filters',            subtitle: 'storage/filters.py',              x: 450, y: 580, w: 110, h: 44, layer: 'storage' },
-  { id: 'storage-maps',   label: 'Mappings',           subtitle: 'storage/mappings.py',             x: 610, y: 580, w: 110, h: 44, layer: 'storage' },
-
-  // Schema Layer (y ~670)
-  { id: 'entity-base',    label: 'EntityModel',        subtitle: 'schemas/base.py',                 x: 200, y: 670, w: 130, h: 44, layer: 'schema' },
-  { id: 'schema-base',    label: 'SchemaModel',        subtitle: 'schemas/base.py',                 x: 380, y: 670, w: 130, h: 44, layer: 'schema' },
-  { id: 'company-db',     label: 'CompanyDatabase',    subtitle: 'schemas/company.py',              x: 570, y: 670, w: 150, h: 44, layer: 'schema' },
-  { id: 'json-files',     label: 'JSON Files',         subtitle: 'data/{company}/*.json',           x: 780, y: 670, w: 120, h: 44, layer: 'schema' },
+  // Schema Layer (y ~630)
+  { id: 'entity-base',    label: 'EntityModel',          subtitle: 'core/schemas/base.py',                    x: 200, y: 630, w: 130, h: 44, layer: 'schema' },
+  { id: 'schema-base',    label: 'SchemaModel',          subtitle: 'core/schemas/base.py',                    x: 400, y: 630, w: 130, h: 44, layer: 'schema' },
+  { id: 'company-db',     label: 'CompanyDatabase',      subtitle: 'core/schemas/company.py',                 x: 600, y: 630, w: 155, h: 44, layer: 'schema' },
+  { id: 'json-files',     label: 'JSON Files',           subtitle: 'data/{company}/*.json',                   x: 830, y: 630, w: 120, h: 44, layer: 'schema' },
 ];
 
 const connections = [
   // UI internal
   { from: 'app', to: 'main-screen', type: 'call', label: 'mount' },
   { from: 'main-screen', to: 'cmd-block', type: 'call', label: 'render' },
-  { from: 'main-screen', to: 'form-wizard-ui', type: 'event', label: 'open modal' },
-  { from: 'main-screen', to: 'entity-mgr', type: 'event', label: 'open modal' },
+  { from: 'main-screen', to: 'form-wizard-ui', type: 'call', label: 'open modal' },
+  { from: 'main-screen', to: 'entity-mgr', type: 'call', label: 'open modal' },
   { from: 'main-screen', to: 'formatters', type: 'call', label: 'format result' },
 
-  // UI → App
-  { from: 'main-screen', to: 'executor', type: 'data-flow', label: 'user input' },
-  { from: 'form-wizard-ui', to: 'executor', type: 'data-flow', label: 'form data' },
+  // UI → Engine
+  { from: 'cmd-block', to: 'executor', type: 'data-flow', label: 'user input' },
+  { from: 'form-wizard-ui', to: 'executor', type: 'data-flow', label: 'wizard data' },
 
-  // App internal
+  // Engine: executor flow
   { from: 'executor', to: 'parser', type: 'call', label: 'parse()' },
-  { from: 'executor', to: 'builder', type: 'call', label: 'build cmd' },
-  { from: 'executor', to: 'router', type: 'call', label: 'dispatch' },
-  { from: 'builder', to: 'parsed-cmd', type: 'data-flow', label: 'produces' },
-  { from: 'router', to: 'crud', type: 'call', label: 'route' },
-  { from: 'router', to: 'nav-handler', type: 'call', label: 'route' },
-  { from: 'router', to: 'wizard-handler', type: 'call', label: 'route' },
-  { from: 'router', to: 'apps-handler', type: 'call', label: 'route' },
+  { from: 'executor', to: 'lowering', type: 'call', label: 'tokens → IR' },
+  { from: 'executor', to: 'router', type: 'data-flow', label: 'IRCommand' },
 
-  // Parser pipeline
-  { from: 'parser', to: 'normalizer', type: 'data-flow', label: 'stage 0' },
-  { from: 'normalizer', to: 'tokenizer', type: 'data-flow', label: 'stage 1' },
-  { from: 'tokenizer', to: 'classifier', type: 'data-flow', label: 'stage 2' },
-  { from: 'classifier', to: 'recognizer', type: 'data-flow', label: 'stage 3' },
-  { from: 'recognizer', to: 'interpreter', type: 'data-flow', label: 'stage 4' },
-  { from: 'interpreter', to: 'splitter', type: 'data-flow', label: 'stage 5' },
-  { from: 'splitter', to: 'filter-parser', type: 'data-flow', label: 'stage 6' },
+  // Engine: router → handlers
+  { from: 'router', to: 'crud', type: 'call', label: 'dispatch' },
+  { from: 'router', to: 'nav-handler', type: 'call', label: 'dispatch' },
+  { from: 'router', to: 'wizard-handler', type: 'call', label: 'dispatch' },
+  { from: 'router', to: 'apps-handler', type: 'call', label: 'dispatch' },
 
-  // Parser ↔ DSL
-  { from: 'recognizer', to: 'registry', type: 'depends', label: 'lookup' },
-  { from: 'normalizer', to: 'macros', type: 'depends', label: 'expand' },
-  { from: 'interpreter', to: 'registry', type: 'depends', label: 'context check' },
+  // Parser pipeline (stages 0-6)
+  { from: 'parser', to: 'normalizer', type: 'pipeline', label: 'stage 0' },
+  { from: 'normalizer', to: 'tokenizer', type: 'pipeline', label: 'stage 1' },
+  { from: 'tokenizer', to: 'classifier', type: 'pipeline', label: 'stage 2' },
+  { from: 'classifier', to: 'recognizer', type: 'pipeline', label: 'stage 3' },
+  { from: 'recognizer', to: 'interpreter', type: 'pipeline', label: 'stage 4' },
+  { from: 'interpreter', to: 'splitter', type: 'pipeline', label: 'stage 5' },
+  { from: 'splitter', to: 'filter-parser', type: 'pipeline', label: 'stage 6' },
+  { from: 'parser', to: 'diagnostics', type: 'data-flow', label: 'validation' },
 
-  // DSL internal
-  { from: 'generator', to: 'registry', type: 'generates', label: 'auto-gen words' },
-  { from: 'actions-dsl', to: 'registry', type: 'generates', label: 'register' },
-  { from: 'views-dsl', to: 'registry', type: 'generates', label: 'register' },
-  { from: 'generator', to: 'company-db', type: 'depends', label: 'read schemas' },
+  // Parser ↔ Words (registry lookups)
+  { from: 'recognizer', to: 'registry', type: 'registry', label: 'word lookup' },
+  { from: 'interpreter', to: 'registry', type: 'registry', label: 'fuzzy match' },
+  { from: 'normalizer', to: 'macros', type: 'registry', label: 'expand' },
+
+  // IR layer
+  { from: 'lowering', to: 'ir-command', type: 'data-flow', label: 'produces' },
+  { from: 'lowering', to: 'registry', type: 'registry', label: 'word lookup' },
+  { from: 'filter-parser', to: 'filter-ast', type: 'data-flow', label: 'produces' },
+
+  // Words internal
+  { from: 'actions-dsl', to: 'registry', type: 'data-flow', label: 'registers' },
+  { from: 'generator', to: 'registry', type: 'data-flow', label: 'auto-gen words' },
+  { from: 'generator', to: 'company-db', type: 'depends', label: 'reads schemas' },
 
   // Handlers → Storage
   { from: 'crud', to: 'storage-iface', type: 'call', label: 'CRUD ops' },
   { from: 'crud', to: 'storage-filters', type: 'call', label: 'apply filters' },
-  { from: 'crud', to: 'diagnostics', type: 'call', label: 'validate' },
-  { from: 'wizard-handler', to: 'response-models', type: 'data-flow', label: 'FormRequest' },
-  { from: 'nav-handler', to: 'context-model', type: 'data-flow', label: 'new context' },
+  { from: 'nav-handler', to: 'storage-iface', type: 'call', label: 'load org' },
 
   // Handlers → Models
   { from: 'crud', to: 'response-models', type: 'data-flow', label: 'CommandResult' },
+  { from: 'wizard-handler', to: 'response-models', type: 'data-flow', label: 'FormRequest' },
+  { from: 'nav-handler', to: 'context-model', type: 'data-flow', label: 'new Context' },
+  { from: 'router', to: 'response-models', type: 'data-flow', label: 'HandlerResult' },
 
-  // Storage → Schema
-  { from: 'storage-iface', to: 'json-files', type: 'data-flow', label: 'read/write' },
+  // Results back to UI
+  { from: 'crud', to: 'main-screen', type: 'data-flow', label: 'CommandResult' },
+  { from: 'wizard-handler', to: 'form-wizard-ui', type: 'data-flow', label: 'FormRequest' },
+
+  // Storage internal
+  { from: 'storage-iface', to: 'json-backend', type: 'call', label: 'default' },
+  { from: 'storage-iface', to: 'sqlite-backend', type: 'call', label: 'optional' },
+  { from: 'json-backend', to: 'db-paths', type: 'depends', label: 'file paths' },
+  { from: 'json-backend', to: 'json-files', type: 'data-flow', label: 'read/write' },
   { from: 'storage-maps', to: 'entity-base', type: 'depends', label: 'entity map' },
   { from: 'storage-maps', to: 'company-db', type: 'depends', label: 'table list' },
 
@@ -287,21 +303,19 @@ const connections = [
   { from: 'company-db', to: 'entity-base', type: 'depends', label: 'extends' },
   { from: 'company-db', to: 'schema-base', type: 'depends', label: 'extends' },
 
-  // Model cross-refs
-  { from: 'words-model', to: 'registry', type: 'depends', label: 'types' },
+  // Core cross-refs
+  { from: 'registry', to: 'words-model', type: 'depends', label: 'word types' },
   { from: 'token-models', to: 'words-model', type: 'depends', label: 'uses' },
-  { from: 'diagnostics', to: 'validation-models', type: 'depends', label: 'uses' },
-
-  // Results back to UI
-  { from: 'router', to: 'response-models', type: 'data-flow', label: 'HandlerResult' },
+  { from: 'diagnostics', to: 'validation-models', type: 'depends', label: 'issues' },
+  { from: 'executor', to: 'context-model', type: 'depends', label: 'context' },
 ];
 
 const PRESETS = {
-  'full': { label: 'Full System', layers: Object.keys(LAYERS) },
-  'command': { label: 'Command Flow', layers: ['ui', 'app', 'parser', 'handler'] },
-  'parsing': { label: 'Parser Pipeline', layers: ['parser', 'dsl', 'model'] },
-  'data': { label: 'Data & Storage', layers: ['handler', 'storage', 'schema', 'model'] },
-  'frontend': { label: 'UI Layer', layers: ['ui', 'app', 'model'] },
+  'full':     { label: 'Full System',      layers: Object.keys(LAYERS), conns: Object.keys(CONN_TYPES) },
+  'command':  { label: 'Command Flow',     layers: ['ui', 'engine', 'ir', 'storage'],          conns: ['data-flow', 'call'] },
+  'parsing':  { label: 'Parser Pipeline',  layers: ['parser', 'ir', 'core'],                    conns: ['pipeline', 'registry', 'data-flow'] },
+  'data':     { label: 'Data & Storage',   layers: ['engine', 'storage', 'schema', 'core'],     conns: ['call', 'data-flow', 'depends'] },
+  'dsl':      { label: 'DSL Vocabulary',   layers: ['ir', 'core', 'schema'],                    conns: ['data-flow', 'depends', 'registry'] },
 };
 
 // ── State ─────────────────────────────────────────────
@@ -429,6 +443,9 @@ function applyPreset(key) {
   state.activePreset = key;
   const preset = PRESETS[key];
   Object.keys(state.layers).forEach(k => state.layers[k] = preset.layers.includes(k));
+  if (preset.conns) {
+    Object.keys(state.connTypes).forEach(k => state.connTypes[k] = preset.conns.includes(k));
+  }
   updateAll();
 }
 
@@ -440,6 +457,7 @@ function toggleLayer(key, val) {
 
 function toggleConn(key, val) {
   state.connTypes[key] = val;
+  state.activePreset = '';
   updateAll();
 }
 
@@ -533,6 +551,17 @@ function updatePrompt() {
     parts.push(`Currently viewing: ${visibleLayerNames.join(', ')}.`);
   }
 
+  // Layer-specific summaries
+  const summaries = [];
+  if (state.layers.ui) summaries.push('The UI uses Textual (Python TUI) with MainScreen for command input, FormWizardScreen for modal forms, and DynamicEntityManager for split-screen editing.');
+  if (state.layers.engine) summaries.push('The engine has a CommandExecutor that parses input, lowers to IR, and dispatches via Router to handlers (CRUD, navigation, wizard, apps).');
+  if (state.layers.parser) summaries.push('The parser runs a 7-stage pipeline: normalize (macros) → tokenize → classify → recognize (word lookup) → interpret (fuzzy match) → split (cmd/filter) → filter AST.');
+  if (state.layers.ir) summaries.push('IRCommand is the stable JSON-serializable contract between parser and engine. Words are auto-generated from schemas via the registry. Lowering converts parsed tokens to IR.');
+  if (state.layers.core) summaries.push('Core models include Context (SYS/ORG/APP hierarchy), Word types, Token models, Response types (CommandResult, FormRequest, PickerRequest), and Validation.');
+  if (state.layers.storage) summaries.push('Storage uses a pluggable backend (JSON default, SQLite optional) with per-entity JSON files organized by company folder.');
+  if (state.layers.schema) summaries.push('Schemas define EntityModel/SchemaModel base classes. CompanyDatabase has 9 entities across core/branding/market modules (Organization, Brand, Offering, etc.).');
+  if (summaries.length > 0) parts.push('\n' + summaries.join('\n'));
+
   if (state.comments.length) {
     parts.push('\nFeedback on specific components:\n');
     state.comments.forEach(c => {
@@ -540,7 +569,7 @@ function updatePrompt() {
     });
   }
 
-  el.textContent = state.comments.length ? parts.join('\n') : 'Adjust layers and add comments to generate a prompt.';
+  el.textContent = state.comments.length || !allVisible ? parts.join('\n') : 'Adjust layers and add comments to generate a prompt.';
 }
 
 function copyPrompt() {

@@ -14,8 +14,13 @@ from typing import Any, Dict, List, Optional, Type
 from sqlmodel import Session, select
 
 from ..core.models.context import Context
+from ..core.registry import (
+    ROOT_ENTITY_ID,
+    get_entity_class as _registry_get_entity_class,
+    get_root_entity,
+    is_schema_id,
+)
 from ..core.schemas.base import EntityModel
-from ..core.schemas.company import CompanyDatabase
 from vlmx_sh2.core.enums import Cardinality
 from .paths import get_company_folder_path, get_data_directory_path
 from .engine import get_engine, create_tables, get_session, get_company_db_path
@@ -28,17 +33,18 @@ from .result_helpers import error_result, success_result
 def _get_entity_class(entity_type: str) -> Optional[Type[EntityModel]]:
     """Resolve an entity_type string to its SQLModel class.
 
-    Handles the special case where entity_type 'company' maps to
-    OrganizationEntity (whose get_entity_word_id() returns 'organization').
+    Handles schema_ids (e.g. 'company') by mapping them to the root entity
+    (OrganizationEntity) via the registry.
     """
-    for entity_class in CompanyDatabase.tables:
-        word_id = entity_class.get_entity_word_id()
-        # Match by word ID (e.g., "brand" → BrandEntity)
-        if word_id == entity_type:
-            return entity_class
-        # Special case: "company" matches OrganizationEntity via table_name()
-        if entity_type == "company" and entity_class.table_name() == "company":
-            return entity_class
+    # Direct lookup by entity word id (e.g. "brand" → BrandEntity)
+    cls = _registry_get_entity_class(entity_type)
+    if cls is not None:
+        return cls
+
+    # Schema id → root entity (e.g. "company" → OrganizationEntity)
+    if is_schema_id(entity_type):
+        return get_root_entity()
+
     return None
 
 
@@ -114,11 +120,11 @@ class SqliteBackend:
     ) -> Dict[str, Any]:
         raise NotImplementedError("SqliteBackend.update_dynamic_entity_record not yet implemented")
 
-    def list_companies(
+    def list_organizations(
         self,
         context: Context,
     ) -> Dict[str, Any]:
-        return sqlite_list_companies(context)
+        return sqlite_list_organizations(context)
 
     def entity_exists(
         self,
@@ -128,19 +134,19 @@ class SqliteBackend:
     ) -> bool:
         return sqlite_entity_exists(entity_type=entity_name, company_name=company_name, context=context)
 
-    def find_company_by_name(
+    def find_organization_by_name(
         self,
         search_name: str,
         context: Context,
     ) -> Optional[str]:
-        raise NotImplementedError("SqliteBackend.find_company_by_name not yet implemented")
+        raise NotImplementedError("SqliteBackend.find_organization_by_name not yet implemented")
 
-    def find_company_candidates(
+    def find_organization_candidates(
         self,
         search_name: str,
         context: Context,
     ) -> List[str]:
-        raise NotImplementedError("SqliteBackend.find_company_candidates not yet implemented")
+        raise NotImplementedError("SqliteBackend.find_organization_candidates not yet implemented")
 
 
 # ==================== LEGACY FREE FUNCTIONS ====================
@@ -150,16 +156,19 @@ class SqliteBackend:
 
 def sqlite_create_entity(entity_type: str, data: Dict[str, Any],
                          context: Context) -> Dict[str, Any]:
-    """Insert a new entity row. For 'company', also creates the .db file and tables."""
+    """Insert a new entity row. For schema types, also creates the .db file and tables."""
     try:
-        entity_class = _get_entity_class(entity_type)
+        if is_schema_id(entity_type):
+            entity_class = get_root_entity()
+        else:
+            entity_class = _get_entity_class(entity_type)
         if entity_class is None:
             return error_result(f"Unknown entity type: {entity_type}")
 
-        if entity_type == "company":
+        if is_schema_id(entity_type):
             company_name = data.get("name")
             if not company_name:
-                return error_result("Company name is required")
+                return error_result("Organization name is required")
 
             db_path = get_company_db_path(company_name, context)
 
@@ -293,7 +302,7 @@ def sqlite_delete_entity(entity_type: str, entity_name: str,
         if entity_class is None:
             return error_result(f"Unknown entity type: {entity_type}")
 
-        if entity_type == "company":
+        if is_schema_id(entity_type):
             db_path = get_company_db_path(entity_name, context)
             if not db_path.exists():
                 return error_result(f"Database not found for company '{entity_name}'")
@@ -351,8 +360,8 @@ def sqlite_load_all_entities(entity_type: str, company_name: str,
         return []
 
 
-def sqlite_list_companies(context: Context) -> Dict[str, Any]:
-    """List all companies by scanning for .db files in the data directory."""
+def sqlite_list_organizations(context: Context) -> Dict[str, Any]:
+    """List all organizations by scanning for .db files in the data directory."""
     try:
         data_dir = get_data_directory_path(context)
         companies: List[Dict[str, Any]] = []
@@ -367,7 +376,7 @@ def sqlite_list_companies(context: Context) -> Dict[str, Any]:
                     continue
 
                 # Load organization data from SQLite
-                org_data = sqlite_load_entity("company", folder.name, context)
+                org_data = sqlite_load_entity(ROOT_ENTITY_ID, folder.name, context)
                 if org_data:
                     companies.append(org_data)
 

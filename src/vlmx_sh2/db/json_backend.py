@@ -17,6 +17,14 @@ from typing import Any, Dict, List, Optional
 from vlmx_sh2.core.enums import Cardinality
 
 from ..core.models.context import Context
+from ..core.registry import (
+    ROOT_ENTITY_ID,
+    get_entities_for_schema,
+    get_root_entity,
+    get_root_json_filename,
+    get_storage_mapping,
+    is_schema_id,
+)
 from ..core.utils.context_helpers import is_sys
 from ..core.utils.entity_defaults import create_default_entity_data_simple
 from .mappings import get_entity_json_filename
@@ -58,17 +66,20 @@ def _safe_json_save(file_path: Path, data: Any) -> bool:
         return False
 
 
-def _create_company_entities(company_folder: Path, schema_class) -> List[str]:
-    """Create all entity files for a new company using provided schema class."""
+def _create_schema_entities(company_folder: Path, schema_id: str) -> List[str]:
+    """Create all entity files for a new organization using registry config."""
     created_files = []
 
-    for entity_class in schema_class.tables:
-        if entity_class.__name__ == "OrganizationEntity":
+    for entity_class in get_entities_for_schema(schema_id):
+        entity_id = entity_class.get_entity_word_id()
+        if entity_id == ROOT_ENTITY_ID:
             continue
 
-        entity_word_id = entity_class.get_entity_word_id()
-        json_filename = f"{entity_word_id}.json"
-        entity_file = company_folder / json_filename
+        mapping = get_storage_mapping(entity_id)
+        if mapping is None:
+            continue
+
+        entity_file = company_folder / mapping.json_filename
 
         # Determine data structure based on cardinality
         if (
@@ -80,7 +91,7 @@ def _create_company_entities(company_folder: Path, schema_class) -> List[str]:
             default_data = []
 
         if _safe_json_save(entity_file, default_data):
-            created_files.append(json_filename)
+            created_files.append(mapping.json_filename)
 
     return created_files
 
@@ -105,15 +116,15 @@ class JsonBackend:
     ) -> Dict[str, Any]:
         """Generic entity creation — works for ANY entity type."""
         try:
-            # Company has special creation flow (folder + entity files)
-            if entity_type == "company":
+            # Schema types have special creation flow (folder + entity files)
+            if is_schema_id(entity_type):
                 company_name = data.get("name")
                 if not company_name:
-                    return error_result("Company name is required")
+                    return error_result("Organization name is required")
 
                 company_folder = get_company_folder_path(company_name, context)
                 if company_folder.exists() and company_folder.is_dir():
-                    return error_result(f"Company '{company_name}' already exists")
+                    return error_result(f"Organization '{company_name}' already exists")
 
                 # Parse incorporation date if provided
                 if "incorporation" in data and data["incorporation"]:
@@ -125,24 +136,7 @@ class JsonBackend:
                     except (ValueError, TypeError):
                         pass
 
-                # Get schema class dynamically
-                from ..dsl.words.registry import get_schema_class
-
-                schema_class = get_schema_class(entity_type)
-                if not schema_class:
-                    return error_result(f"Unknown schema type: {entity_type}")
-
-                # Find OrganizationEntity in schema tables
-                organization_entity_class = None
-                for entity_class in schema_class.tables:
-                    if entity_class.__name__ == "OrganizationEntity":
-                        organization_entity_class = entity_class
-                        break
-
-                if not organization_entity_class:
-                    return error_result(
-                        f"OrganizationEntity not found in {entity_type} schema"
-                    )
+                organization_entity_class = get_root_entity()
 
                 # Create organization data with defaults
                 base_data = {
@@ -157,29 +151,29 @@ class JsonBackend:
                     company_instance = organization_entity_class(**base_data)
                     organization_data = company_instance.model_dump()
                 except Exception as e:
-                    return error_result(f"Invalid company data: {str(e)}")
+                    return error_result(f"Invalid organization data: {str(e)}")
 
-                # Create company directory and files
+                # Create organization directory and files
                 company_folder.mkdir(parents=True, exist_ok=True)
 
-                org_file = company_folder / "company.json"
+                org_file = company_folder / get_root_json_filename()
                 if not _safe_json_save(org_file, organization_data):
-                    return error_result("Failed to save company data")
+                    return error_result("Failed to save organization data")
 
-                created_files = ["company.json"] + _create_company_entities(
-                    company_folder, schema_class
+                created_files = [get_root_json_filename()] + _create_schema_entities(
+                    company_folder, entity_type
                 )
 
                 return success_result(
-                    f"Successfully created company '{company_name}'",
+                    f"Successfully created organization '{company_name}'",
                     company=organization_data,
                     folder_path=str(company_folder),
                 )
             else:
-                # For other schemas, need company context
+                # For other entity types, need organization context
                 if is_sys(context) or not context.org_name:
                     return error_result(
-                        "Must be in organization context to create non-company schemas"
+                        "Must be in organization context to create non-schema entities"
                     )
 
                 return self._save_entity_json(
@@ -197,9 +191,9 @@ class JsonBackend:
     ) -> Optional[Dict[str, Any]]:
         """Generic entity loading — works for ANY entity type."""
         try:
-            if entity_type == "company":
+            if is_schema_id(entity_type):
                 company_folder = get_company_folder_path(company_name, context)
-                org_file = company_folder / "company.json"
+                org_file = company_folder / get_root_json_filename()
                 return _safe_json_load(org_file)
             else:
                 return self._load_entity_json(entity_type, company_name, context)
@@ -215,12 +209,12 @@ class JsonBackend:
     ) -> Dict[str, Any]:
         """Generic entity saving — works for ANY entity type."""
         try:
-            if entity_type == "company":
+            if is_schema_id(entity_type):
                 company_folder = get_company_folder_path(company_name, context)
                 if not (company_folder.exists() and company_folder.is_dir()):
-                    return error_result(f"Company '{company_name}' not found")
+                    return error_result(f"Organization '{company_name}' not found")
 
-                org_file = company_folder / "company.json"
+                org_file = company_folder / get_root_json_filename()
                 organization_data = _safe_json_load(org_file)
                 if organization_data is None:
                     return error_result(
@@ -243,12 +237,12 @@ class JsonBackend:
 
                 if _safe_json_save(org_file, organization_data):
                     return success_result(
-                        f"Successfully updated company '{company_name}'",
+                        f"Successfully updated organization '{company_name}'",
                         company=organization_data,
                         folder_path=str(company_folder),
                     )
                 else:
-                    return error_result("Failed to save company data")
+                    return error_result("Failed to save organization data")
             else:
                 return self._save_entity_json(entity_type, data, company_name, context)
         except Exception as e:
@@ -262,13 +256,13 @@ class JsonBackend:
     ) -> Dict[str, Any]:
         """Generic entity deletion — works for ANY entity type."""
         try:
-            if entity_type == "company":
+            if is_schema_id(entity_type):
                 company_folder = get_company_folder_path(entity_name, context)
                 if not (company_folder.exists() and company_folder.is_dir()):
-                    return error_result(f"Company '{entity_name}' not found")
+                    return error_result(f"Organization '{entity_name}' not found")
 
-                # Load company data before deletion
-                org_file = company_folder / "company.json"
+                # Load organization data before deletion
+                org_file = company_folder / get_root_json_filename()
                 company_data = _safe_json_load(org_file)
 
                 # Remove the entire folder
@@ -412,11 +406,11 @@ class JsonBackend:
 
     # -- Company listing / search --------------------------------------
 
-    def list_companies(
+    def list_organizations(
         self,
         context: Context,
     ) -> Dict[str, Any]:
-        """List all companies by scanning folders in the data directory."""
+        """List all organizations by scanning folders in the data directory."""
         try:
             data_dir = get_data_directory_path(context)
             companies = []
@@ -424,7 +418,7 @@ class JsonBackend:
             if data_dir.exists():
                 for folder in data_dir.iterdir():
                     if folder.is_dir():
-                        org_file = folder / "company.json"
+                        org_file = folder / get_root_json_filename()
                         org_data = _safe_json_load(org_file)
                         if org_data:
                             companies.append(org_data)
@@ -453,12 +447,12 @@ class JsonBackend:
         entity_file = company_folder / json_filename
         return entity_file.exists()
 
-    def find_company_by_name(
+    def find_organization_by_name(
         self,
         search_name: str,
         context: Context,
     ) -> Optional[str]:
-        """Find a company using intelligent matching."""
+        """Find an organization using intelligent matching."""
         data_dir = get_data_directory_path(context)
         if not data_dir.exists():
             return None
@@ -503,12 +497,12 @@ class JsonBackend:
 
         return None
 
-    def find_company_candidates(
+    def find_organization_candidates(
         self,
         search_name: str,
         context: Context,
     ) -> List[str]:
-        """Find all companies that partially match the search name."""
+        """Find all organizations that partially match the search name."""
         data_dir = get_data_directory_path(context)
         if not data_dir.exists():
             return []

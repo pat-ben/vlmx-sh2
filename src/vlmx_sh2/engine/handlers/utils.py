@@ -16,8 +16,19 @@ from ...core.enums.context_rules import (
 from ...core.enums.core import ContextLevel
 from ...core.models.context import Context
 from ...core.models.parser.command import ParsedCommand
-from ...core.models.responses import CommandResult, ErrorResult, HandlerResult, StorageResult
-from ...core.models.words import EntityWord, FieldWord, SchemaWord, TargetWord, WordType
+from ...core.models.responses import (
+    CommandResult,
+    ErrorResult,
+    HandlerResult,
+    StorageResult,
+)
+from ...core.models.words import (
+    EntityWord,
+    FieldWord,
+    SchemaWord,
+    TargetWordUnion,
+    WordType,
+)
 
 # =============================================================================
 # 1. Context & Data Utilities (Basic Context & Data Processing)
@@ -97,7 +108,7 @@ def validate_target_exists(parsed_command: ParsedCommand) -> Optional[ErrorResul
 
 
 def validate_target_context(
-    target: TargetWord, context: Context
+    target: TargetWordUnion, context: Context
 ) -> Optional[ErrorResult]:
     """
     Validate that target is allowed in current context.

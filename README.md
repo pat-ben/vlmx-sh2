@@ -251,7 +251,7 @@ JSON-based storage with automatic schema management:
 
 ```python
 # File structure: ./companies/acme/
-├── organization.json        # Single record entities
+├── company.json             # Root organization entity (named after table_name)
 ├── brand.json
 ├── address.json
 ├── metadata.json

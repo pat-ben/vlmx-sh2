@@ -143,7 +143,7 @@ async def _navigate_to_org(org_name: str, context: Context) -> HandlerResult:
             suggestions=["First return to root: cd ~"],
         )
 
-    company_result = StorageInterface.find_company_by_name(org_name, context)
+    company_result = StorageInterface.find_organization_by_name(org_name, context)
     if not company_result.success:
         suggestions = ["Use 'create company <name>' to create a new company"]
 

@@ -11,8 +11,8 @@ from typing import List
 
 import tomllib
 
-from ....core.enums.core import ContextLevel
-from ....core.models.words import ViewWord
+from ...core.enums.core import ContextLevel
+from ...core.models.words import ViewWord
 
 
 logger = logging.getLogger(__name__)

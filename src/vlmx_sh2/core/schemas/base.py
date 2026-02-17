@@ -8,6 +8,7 @@ Provides shared functionality for table naming, configuration, and schemas organ
 import re
 from typing import ClassVar, List, Set, Type
 
+from pydantic import ConfigDict
 from sqlmodel import SQLModel
 
 from ..enums import Cardinality, ContextLevel
@@ -35,10 +36,7 @@ class EntityModel(SQLModel):
         "last_synced_at",
     }
 
-    model_config = {  # type: ignore[assignment]
-        "from_attributes": True,
-        "use_enum_values": True,
-    }
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)  # pyright: ignore[reportAssignmentType]
 
     # ==================== CLASS METHODS ====================
 

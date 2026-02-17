@@ -27,8 +27,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-from vlmx_sh2.dsl.ir.command import IRCommand, IRTargetKind
-from vlmx_sh2.dsl.words.registry import get_word
 from vlmx_sh2.core.models.parser.command import ParsedCommand
 from vlmx_sh2.core.models.words import (
     ActionWord,
@@ -40,6 +38,8 @@ from vlmx_sh2.core.models.words import (
     ToolWord,
     ViewWord,
 )
+from vlmx_sh2.dsl.ir.command import IRCommand, IRTargetKind
+from vlmx_sh2.dsl.words.registry import get_word
 
 # -----------------------------------------------------------------------------
 # Public API

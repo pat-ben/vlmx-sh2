@@ -11,7 +11,7 @@ from typing import Dict
 from ...core.enums.context_rules import is_target_allowed_in_context
 from ...core.enums.core import ContextLevel
 from ...core.models.words import Word, WordType
-from ...core.schemas.company import CompanyDatabase
+from ...core.registry import get_all_schema_configs
 from .actions import ACTION_WORDS_LIST
 from .generator import (
     generate_entity_words,
@@ -24,24 +24,16 @@ from .generator import (
 
 # ==================== AUTO-GENERATED WORD REGISTRY ====================
 
-# List of all database schemas to include in the word registry
-SCHEMAS = [
-    CompanyDatabase,
-    # Add more database schemas here as they are created:
-    # FundDatabase,
-    # HoldingDatabase,
-]
-
 # Generate all word types
 SCHEMA_WORDS = generate_schema_words()
 MODULE_WORDS = {}
 ENTITY_WORDS = {}
 FIELD_WORDS = {}
 
-for schema in SCHEMAS:
-    MODULE_WORDS.update(generate_module_words(schema))
-    ENTITY_WORDS.update(generate_entity_words(schema))
-    FIELD_WORDS.update(generate_field_words(schema))
+for _cfg in get_all_schema_configs():
+    MODULE_WORDS.update(generate_module_words(_cfg.schema_id))
+    ENTITY_WORDS.update(generate_entity_words(_cfg.schema_id))
+    FIELD_WORDS.update(generate_field_words(_cfg.schema_id))
 
 VIEW_WORDS = generate_view_words()
 TOOL_WORDS = generate_tool_words()
@@ -114,9 +106,7 @@ def get_schema_class(schema_type: str):
     Example:
         schema_class = get_schema_class("company")  # Returns CompanyDatabase
     """
-    for schema in SCHEMAS:
-        # Get the schema type from the class name (e.g., CompanyDatabase -> "company")
-        schema_name = schema.__name__.replace("Database", "").lower()
-        if schema_name == schema_type.lower():
-            return schema
-    return None
+    from ...core.registry import get_schema_config
+
+    config = get_schema_config(schema_type.lower())
+    return config.schema_class if config is not None else None
