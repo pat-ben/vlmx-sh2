@@ -18,7 +18,7 @@ Engine boundary:
 # =============================================================================
 from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pydantic import BaseModel
 
@@ -42,7 +42,7 @@ from ...core.models.words import (
 )
 from ...core.utils.context_helpers import is_sys
 from ...core.utils.entity_defaults import create_default_entity_data
-from ...db.database import StorageInterface
+from ...db.database import StorageInterface, StorageRecord
 from ...db.filters import apply_filters
 from ...dsl.ir.command import IRCommand
 from ..legacy_adapter import to_legacy_parsed_command
@@ -83,7 +83,7 @@ async def create_handler(ir_command: IRCommand, context: Context) -> HandlerResu
     if context_error:
         return context_error
 
-    target_id = get_target_id(cast(Any, target))
+    target_id = get_target_id(cast(SchemaWord | EntityWord | FieldWord, target))
     target_name = parsed_command.target_name
     field_values = parsed_command.field_values
 
@@ -114,7 +114,7 @@ async def drop_handler(ir_command: IRCommand, context: Context) -> HandlerResult
     if context_error:
         return context_error
 
-    target_id = get_target_id(cast(Any, target))
+    target_id = get_target_id(cast(SchemaWord | EntityWord | FieldWord, target))
     target_name = parsed_command.target_name
 
     target_type = type(parsed_command.target)
@@ -191,8 +191,9 @@ async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResu
     target = parsed_command.target
     if target.word_type not in [WordType.SCHEMA, WordType.ENTITY, WordType.FIELD]:
         supported_types = ["schema", "entity", "field"]
+        word_type_value: str = target.word_type.value
         return ErrorResult(
-            errors=[f"'delete' does not support {target.word_type.value}"],
+            errors=[f"'delete' does not support {word_type_value}"],
             suggestions=[f"'delete' works with: {', '.join(supported_types)}"],
         )
 
@@ -308,8 +309,9 @@ async def show_handler(ir_command: IRCommand, context: Context) -> HandlerResult
         return await handler(parsed_command, context)
 
     supported_types = ["schema", "entity", "field", "module", "app"]
+    word_type_value: str = target.word_type.value
     return ErrorResult(
-        errors=[f"'show' does not support {target.word_type.value}"],
+        errors=[f"'show' does not support {word_type_value}"],
         suggestions=[f"Supported types: {', '.join(supported_types)}"],
     )
 
@@ -320,7 +322,7 @@ async def show_handler(ir_command: IRCommand, context: Context) -> HandlerResult
 
 
 def _not_yet_supported_error(
-    feature: str, suggestion: Optional[str] = None
+    feature: str, suggestion: str | None = None
 ) -> ErrorResult:
     """Return standardized 'not yet supported' error."""
     return ErrorResult(
@@ -341,7 +343,7 @@ def _entity_not_found_error(entity_type: str, company_name: str) -> ErrorResult:
 
 def _validate_entity_exists(
     entity_type: str, company_name: str, context: Context
-) -> Optional[ErrorResult]:
+) -> ErrorResult | None:
     """
     Validate entity exists, return error if not.
 
@@ -354,15 +356,15 @@ def _validate_entity_exists(
 
 
 def _resolve_organization_name(
-    name: Optional[str], context: Context
-) -> tuple[Optional[str], Optional[ErrorResult]]:
+    name: str | None, context: Context
+) -> tuple[str | None, ErrorResult | None]:
     """
     Resolve company name with intelligent matching.
 
     Returns:
         Tuple of (actual_company_name, error). If error is not None, operation failed.
     """
-    if not name:
+    if name is None:
         return None, ErrorResult(
             errors=["Company name required"], suggestions=["Specify company name"]
         )
@@ -374,7 +376,7 @@ def _resolve_organization_name(
             suggestions=["Check company name spelling or list existing companies"],
         )
     data = cast(dict[str, object], result.data or {})
-    actual_name = cast(Optional[str], data.get("name"))
+    actual_name = cast(str | None, data.get("name"))
     if not actual_name:
         return None, ErrorResult(
             errors=["Company name could not be resolved"],
@@ -390,7 +392,7 @@ def _resolve_organization_name(
 
 
 async def _create_schema(
-    target_id: str, name: Optional[str], fields: dict[str, Any], context: Context
+    target_id: str, name: str | None, fields: dict[str, Any], context: Context
 ) -> HandlerResult:
     """Create schema (organization database)."""
 
@@ -407,7 +409,9 @@ async def _create_schema(
 
         # Use generic storage - simplified validation
         storage_result = StorageInterface.create_entity(
-            entity_type=entity_type, data=entity_data, context=context
+            entity_type=entity_type,
+            data=cast(StorageRecord, entity_data),
+            context=context,
         )
 
         # All schema creation returns context_switch payload
@@ -436,7 +440,7 @@ async def _create_schema(
 
 
 async def _drop_schema(
-    target_id: str, name: Optional[str], context: Context
+    target_id: str, name: str | None, context: Context
 ) -> HandlerResult:
     """Drop schema (organization database)."""
 
@@ -470,7 +474,7 @@ async def _drop_schema(
 
 
 async def _show_schema_info(
-    target_id: str, name: Optional[str], context: Context
+    target_id: str, name: str | None, context: Context
 ) -> HandlerResult:
     """Show schema information."""
 
@@ -496,7 +500,9 @@ async def _show_schema_info(
             "entity_type": target_id,
             "entity_name": actual_company_name,
             "schema_info": load_result.data,
-            "formatted_data": format_entity_data_for_display(load_result.data),
+            "formatted_data": format_entity_data_for_display(
+                cast(dict[str, Any], load_result.data)
+            ),
         },
     )
 
@@ -555,8 +561,8 @@ async def _add_field_values(
                     suggestions=["Check entity model configuration"],
                 )
 
-            StorageInterface.save_entity(
-                entity_type, default_data, company_name, context
+            _ = StorageInterface.save_entity(
+                entity_type, cast(StorageRecord, default_data), company_name, context
             )
 
         # Load current entity data
@@ -598,7 +604,7 @@ async def _add_field_values(
 
         # Save the updated entity
         save_result = StorageInterface.save_entity(
-            entity_type, updated_data, company_name, context
+            entity_type, cast(StorageRecord, updated_data), company_name, context
         )
 
         return handle_storage_result(
@@ -665,7 +671,7 @@ async def _delete_field_values(
 
     # Save the updated entity
     save_result = StorageInterface.save_entity(
-        entity_type, updated_data, company_name, context
+        entity_type, cast(StorageRecord, updated_data), company_name, context
     )
 
     return handle_storage_result(
@@ -677,7 +683,7 @@ async def _delete_field_values(
 
 
 async def _delete_rows(
-    entity_type: str, filters: Any, company_name: str, context: Context
+    entity_type: str, filters: FilterExpression, company_name: str, context: Context
 ) -> HandlerResult:
     """Delete rows matching filters."""
 
@@ -706,7 +712,10 @@ async def _delete_entity_content(
 
 
 async def _reset_entity_content(
-    entity_type: str, company_name: str, context: Context, entity_model: type[BaseModel]
+    entity_type: str,
+    company_name: str,
+    context: Context,
+    entity_model: type[BaseModel],
 ) -> HandlerResult:
     """Reset entity to defaults."""
 
@@ -720,7 +729,7 @@ async def _reset_entity_content(
 
     # Save the default entity
     save_result = StorageInterface.save_entity(
-        entity_type, default_data, company_name, context
+        entity_type, cast(StorageRecord, default_data), company_name, context
     )
 
     return handle_storage_result(
@@ -776,7 +785,7 @@ async def _reset_field_values(
 
     # Save the updated entity
     save_result = StorageInterface.save_entity(
-        entity_type, updated_data, company_name, context
+        entity_type, cast(StorageRecord, updated_data), company_name, context
     )
 
     return handle_storage_result(
@@ -873,7 +882,7 @@ async def _show_entity(
             # Single record - format data for display
             specific_fields = field_names if field_names else None
             formatted_data = format_entity_data_for_display(
-                entity_data, specific_fields
+                cast(dict[str, Any], entity_data), specific_fields
             )
 
             return CommandResult(
