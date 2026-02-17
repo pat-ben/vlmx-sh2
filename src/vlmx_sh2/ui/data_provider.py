@@ -8,6 +8,7 @@ go through UIDataProvider.
 from __future__ import annotations
 
 from ..core.models.context import Context
+from ..core.models.words import ToolWord, ViewWord
 from ..core.schemas.company import OrganizationEntity
 
 
@@ -33,7 +34,7 @@ class UIDataProvider:
             return []
 
     @staticmethod
-    def get_views(schema_id: str = "company") -> list:
+    def get_views(schema_id: str = "company") -> list[ViewWord]:
         """Return ViewWord instances for the given schema_id."""
         try:
             from ..dsl.words.registry import VIEW_WORDS
@@ -43,7 +44,7 @@ class UIDataProvider:
             return []
 
     @staticmethod
-    def get_tools() -> list:
+    def get_tools() -> list[ToolWord]:
         """Return all ToolWord instances."""
         try:
             from ..dsl.words.registry import TOOL_WORDS
