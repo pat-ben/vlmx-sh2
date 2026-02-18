@@ -16,13 +16,12 @@ def get_org_registry_path() -> Path:
     """
     Return the path to system/org/registry.toml.
 
-    File is at: src/vlmx_sh2/db/org_registry.py
-    parents[0] = src/vlmx_sh2/db/
-    parents[1] = src/vlmx_sh2/
-    parents[2] = src/
-    parents[3] = project root
+    File is at: system/org/org_registry.py
+    parents[0] = system/org/
+    parents[1] = system/
+    parents[2] = project root
     """
-    project_root = Path(__file__).resolve().parents[3]
+    project_root = Path(__file__).resolve().parents[2]
     return project_root / "system" / "org" / "registry.toml"
 
 

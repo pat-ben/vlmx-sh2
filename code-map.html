@@ -175,6 +175,7 @@ const nodes = [
   { id: 'form-wizard-ui', label: 'FormWizardScreen',     subtitle: 'ui/screens/modal/form_wizard_screen.py',  x: 560, y: 40, w: 155, h: 44, layer: 'ui' },
   { id: 'entity-mgr',     label: 'DynamicEntityMgr',     subtitle: 'ui/widgets/dynamic_entity_manager.py',    x: 745, y: 40, w: 155, h: 44, layer: 'ui' },
   { id: 'formatters',     label: 'Formatters',           subtitle: 'ui/formatters/results.py',                x: 930, y: 40, w: 110, h: 44, layer: 'ui' },
+  { id: 'data-provider',  label: 'UIDataProvider',       subtitle: 'ui/data_provider.py',                     x: 1070, y: 40, w: 145, h: 44, layer: 'ui' },
 
   // Engine Layer (y ~130)
   { id: 'executor',       label: 'CommandExecutor',      subtitle: 'engine/executor.py',                      x: 140, y: 130, w: 160, h: 44, layer: 'engine' },
@@ -214,6 +215,7 @@ const nodes = [
   { id: 'constants',      label: 'Constants',            subtitle: 'core/constants.py',                        x: 1060, y: 430, w: 110, h: 44, layer: 'core' },
 
   // Storage Layer (y ~530)
+  { id: 'org-registry',   label: 'Org Registry',         subtitle: 'db/org_registry.py',                      x: 20,  y: 530, w: 135, h: 44, layer: 'storage' },
   { id: 'storage-iface',  label: 'StorageInterface',     subtitle: 'db/database.py',                          x: 180, y: 530, w: 155, h: 44, layer: 'storage' },
   { id: 'json-backend',   label: 'JSON Backend',         subtitle: 'db/json_backend.py',                      x: 390, y: 530, w: 135, h: 44, layer: 'storage' },
   { id: 'sqlite-backend', label: 'SQLite Backend',       subtitle: 'db/sqlite_backend.py',                    x: 570, y: 530, w: 140, h: 44, layer: 'storage' },
@@ -229,6 +231,12 @@ const nodes = [
 ];
 
 const connections = [
+  // UIDataProvider — exclusive read interface from UI to data sources
+  { from: 'main-screen', to: 'data-provider', type: 'call', label: 'reads' },
+  { from: 'data-provider', to: 'org-registry', type: 'call', label: 'System' },
+  { from: 'data-provider', to: 'registry', type: 'registry', label: 'DSL' },
+  { from: 'data-provider', to: 'storage-iface', type: 'call', label: 'Storage' },
+
   // UI internal
   { from: 'app', to: 'main-screen', type: 'call', label: 'mount' },
   { from: 'main-screen', to: 'cmd-block', type: 'call', label: 'render' },
@@ -553,12 +561,12 @@ function updatePrompt() {
 
   // Layer-specific summaries
   const summaries = [];
-  if (state.layers.ui) summaries.push('The UI uses Textual (Python TUI) with MainScreen for command input, FormWizardScreen for modal forms, and DynamicEntityManager for split-screen editing.');
+  if (state.layers.ui) summaries.push('The UI uses Textual (Python TUI) with MainScreen for command input, FormWizardScreen for modal forms, and DynamicEntityManager for split-screen editing. UIDataProvider is the exclusive read interface — the UI never imports from db/ or dsl/ directly; all passive reads go through UIDataProvider (System: org registry, DSL: word registry, Storage: StorageInterface).');
   if (state.layers.engine) summaries.push('The engine has a CommandExecutor that parses input, lowers to IR, and dispatches via Router to handlers (CRUD, navigation, wizard, apps).');
   if (state.layers.parser) summaries.push('The parser runs a 7-stage pipeline: normalize (macros) → tokenize → classify → recognize (word lookup) → interpret (fuzzy match) → split (cmd/filter) → filter AST.');
   if (state.layers.ir) summaries.push('IRCommand is the stable JSON-serializable contract between parser and engine. Words are auto-generated from schemas via the registry. Lowering converts parsed tokens to IR.');
   if (state.layers.core) summaries.push('Core models include Context (SYS/ORG/APP hierarchy), Word types, Token models, Response types (CommandResult, FormRequest, PickerRequest), and Validation.');
-  if (state.layers.storage) summaries.push('Storage uses a pluggable backend (JSON default, SQLite optional) with per-entity JSON files organized by company folder.');
+  if (state.layers.storage) summaries.push('Storage uses a pluggable backend (JSON default, SQLite optional) with per-entity JSON files organized by company folder. OrgRegistry reads system/org/registry.toml for the organisation index (name, legal, currency) without scanning data/ folders.');
   if (state.layers.schema) summaries.push('Schemas define EntityModel/SchemaModel base classes. CompanyDatabase has 9 entities across core/branding/market modules (Organization, Brand, Offering, etc.).');
   if (summaries.length > 0) parts.push('\n' + summaries.join('\n'));
 

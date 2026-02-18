@@ -20,7 +20,7 @@ class UIDataProvider:
     """Single point of access for all UI data reads.
 
     Data sources:
-      - System / Org registry  (db/org_registry): organisation index from system/org/registry.toml
+      - System / Org registry  (system/org/org_registry): organisation index from system/org/registry.toml
       - DSL                    (dsl/words/registry): in-memory word registry
       - Storage                (db/database.StorageInterface): persisted entity data
     """
@@ -36,7 +36,16 @@ class UIDataProvider:
         full org data is loaded separately via get_org_snapshot() when selected.
         """
         try:
-            from ..db.org_registry import read_org_registry
+            import importlib.util
+            from pathlib import Path as _Path
+
+            _spec = importlib.util.spec_from_file_location(
+                "org_registry",
+                _Path(__file__).resolve().parents[3] / "system" / "org" / "org_registry.py",
+            )
+            _mod = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_mod)
+            read_org_registry = _mod.read_org_registry
 
             entries = read_org_registry()
             results = []
