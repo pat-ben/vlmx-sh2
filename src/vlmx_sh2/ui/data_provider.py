@@ -21,16 +21,26 @@ class UIDataProvider:
 
     @staticmethod
     def get_organizations(context: Context) -> list[OrganizationEntity]:
-        """Return all organizations as OrganizationEntity instances."""
-        try:
-            from ..db.database import StorageInterface
+        """Return all organizations from the org registry index.
 
-            storage_result = StorageInterface.list_entities("company", "", context)
-            companies = storage_result.data.get("companies", [])
+        Reads system/org/registry.toml rather than scanning data/ folders.
+        Each entry provides only the left-pane fields (name, legal, currency);
+        full org data is loaded separately via get_org_snapshot() when selected.
+        """
+        try:
+            from ..db.org_registry import read_org_registry
+
+            entries = read_org_registry()
             results = []
-            for record in companies:
+            for entry in entries:
                 try:
-                    results.append(OrganizationEntity(**record))
+                    results.append(
+                        OrganizationEntity(
+                            name=entry["name"],
+                            legal=entry.get("legal"),
+                            currency=entry.get("currency"),
+                        )
+                    )
                 except Exception:
                     continue
             return results

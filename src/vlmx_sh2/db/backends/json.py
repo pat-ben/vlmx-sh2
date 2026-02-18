@@ -8,11 +8,14 @@ and remains fully functional alongside the newer SQLite backend.
 """
 
 import json
+import logging
 import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from vlmx_sh2.core.enums import Cardinality
 from vlmx_sh2.core.models.context import Context
@@ -160,6 +163,21 @@ class JsonBackend:
                     return error_result("Failed to save organization data")
 
                 _create_schema_entities(company_folder, entity_type)
+
+                # Register org in system/org/registry.toml.
+                from ..org_registry import write_org_to_registry
+
+                if not write_org_to_registry(
+                    {
+                        "name": organization_data.get("name"),
+                        "legal": organization_data.get("legal"),
+                        "currency": organization_data.get("currency"),
+                    }
+                ):
+                    logger.warning(
+                        "Failed to write org '%s' to registry — org folder was created successfully",
+                        company_name,
+                    )
 
                 return success_result(
                     f"Successfully created organization '{company_name}'",

@@ -1,19 +1,7 @@
 # Organization Registry
-# Auto-managed list of registered organizations.
-# This file will be updated by the engine when orgs are created/dropped.
+# Auto-managed index of organizations created in this local installation.
+# This file is written automatically by the engine — do not edit manually.
 
 [registry]
 version = "0.1"
 description = "Organization registry"
-
-[[organizations]]
-id = "acme"
-name = "ACME"
-legal = "SA"
-currency = "USD"
-
-[[organizations]]
-id = "neco"
-name = "NECO"
-legal = "LLC"
-currency = "EUR"
