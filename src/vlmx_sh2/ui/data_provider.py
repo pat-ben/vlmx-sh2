@@ -17,7 +17,15 @@ _MODULE_ORDER = ["core", "branding", "market"]
 
 
 class UIDataProvider:
-    """Single point of access for all UI data reads."""
+    """Single point of access for all UI data reads.
+
+    Data sources:
+      - System / Org registry  (db/org_registry): organisation index from system/org/registry.toml
+      - DSL                    (dsl/words/registry): in-memory word registry
+      - Storage                (db/database.StorageInterface): persisted entity data
+    """
+
+    # ── System ────────────────────────────────────────────────────────────────
 
     @staticmethod
     def get_organizations(context: Context) -> list[OrganizationEntity]:
@@ -47,6 +55,8 @@ class UIDataProvider:
         except Exception:
             return []
 
+    # ── DSL ───────────────────────────────────────────────────────────────────
+
     @staticmethod
     def get_views(schema_id: str = "company") -> list[ViewWord]:
         """Return ViewWord instances for the given schema_id."""
@@ -68,6 +78,27 @@ class UIDataProvider:
             return []
 
     @staticmethod
+    def get_entity_ids_for_view(view_id: str) -> list[str]:
+        """Return the entity IDs associated with a view word."""
+        try:
+            from ..dsl.words.registry import VIEW_WORDS
+
+            view_word = VIEW_WORDS.get(view_id)
+            if view_word is None:
+                return []
+            return view_word.entities
+        except Exception:
+            return []
+
+    @staticmethod
+    def get_entity_ids_for_tool(tool_id: str) -> list[str]:
+        """Return the entity IDs associated with a tool word."""
+        # TODO: wire tool dependencies when ToolWord exposes them
+        return []
+
+    # ── Storage ───────────────────────────────────────────────────────────────
+
+    @staticmethod
     def get_entity_records(
         entity_type: str, org_name: str, context: Context
     ) -> list[dict]:
@@ -76,13 +107,11 @@ class UIDataProvider:
             from ..db.database import StorageInterface
 
             result = StorageInterface.load_all_entities(entity_type, org_name, context)
-            if result.success:
+            if result.success and result.data is not None:
                 return result.data
             return []
         except Exception:
             return []
-
-    # ── Right-pane providers ──────────────────────────────────────────────────
 
     @staticmethod
     def get_org_snapshot(org_name: str, context: Context) -> OrgSnapshot | None:
@@ -98,7 +127,7 @@ class UIDataProvider:
             from ..core.schemas.company import MetadataEntity
 
             org_result = StorageInterface.load_entity("organization", org_name, context)
-            if not org_result.success:
+            if not org_result.success or not org_result.data:
                 return None
             org = OrganizationEntity(**org_result.data)
         except Exception:
@@ -286,22 +315,3 @@ class UIDataProvider:
                 overall_completion_pct=0.0,
                 active_entity_ids=[],
             )
-
-    @staticmethod
-    def get_entity_ids_for_view(view_id: str) -> list[str]:
-        """Return the entity IDs associated with a view word."""
-        try:
-            from ..dsl.words.registry import VIEW_WORDS
-
-            view_word = VIEW_WORDS.get(view_id)
-            if view_word is None:
-                return []
-            return view_word.entities
-        except Exception:
-            return []
-
-    @staticmethod
-    def get_entity_ids_for_tool(tool_id: str) -> list[str]:
-        """Return the entity IDs associated with a tool word."""
-        # TODO: wire tool dependencies when ToolWord exposes them
-        return []
