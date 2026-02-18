@@ -42,95 +42,86 @@ from ..ast.filters import (
 )
 
 
-class Filter:
+# =============================================================================
+# Public API - Main Entry Point
+# =============================================================================
+
+
+def parse(
+    split_result: SplitResult, context: ValidationContext
+) -> Optional[FilterExpression]:
     """
+    Build a FilterExpression AST from the filter portion of a SplitResult.
 
-    Builds an AST (Abstract Syntax Tree) from filter tokens using recursive descent parsing.
-    Operates on InterpretedToken objects from the Splitter stage.
+    Processing:
+    1. Check if filter exists in split_result
+    2. Extract filter tokens
+    3. Parse using recursive descent grammar
+    4. Validate using diagnostic rules
+    5. Return FilterExpression AST
 
-    Supports:
-    - Simple conditions: currency=EUR
-    - Implicit AND: currency=EUR date<2025
-    - Explicit AND: currency=EUR AND date<2025
-    - OR expressions: currency=EUR OR currency=USD
-    - Grouped expressions: (currency=EUR AND date<2025) OR status=active
-    - All comparison operators: =, !=, <, >, <=, >=
+    Args:
+        split_result: Output from Splitter stage (Stage 5)
+        context: ValidationContext for error reporting
+
+    Returns:
+        FilterExpression AST or None if no filter exists
+
+    Examples:
+        >>> # Input: [currency=EUR date<2025]
+        >>> filter_tokens = [
+        ...     InterpretedToken(text="currency", token_type=TokenType.WORD, ...),
+        ...     InterpretedToken(text="=", token_type=TokenType.STRUCTURAL, operator=Operator.EQUAL, ...),
+        ...     InterpretedToken(text="EUR", token_type=TokenType.VALUE, ...),
+        ...     InterpretedToken(text="date", token_type=TokenType.WORD, ...),
+        ...     InterpretedToken(text="<", token_type=TokenType.STRUCTURAL, operator=Operator.LESS, ...),
+        ...     InterpretedToken(text="2025", token_type=TokenType.VALUE, ...)
+        ... ]
+        >>> split_result = SplitResult(filter_tokens=filter_tokens, has_filter=True, ...)
+        >>> result = parse(split_result, context)
+        >>> # Returns: FilterExpression with AND of two conditions
     """
+    # Step 1: Check if filter exists
+    if not split_result.has_filter:
+        return None
 
-    # =============================================================================
-    # Public API - Main Entry Point
-    # =============================================================================
+    filter_tokens = split_result.filter_tokens
+    if not filter_tokens:
+        return None
 
-    @classmethod
-    def parse(
-        cls, split_result: SplitResult, context: ValidationContext
-    ) -> Optional[FilterExpression]:
-        """
+    # Step 2: Validate the filter tokens
+    # Runs all FILTER stage validation rules from diagnostics module
+    Validator.validate_tokens(IssueStage.FILTER, context, tokens=filter_tokens)
 
-        Processing:
-        1. Check if filter exists in split_result
-        2. Extract filter tokens
-        3. Parse using recursive descent grammar
-        4. Validate using diagnostic rules
-        5. Return FilterExpression AST
+    # Step 3: Parse using recursive descent
+    parser_instance = _FilterParser(filter_tokens, context)
+    expression = parser_instance._parse_expression()
 
-        Args:
-            split_result: Output from Splitter stage (Stage 5)
-            context: ValidationContext for error reporting
+    # Return None if parsing failed
+    if parser_instance._has_error or expression is None:
+        return None
 
-        Returns:
-            FilterExpression AST or None if no filter exists
+    # Ensure we consumed all tokens
+    if parser_instance.position < len(filter_tokens):
+        remaining_tokens = filter_tokens[parser_instance.position :]
+        remaining_text = " ".join(token.text for token in remaining_tokens)
+        context.add_error(
+            stage=IssueStage.FILTER,
+            message=f"Unexpected tokens after filter expression: {remaining_text}",
+            token_text=remaining_tokens[0].text if remaining_tokens else "",
+        )
+        return None
 
-        Examples:
-            >>> # Input: [currency=EUR date<2025]
-            >>> filter_tokens = [
-            ...     InterpretedToken(text="currency", token_type=TokenType.WORD, ...),
-            ...     InterpretedToken(text="=", token_type=TokenType.STRUCTURAL, operator=Operator.EQUAL, ...),
-            ...     InterpretedToken(text="EUR", token_type=TokenType.VALUE, ...),
-            ...     InterpretedToken(text="date", token_type=TokenType.WORD, ...),
-            ...     InterpretedToken(text="<", token_type=TokenType.STRUCTURAL, operator=Operator.LESS, ...),
-            ...     InterpretedToken(text="2025", token_type=TokenType.VALUE, ...)
-            ... ]
-            >>> split_result = SplitResult(filter_tokens=filter_tokens, has_filter=True, ...)
-            >>> result = Filter.parse(split_result, context)
-            >>> # Returns: FilterExpression with AND of two conditions
-        """
-        # Step 1: Check if filter exists
-        if not split_result.has_filter:
-            return None
+    return expression
 
-        filter_tokens = split_result.filter_tokens
-        if not filter_tokens:
-            return None
 
-        # Step 2: Validate the filter tokens
-        # Runs all FILTER stage validation rules from diagnostics module
-        Validator.validate_tokens(IssueStage.FILTER, context, tokens=filter_tokens)
+# =============================================================================
+# Recursive Descent Parser (Instance-based)
+# =============================================================================
 
-        # Step 3: Parse using recursive descent
-        parser_instance = cls(filter_tokens, context)
-        expression = parser_instance._parse_expression()
 
-        # Return None if parsing failed
-        if parser_instance._has_error or expression is None:
-            return None
-
-        # Ensure we consumed all tokens
-        if parser_instance.position < len(filter_tokens):
-            remaining_tokens = filter_tokens[parser_instance.position :]
-            remaining_text = " ".join(token.text for token in remaining_tokens)
-            context.add_error(
-                stage=IssueStage.FILTER,
-                message=f"Unexpected tokens after filter expression: {remaining_text}",
-                token_text=remaining_tokens[0].text if remaining_tokens else "",
-            )
-            return None
-
-        return expression
-
-    # =============================================================================
-    # Parser Instance for Recursive Descent
-    # =============================================================================
+class _FilterParser:
+    """Internal recursive descent parser for filter token streams."""
 
     def __init__(self, tokens: List[InterpretedToken], context: ValidationContext):
         """Initialize parser instance for token stream."""

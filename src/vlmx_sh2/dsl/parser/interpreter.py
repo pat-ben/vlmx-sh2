@@ -18,348 +18,343 @@ from ...core.models.context import Context
 from ...core.models.parser import InterpretedToken, RecognizedToken
 from ...core.models.words import ActionWord, EntityWord, FieldWord, Word, WordType
 
+# Lazy-loaded module-level word registry cache
+_word_registry: Optional[dict] = None
 
-class Interpreter:
+
+# =============================================================================
+# Public API - Main Entry Point
+# =============================================================================
+
+
+def interpret(
+    recognized_tokens: List[RecognizedToken], context: Context
+) -> List[InterpretedToken]:
     """
-    Intelligence layer for interpreting user intent.
+    Applies fuzzy matching and expression inference for intelligent parsing.
 
-    Operates on recognized tokens to make the DSL more intelligent:
-    - Fuzzy matching: Corrects typos and spelling mistakes
-    - Expression inference: Adds missing action/entity words in ORG context
+    Processing order:
+    1. Fuzzy matching (correct typos in UNKNOWN tokens)
+    2. Expression inference (inject missing words in ORG context)
 
-    This stage bridges the gap between what users type and what
-    the system needs to execute commands successfully.
     """
 
-    # Lazy-loaded class-level word registry cache
-    _word_registry: Optional[dict] = None
+    # Convert to InterpretedToken (preserves all fields, adds new defaults)
+    interpreted_tokens = [
+        InterpretedToken(**token.model_dump()) for token in recognized_tokens
+    ]
 
-    # =============================================================================
-    # Public API - Main Entry Point
-    # =============================================================================
+    # Apply fuzzy matching to correct typos in UNKNOWN tokens
+    interpreted_tokens = _correct_typos(interpreted_tokens)
 
-    @classmethod
-    def interpret(
-        cls, recognized_tokens: List[RecognizedToken], context: Context
-    ) -> List[InterpretedToken]:
-        """
-        Applies fuzzy matching and expression inference for intelligent parsing.
+    # Apply expression inference to add missing words
+    interpreted_tokens = _infer_missing_words(interpreted_tokens, context)
 
-        Processing order:
-        1. Fuzzy matching (correct typos in UNKNOWN tokens)
-        2. Expression inference (inject missing words in ORG context)
+    return interpreted_tokens
 
-        """
 
-        # Convert to InterpretedToken (preserves all fields, adds new defaults)
-        interpreted_tokens = [
-            InterpretedToken(**token.model_dump()) for token in recognized_tokens
+# =============================================================================
+# Private Helpers - Lazy Loading
+# =============================================================================
+
+
+def _get_word_registry() -> dict:
+    """Get word registry, loading it lazily if needed."""
+    global _word_registry
+    if _word_registry is None:
+        from ..words.registry import WORD_REGISTRY
+
+        _word_registry = WORD_REGISTRY
+    return _word_registry
+
+
+# =============================================================================
+# Core Processing - Typo Correction & Word Injection
+# =============================================================================
+
+
+def _correct_typos(tokens: List[InterpretedToken]) -> List[InterpretedToken]:
+    """
+    Apply fuzzy matching to UNKNOWN tokens.
+    Corrects typos in UNKNOWN tokens by matching against the word registry
+    using Levenshtein distance. Only applies to tokens > 3 characters with
+    exactly 1 character difference (distance == 1).
+    """
+
+    for token in tokens:
+        # Skip non-UNKNOWN tokens
+        if token.token_type != TokenType.UNKNOWN:
+            continue
+
+        # Skip short words (≤ 3 characters)
+        if len(token.text) <= 3:
+            continue
+
+        token_text_lower = token.text.lower()
+
+        # Check all words in registry for exact distance of 1
+        word_registry = _get_word_registry()
+        for word_id in word_registry.keys():
+            # Skip if length difference is too large (optimization)
+            if abs(len(token.text) - len(word_id)) > 1:
+                continue
+
+            # Calculate case-insensitive Levenshtein distance
+            distance = _levenshtein_distance(token_text_lower, word_id.lower())
+
+            # If exactly 1 typo, correct it
+            if distance == 1:
+                # Get the Word object from registry
+                word_obj = word_registry.get(word_id)
+                if word_obj:
+                    # Store original before correction
+                    token.original_text = token.text
+                    token.was_corrected = True
+
+                    # Apply correction
+                    token.text = word_id
+                    token.token_type = TokenType.WORD
+                    token.word = word_obj
+                    break  # Take first match
+
+    return tokens
+
+
+def _infer_missing_words(
+    tokens: List[InterpretedToken], context: Context
+) -> List[InterpretedToken]:
+    """
+    Infer missing words based on patterns and context.
+    Analyzes tokens to detect missing ActionWord and EntityWord, then injects
+    them based on field patterns and operator context. Only operates in ORG
+    context level.
+    """
+    # 1. Check context — only ORG level
+    if context.level != ContextLevel.ORG:
+        return tokens
+
+    # 2. Analyze tokens — what do we have?
+    has_field, has_entity, has_action = _analyze_token_types(tokens)
+    first_field_word = _find_first_field_word(tokens)
+
+    # 3. Nothing to infer if no field word
+    if not has_field or first_field_word is None:
+        return tokens
+
+    # 4. Build list of words to inject
+    words_to_inject = []
+
+    # 4a. Infer EntityWord if missing
+    if not has_entity:
+        entity_word = _infer_entity_from_field(first_field_word)
+        if entity_word:
+            words_to_inject.append(entity_word)
+
+    # 4b. Infer ActionWord if missing
+    if not has_action:
+        action_word = _infer_action_from_operator(tokens)
+        if action_word:
+            words_to_inject.insert(0, action_word)  # Action goes first
+
+    # 5. Create tokens and prepend
+    if words_to_inject:
+        inferred_tokens = [
+            _create_inferred_token(word) for word in words_to_inject
         ]
+        return inferred_tokens + tokens
 
-        # Apply fuzzy matching to correct typos in UNKNOWN tokens
-        interpreted_tokens = cls._correct_typos(interpreted_tokens)
+    return tokens
 
-        # Apply expression inference to add missing words
-        interpreted_tokens = cls._infer_missing_words(interpreted_tokens, context)
 
-        return interpreted_tokens
+# =============================================================================
+# Analysis Helpers - Token Inspection
+# =============================================================================
 
-    # =============================================================================
-    # Private Helpers - Lazy Loading
-    # =============================================================================
 
-    @classmethod
-    def _get_word_registry(cls) -> dict:
-        """Get word registry, loading it lazily if needed."""
-        if cls._word_registry is None:
-            from ..words.registry import WORD_REGISTRY
+def _analyze_token_types(
+    tokens: List[InterpretedToken],
+) -> Tuple[bool, bool, bool]:
+    """
+    Analyze tokens to determine what word types are present.
 
-            cls._word_registry = WORD_REGISTRY
-        return cls._word_registry
+    Args:
+        tokens: List of recognized tokens to analyze
 
-    # =============================================================================
-    # Core Processing - Typo Correction & Word Injection
-    # =============================================================================
+    Returns:
+        Tuple of (has_field, has_entity, has_action)
+    """
+    has_field = False
+    has_entity = False
+    has_action = False
 
-    @classmethod
-    def _correct_typos(cls, tokens: List[InterpretedToken]) -> List[InterpretedToken]:
-        """
-        Apply fuzzy matching to UNKNOWN tokens.
-        Corrects typos in UNKNOWN tokens by matching against the word registry
-        using Levenshtein distance. Only applies to tokens > 3 characters with
-        exactly 1 character difference (distance == 1).
-        """
+    for token in tokens:
+        if token.token_type != TokenType.WORD or not token.word:
+            continue
+        word_type = token.word.word_type
+        if word_type == WordType.FIELD:
+            has_field = True
+        elif word_type == WordType.ENTITY:
+            has_entity = True
+        elif word_type == WordType.ACTION:
+            has_action = True
 
-        for token in tokens:
-            # Skip non-UNKNOWN tokens
-            if token.token_type != TokenType.UNKNOWN:
-                continue
+    return has_field, has_entity, has_action
 
-            # Skip short words (≤ 3 characters)
-            if len(token.text) <= 3:
-                continue
 
-            token_text_lower = token.text.lower()
+def _find_first_field_word(
+    tokens: List[InterpretedToken],
+) -> Optional[FieldWord]:
+    """
+    Find the first FieldWord in the token list.
 
-            # Check all words in registry for exact distance of 1
-            word_registry = cls._get_word_registry()
-            for word_id in word_registry.keys():
-                # Skip if length difference is too large (optimization)
-                if abs(len(token.text) - len(word_id)) > 1:
-                    continue
+    Args:
+        tokens: List of recognized tokens
 
-                # Calculate case-insensitive Levenshtein distance
-                distance = cls._levenshtein_distance(token_text_lower, word_id.lower())
+    Returns:
+        First FieldWord found, or None if none exist
+    """
+    for token in tokens:
+        if token.token_type != TokenType.WORD or not token.word:
+            continue
+        if token.word.word_type == WordType.FIELD:
+            return token.word
+    return None
 
-                # If exactly 1 typo, correct it
-                if distance == 1:
-                    # Get the Word object from registry
-                    word_obj = word_registry.get(word_id)
-                    if word_obj:
-                        # Store original before correction
-                        token.original_text = token.text
-                        token.was_corrected = True
 
-                        # Apply correction
-                        token.text = word_id
-                        token.token_type = TokenType.WORD
-                        token.word = word_obj
-                        break  # Take first match
+# =============================================================================
+# Inference Helpers - Word Resolution
+# =============================================================================
 
-        return tokens
 
-    @classmethod
-    def _infer_missing_words(
-        cls, tokens: List[InterpretedToken], context: Context
-    ) -> List[InterpretedToken]:
-        """
-        Infer missing words based on patterns and context.
-        Analyzes tokens to detect missing ActionWord and EntityWord, then injects
-        them based on field patterns and operator context. Only operates in ORG
-        context level.
-        """
-        # 1. Check context — only ORG level
-        if context.level != ContextLevel.ORG:
-            return tokens
+def _infer_entity_from_field(field_word: FieldWord) -> Optional[EntityWord]:
+    """
+    Infer EntityWord from a FieldWord using its entity_models.
 
-        # 2. Analyze tokens — what do we have?
-        has_field, has_entity, has_action = cls._analyze_token_types(tokens)
-        first_field_word = cls._find_first_field_word(tokens)
+    Args:
+        field_word: FieldWord to infer entity from
 
-        # 3. Nothing to infer if no field word
-        if not has_field or first_field_word is None:
-            return tokens
-
-        # 4. Build list of words to inject
-        words_to_inject = []
-
-        # 4a. Infer EntityWord if missing
-        if not has_entity:
-            entity_word = cls._infer_entity_from_field(first_field_word)
-            if entity_word:
-                words_to_inject.append(entity_word)
-
-        # 4b. Infer ActionWord if missing
-        if not has_action:
-            action_word = cls._infer_action_from_operator(tokens)
-            if action_word:
-                words_to_inject.insert(0, action_word)  # Action goes first
-
-        # 5. Create tokens and prepend
-        if words_to_inject:
-            inferred_tokens = [
-                cls._create_inferred_token(word) for word in words_to_inject
-            ]
-            return inferred_tokens + tokens
-
-        return tokens
-
-    # =============================================================================
-    # Analysis Helpers - Token Inspection
-    # =============================================================================
-
-    @classmethod
-    def _analyze_token_types(
-        cls, tokens: List[InterpretedToken]
-    ) -> Tuple[bool, bool, bool]:
-        """
-        Analyze tokens to determine what word types are present.
-
-        Args:
-            tokens: List of recognized tokens to analyze
-
-        Returns:
-            Tuple of (has_field, has_entity, has_action)
-        """
-        has_field = False
-        has_entity = False
-        has_action = False
-
-        for token in tokens:
-            if token.token_type != TokenType.WORD or not token.word:
-                continue
-            word_type = token.word.word_type
-            if word_type == WordType.FIELD:
-                has_field = True
-            elif word_type == WordType.ENTITY:
-                has_entity = True
-            elif word_type == WordType.ACTION:
-                has_action = True
-
-        return has_field, has_entity, has_action
-
-    @classmethod
-    def _find_first_field_word(
-        cls, tokens: List[InterpretedToken]
-    ) -> Optional[FieldWord]:
-        """
-        Find the first FieldWord in the token list.
-
-        Args:
-            tokens: List of recognized tokens
-
-        Returns:
-            First FieldWord found, or None if none exist
-        """
-        for token in tokens:
-            if token.token_type != TokenType.WORD or not token.word:
-                continue
-            if token.word.word_type == WordType.FIELD:
-                return token.word
+    Returns:
+        Corresponding EntityWord, or None if not found
+    """
+    if not field_word.entity_models:
         return None
 
-    # =============================================================================
-    # Inference Helpers - Word Resolution
-    # =============================================================================
+    # Get the first entity model class this field belongs to
+    target_entity_model = field_word.entity_models[0]
 
-    @classmethod
-    def _infer_entity_from_field(cls, field_word: FieldWord) -> Optional[EntityWord]:
-        """
-        Infer EntityWord from a FieldWord using its entity_models.
+    # Find matching EntityWord in registry
+    word_registry = _get_word_registry()
+    for word in word_registry.values():
+        if (
+            word.word_type == WordType.ENTITY
+            and hasattr(word, "entity_model")
+            and word.entity_model == target_entity_model
+        ):
+            return word
+    return None
 
-        Args:
-            field_word: FieldWord to infer entity from
 
-        Returns:
-            Corresponding EntityWord, or None if not found
-        """
-        if not field_word.entity_models:
-            return None
+def _infer_action_from_operator(
+    tokens: List[InterpretedToken],
+) -> Optional[ActionWord]:
+    """
+    Infer ActionWord from operator patterns.
 
-        # Get the first entity model class this field belongs to
-        target_entity_model = field_word.entity_models[0]
+    Logic:
+    - field = value → infer "add"
+    - field = (no value) → infer "delete"
 
-        # Find matching EntityWord in registry
-        word_registry = cls._get_word_registry()
-        for word in word_registry.values():
-            if (
-                word.word_type == WordType.ENTITY
-                and hasattr(word, "entity_model")
-                and word.entity_model == target_entity_model
-            ):
-                return word
+    Args:
+        tokens: List of recognized tokens
+
+    Returns:
+        Inferred ActionWord, or None if cannot determine
+    """
+    # Find EQUALS operator
+    equals_index = None
+    for i, token in enumerate(tokens):
+        if (
+            token.token_type == TokenType.STRUCTURAL
+            and hasattr(token, "operator")
+            and token.operator == Operator.EQUAL
+        ):
+            equals_index = i
+            break
+
+    if equals_index is None:
         return None
 
-    @classmethod
-    def _infer_action_from_operator(
-        cls, tokens: List[InterpretedToken]
-    ) -> Optional[ActionWord]:
-        """
-        Infer ActionWord from operator patterns.
+    # Check if there's a value after the equals
+    has_value_after = (
+        equals_index + 1 < len(tokens)
+        and tokens[equals_index + 1].token_type == TokenType.VALUE
+    )
 
-        Logic:
-        - field = value → infer "add"
-        - field = (no value) → infer "delete"
+    word_registry = _get_word_registry()
+    if has_value_after:
+        # field = value → infer "add"
+        return word_registry.get("add")
+    else:
+        # field = (no value) → infer "delete"
+        return word_registry.get("delete")
 
-        Args:
-            tokens: List of recognized tokens
 
-        Returns:
-            Inferred ActionWord, or None if cannot determine
-        """
-        # Find EQUALS operator
-        equals_index = None
-        for i, token in enumerate(tokens):
-            if (
-                token.token_type == TokenType.STRUCTURAL
-                and hasattr(token, "operator")
-                and token.operator == Operator.EQUAL
-            ):
-                equals_index = i
-                break
+# =============================================================================
+# Token Creation
+# =============================================================================
 
-        if equals_index is None:
-            return None
 
-        # Check if there's a value after the equals
-        has_value_after = (
-            equals_index + 1 < len(tokens)
-            and tokens[equals_index + 1].token_type == TokenType.VALUE
-        )
+def _create_inferred_token(word: Word) -> InterpretedToken:
+    """
+    Create an InterpretedToken for an inferred word.
 
-        word_registry = cls._get_word_registry()
-        if has_value_after:
-            # field = value → infer "add"
-            return word_registry.get("add")
-        else:
-            # field = (no value) → infer "delete"
-            return word_registry.get("delete")
+    Args:
+        word: Word object to create token for
 
-    # =============================================================================
-    # Token Creation
-    # =============================================================================
+    Returns:
+        InterpretedToken marked as inferred
+    """
+    return InterpretedToken(
+        text=word.id,
+        token_type=TokenType.WORD,
+        word=word,
+        was_inferred=True,  # Mark as inferred
+    )
 
-    @classmethod
-    def _create_inferred_token(cls, word: Word) -> InterpretedToken:
-        """
-        Create an InterpretedToken for an inferred word.
 
-        Args:
-            word: Word object to create token for
+# =============================================================================
+# Utility Functions
+# =============================================================================
 
-        Returns:
-            InterpretedToken marked as inferred
-        """
-        return InterpretedToken(
-            text=word.id,
-            token_type=TokenType.WORD,
-            word=word,
-            was_inferred=True,  # Mark as inferred
-        )
 
-    # =============================================================================
-    # Utility Methods
-    # =============================================================================
+def _levenshtein_distance(s1: str, s2: str) -> int:
+    """
+    Calculate Levenshtein distance between two strings.
 
-    @staticmethod
-    def _levenshtein_distance(s1: str, s2: str) -> int:
-        """
-        Calculate Levenshtein distance between two strings.
+    Uses dynamic programming approach to find minimum edit distance.
 
-        Uses dynamic programming approach to find minimum edit distance.
+    Args:
+        s1: First string
+        s2: Second string
 
-        Args:
-            s1: First string
-            s2: Second string
+    Returns:
+        Integer distance (number of single-character edits needed)
+    """
+    if len(s1) < len(s2):
+        return _levenshtein_distance(s2, s1)
 
-        Returns:
-            Integer distance (number of single-character edits needed)
-        """
-        if len(s1) < len(s2):
-            return Interpreter._levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
 
-        if len(s2) == 0:
-            return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            # Cost of insertions, deletions, or substitutions
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
 
-        previous_row = range(len(s2) + 1)
-        for i, c1 in enumerate(s1):
-            current_row = [i + 1]
-            for j, c2 in enumerate(s2):
-                # Cost of insertions, deletions, or substitutions
-                insertions = previous_row[j + 1] + 1
-                deletions = current_row[j] + 1
-                substitutions = previous_row[j] + (c1 != c2)
-                current_row.append(min(insertions, deletions, substitutions))
-            previous_row = current_row
-
-        return previous_row[-1]
+    return previous_row[-1]

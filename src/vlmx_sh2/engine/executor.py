@@ -9,7 +9,7 @@ complete isolation from UI concerns.
 from typing import Any, Dict, Optional
 
 from ..dsl.ir.lowering import lower_from_tokens_result, lower_from_wizard
-from ..dsl.parser.parser import Parser
+from ..dsl.parser.parser import parse as parse_input
 from ..core.models.context import Context
 from ..core.models.responses import ErrorResult, HandlerResult
 from .router import Router
@@ -37,7 +37,7 @@ class CommandExecutor:
         """
         try:
             # Step 1: Parse the input text (stages 0-6)
-            tokens_result = Parser.parse(input_text, context)
+            tokens_result = parse_input(input_text, context)
 
             # Step 2: Check for parsing errors
             if not tokens_result.is_valid:
