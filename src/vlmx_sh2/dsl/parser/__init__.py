@@ -19,6 +19,15 @@ from .classifier import classify            # Stage 2
 from .recognizer import recognize, get_words_by_type  # Stage 3
 from .interpreter import interpret          # Stage 4
 from .splitter import split                 # Stage 5
+# Both filter.py and parser.py define a function named `parse`, so the stage 6
+# entry point is aliased here to avoid shadowing the orchestrator:
+#   parse_filter(split_result, context) -> FilterExpression | None
+#       Operates on a SplitResult produced by the Splitter stage and builds
+#       a FilterExpression AST from the filter token stream.
+#   parse(input_text, context) -> TokensResult
+#       Full pipeline orchestrator: accepts raw text and drives all stages 0-6,
+#       returning a TokensResult containing tokens, the filter AST, and
+#       validation state for CommandBuilder.
 from .filter import parse as parse_filter   # Stage 6
 from .parser import parse                   # Pipeline Orchestrator
 

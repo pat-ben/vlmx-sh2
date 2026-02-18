@@ -340,6 +340,7 @@ def _levenshtein_distance(s1: str, s2: str) -> int:
     Returns:
         Integer distance (number of single-character edits needed)
     """
+    # Ensure s1 is always the longer string to simplify the DP loop
     if len(s1) < len(s2):
         return _levenshtein_distance(s2, s1)
 

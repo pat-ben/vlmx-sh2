@@ -64,6 +64,12 @@ def parse(input_text: str, context: Context) -> TokensResult:
         Filter       | Continue (optional)| Continue
         Parser       | Mark as invalid  | N/A
 
+    Note:
+        filter.py also exposes a function called `parse`. It is imported here
+        as `filter_parse` to prevent a name collision with this function.
+        `filter_parse` operates only on the filter token stream (a SplitResult)
+        and returns a FilterExpression AST; it is a single stage, not a pipeline.
+
     Args:
         input_text: Raw user input text
         context: Current execution context (ORG, SYS, APP level)
