@@ -43,6 +43,7 @@ class UIDataProvider:
                 "org_registry",
                 _Path(__file__).resolve().parents[3] / "system" / "org" / "org_registry.py",
             )
+            assert _spec is not None and _spec.loader is not None
             _mod = importlib.util.module_from_spec(_spec)
             _spec.loader.exec_module(_mod)
             read_org_registry = _mod.read_org_registry

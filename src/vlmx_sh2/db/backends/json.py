@@ -171,6 +171,7 @@ class JsonBackend:
                     "org_registry",
                     Path(__file__).resolve().parents[4] / "system" / "org" / "org_registry.py",
                 )
+                assert _spec is not None and _spec.loader is not None
                 _mod = _ilu.module_from_spec(_spec)
                 _spec.loader.exec_module(_mod)
                 write_org_to_registry = _mod.write_org_to_registry
