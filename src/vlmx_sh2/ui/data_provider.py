@@ -28,7 +28,7 @@ class UIDataProvider:
     # ── System ────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def get_organizations(context: Context) -> list[OrganizationEntity]:
+    def get_org(context: Context) -> list[OrganizationEntity]:
         """Return all organizations from the org registry index.
 
         Reads system/org/registry.toml rather than scanning data/ folders.

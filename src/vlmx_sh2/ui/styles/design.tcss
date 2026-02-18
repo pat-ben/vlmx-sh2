@@ -5,11 +5,11 @@ Screen {
 
 #left-pane {
     max-width: 25%;
-    background: red;
+    background: white;
 }
 
 #command-block-container {
-    background: blue;
+    background: grey;
 }
 
 CommandBlock {

@@ -46,8 +46,8 @@ class MainScreen(Screen):
     def _populate_organisations_option_list(self):
         from ...data_provider import UIDataProvider
 
-        orgs = UIDataProvider.get_organizations(self.app.context)
-        orgs_option_list = self.query_one("#organisations-option-list")
+        orgs = UIDataProvider.get_org(self.context)
+        orgs_option_list = self.query_one("#organisations-option-list", OptionList)
         orgs_option_list.add_options([org.name for org in orgs])
 
     async def on_command_block_command_submitted(self, message):
