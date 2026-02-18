@@ -1,37 +1,15 @@
 """
-Tool word definitions.
+Tool word definitions — replaced by tool_loader.py.
 
-Contains manually defined ToolWord objects representing calculation tools.
-Tools perform business calculations with required input parameters.
+Tool words are now loaded dynamically from TOML files in system/tools/
+via load_tools_from_directory() in tool_loader.py.
 
-Available only in APP context (cd app/).
+This file is retained as a safe import fallback. TOOL_WORDS_LIST is kept
+as an empty list so any existing imports do not break.
 """
 
 from typing import List
 
-from ...core.enums.core import ContextLevel
 from ...core.models.words import ToolWord
 
-TOOL_WORDS_LIST: List[ToolWord] = [
-    ToolWord(
-        id="dcf",
-        description="Discounted Cash Flow valuation model",
-        aliases=["discounted-cash-flow", "valuation"],
-        context=ContextLevel.APP,
-        parameters=["revenue", "growth_rate", "discount_rate", "terminal_multiple"],
-    ),
-    ToolWord(
-        id="captable",
-        description="Cap Table calculator - ownership and dilution",
-        aliases=["cap", "equity"],
-        context=ContextLevel.APP,
-        parameters=["shares_outstanding", "option_pool", "new_investment"],
-    ),
-    ToolWord(
-        id="forecast",
-        description="Revenue forecast model",
-        aliases=["rev-forecast", "projection"],
-        context=ContextLevel.APP,
-        parameters=["base_revenue", "growth_rate", "periods"],
-    ),
-]
+TOOL_WORDS_LIST: List[ToolWord] = []

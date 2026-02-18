@@ -23,6 +23,17 @@ def get_system_views_dir() -> Path:
     return project_root / "system" / "views"
 
 
+def get_system_org_dir() -> Path:
+    """
+    Get the path to the system/org directory.
+
+    Returns:
+        Path object pointing to system/org directory
+    """
+    project_root = Path(__file__).resolve().parents[4]
+    return project_root / "system" / "org"
+
+
 def get_system_tools_dir() -> Path:
     """
     Get the path to the system/tools directory.

@@ -5,7 +5,7 @@ This package contains helper functions that are safe to use across layers
 (engine, storage, UI). Import from `vlmx_sh2.core.utils` as the canonical path.
 """
 
-from .context_helpers import (
+from .context.helpers import (
     can_execute_direct_command,
     command_requires_schema,
     get_level_name,
@@ -17,6 +17,7 @@ from .context_helpers import (
     requires_schema,
     validate_command_requirements,
 )
+     
 from .entity_defaults import (
     create_default_entity_data,
     create_default_entity_data_simple,

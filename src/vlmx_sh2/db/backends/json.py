@@ -15,9 +15,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from vlmx_sh2.core.enums import Cardinality
-
-from ..core.models.context import Context
-from ..core.registry import (
+from vlmx_sh2.core.models.context import Context
+from vlmx_sh2.core.registry import (
     ROOT_ENTITY_ID,
     get_entities_for_schema,
     get_root_entity,
@@ -25,11 +24,11 @@ from ..core.registry import (
     get_storage_mapping,
     is_schema_id,
 )
-from ..core.utils.context_helpers import is_sys
-from ..core.utils.entity_defaults import create_default_entity_data_simple
-from .mappings import get_entity_json_filename
-from .paths import get_company_folder_path, get_data_directory_path
-from .result_helpers import error_result, success_result
+from vlmx_sh2.core.utils.context.helpers import is_sys
+from vlmx_sh2.core.utils.entity_defaults import create_default_entity_data_simple
+from vlmx_sh2.db.mappings import get_entity_json_filename
+from vlmx_sh2.db.paths import get_company_folder_path, get_data_directory_path
+from vlmx_sh2.db.result_helpers import error_result, success_result
 
 # ==================== PRIVATE HELPERS ====================
 
@@ -160,9 +159,7 @@ class JsonBackend:
                 if not _safe_json_save(org_file, organization_data):
                     return error_result("Failed to save organization data")
 
-                created_files = [get_root_json_filename()] + _create_schema_entities(
-                    company_folder, entity_type
-                )
+                _create_schema_entities(company_folder, entity_type)
 
                 return success_result(
                     f"Successfully created organization '{company_name}'",

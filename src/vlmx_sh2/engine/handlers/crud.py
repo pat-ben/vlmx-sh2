@@ -34,7 +34,7 @@ from ...core.models.words import (
     ViewWord,
 )
 from ...core.registry import get_entity_class
-from ...core.utils.context_helpers import is_sys
+from ...core.utils.context.helpers import is_sys
 from ...core.utils.entity_defaults import create_default_entity_data
 from ...db.database import StorageInterface, StorageRecord
 from ...db.filters import apply_filters
@@ -58,19 +58,28 @@ from .utils import (
 # =============================================================================
 
 
+def _require_target_id(ir_command: IRCommand) -> tuple[str | None, ErrorResult | None]:
+    if ir_command.target.id is None:
+        return None, ErrorResult(errors=["No target specified"])
+    return cast(str, ir_command.target.id), None
+
+
 async def create_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     """Create schema or entity structure."""
     error = validate_target_exists(ir_command)
     if error:
         return error
 
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
     context_error = validate_target_context(
-        ir_command.target.kind, ir_command.target.id, context
+        ir_command.target.kind, cast(str, target_id), context
     )
     if context_error:
         return context_error
 
-    target_id = ir_command.target.id
     target_name = ir_command.target_name
     field_values = dict(ir_command.assignments)
 
@@ -90,13 +99,14 @@ async def drop_handler(ir_command: IRCommand, context: Context) -> HandlerResult
     if error:
         return error
 
-    context_error = validate_target_context(
-        ir_command.target.kind, ir_command.target.id, context
-    )
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    context_error = validate_target_context(ir_command.target.kind, target_id, context)
     if context_error:
         return context_error
 
-    target_id = ir_command.target.id
     target_name = ir_command.target_name
 
     handler = _DROP_TARGET_HANDLERS.get(ir_command.target.kind)
@@ -115,9 +125,11 @@ async def add_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
     if error:
         return error
 
-    context_error = validate_target_context(
-        ir_command.target.kind, ir_command.target.id, context
-    )
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    context_error = validate_target_context(ir_command.target.kind, target_id, context)
     if context_error:
         return context_error
 
@@ -130,8 +142,8 @@ async def add_handler(ir_command: IRCommand, context: Context) -> HandlerResult:
         return error
 
     assert company_name is not None  # Validated by validate_org_context
-    entity_type = ir_command.target.id
-    entity_model = get_entity_class(entity_type)
+    entity_type = target_id
+    entity_model = get_entity_class(cast(str, entity_type))
     fields = dict(ir_command.assignments)
     filters = ir_command.filters
 
@@ -151,9 +163,11 @@ async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResu
     if error:
         return error
 
-    context_error = validate_target_context(
-        ir_command.target.kind, ir_command.target.id, context
-    )
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    context_error = validate_target_context(ir_command.target.kind, target_id, context)
     if context_error:
         return context_error
 
@@ -174,7 +188,7 @@ async def delete_handler(ir_command: IRCommand, context: Context) -> HandlerResu
         return error
 
     assert company_name is not None  # Validated by validate_org_context
-    entity_type = ir_command.target.id
+    entity_type = target_id
     entity_model = get_entity_class(entity_type)
     field_names = list(ir_command.field_names)
     filters = ir_command.filters
@@ -216,9 +230,11 @@ async def reset_handler(ir_command: IRCommand, context: Context) -> HandlerResul
     if error:
         return error
 
-    context_error = validate_target_context(
-        ir_command.target.kind, ir_command.target.id, context
-    )
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    context_error = validate_target_context(ir_command.target.kind, target_id, context)
     if context_error:
         return context_error
 
@@ -227,7 +243,7 @@ async def reset_handler(ir_command: IRCommand, context: Context) -> HandlerResul
         return error
 
     assert company_name is not None  # Validated by validate_org_context
-    entity_type = ir_command.target.id
+    entity_type = target_id
     entity_model = get_entity_class(entity_type)
     field_names = list(ir_command.field_names)
     filters = ir_command.filters
@@ -262,9 +278,11 @@ async def show_handler(ir_command: IRCommand, context: Context) -> HandlerResult
     if error:
         return error
 
-    context_error = validate_target_context(
-        ir_command.target.kind, ir_command.target.id, context
-    )
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    context_error = validate_target_context(ir_command.target.kind, target_id, context)
     if context_error:
         return context_error
 
@@ -932,48 +950,55 @@ def _register_show_handler(target_kind: IRTargetKind):
 
 
 @_register_show_handler(IRTargetKind.MODULE)
-async def _handle_show_module(
-    ir_command: IRCommand, context: Context
-) -> HandlerResult:
+async def _handle_show_module(ir_command: IRCommand, context: Context) -> HandlerResult:
     from ...dsl.words.registry import get_word
 
-    word = get_word(ir_command.target.id)
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    word = get_word(cast(str, target_id))
     if not isinstance(word, ModuleWord):
-        return ErrorResult(errors=[f"'{ir_command.target.id}' is not a module"])
+        return ErrorResult(errors=[f"'{target_id}' is not a module"])
     return await _show_module(word, context)
 
 
 @_register_show_handler(IRTargetKind.VIEW)
 @_register_show_handler(IRTargetKind.TOOL)
-async def _handle_show_app(
-    ir_command: IRCommand, context: Context
-) -> HandlerResult:
+async def _handle_show_app(ir_command: IRCommand, context: Context) -> HandlerResult:
     from ...dsl.words.registry import get_word
 
-    word = get_word(ir_command.target.id)
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    word = get_word(target_id)
     if not isinstance(word, (ViewWord, ToolWord)):
-        return ErrorResult(errors=[f"'{ir_command.target.id}' is not a view or tool"])
+        return ErrorResult(errors=[f"'{target_id}' is not a view or tool"])
     return await _show_app(word, context)
 
 
 @_register_show_handler(IRTargetKind.SCHEMA)
-async def _handle_show_schema(
-    ir_command: IRCommand, context: Context
-) -> HandlerResult:
-    return await _show_schema_info(ir_command.target.id, ir_command.target_name, context)
+async def _handle_show_schema(ir_command: IRCommand, context: Context) -> HandlerResult:
+    target_id, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert target_id is not None
+    return await _show_schema_info(target_id, ir_command.target_name, context)
 
 
 @_register_show_handler(IRTargetKind.ENTITY)
 @_register_show_handler(IRTargetKind.FIELD)
-async def _handle_show_entity(
-    ir_command: IRCommand, context: Context
-) -> HandlerResult:
+async def _handle_show_entity(ir_command: IRCommand, context: Context) -> HandlerResult:
     company_name, error = validate_org_context(context)
     if error:
         return error
 
     assert company_name is not None
-    entity_type = ir_command.target.id
+    entity_type, error = _require_target_id(ir_command)
+    if error:
+        return error
+    assert entity_type is not None
     entity_model = get_entity_class(entity_type)
     field_names = list(ir_command.field_names) or None
     filters = ir_command.filters

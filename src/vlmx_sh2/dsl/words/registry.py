@@ -7,8 +7,7 @@ between database models and DSL word registrations.
 """
 
 from typing import Dict
-
-from ...core.enums.context_rules import is_target_allowed_in_context
+from ...core.utils.context.rules import is_target_allowed_in_context    
 from ...core.enums.core import ContextLevel
 from ...core.models.words import Word, WordType
 from ...core.registry import get_all_schema_configs

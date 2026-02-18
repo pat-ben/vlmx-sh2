@@ -233,6 +233,7 @@ class ViewWord(TargetWord):
         default=ContextLevel.APP, description="Views only available at APP level"
     )
     app_type: Literal["view"] = "view"
+    name: str = Field(default="", description="Display name for UI rendering")
     entities: List[str] = Field(
         default_factory=list, description="Entity IDs this view displays"
     )
@@ -260,6 +261,7 @@ class ToolWord(TargetWord):
         default=ContextLevel.APP, description="Tools only available at APP level"
     )
     app_type: Literal["tool"] = "tool"
+    name: str = Field(default="", description="Display name for UI rendering")
     parameters: List[str] = Field(
         default_factory=list, description="Required input parameter names"
     )

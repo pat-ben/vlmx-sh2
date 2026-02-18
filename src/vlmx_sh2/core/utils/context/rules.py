@@ -3,12 +3,13 @@ Context rules - Cumulative model.
 
 Each higher level inherits all targets from lower levels:
 - SYS: Schema only
-- ORG: SYS + Module, Entity, Field  
+- ORG: SYS + Module, Entity, Field
 - APP: ORG + View, Tool (everything)
 """
 
 from typing import Dict, List
-from .core import ContextLevel
+
+from ...enums import ContextLevel
 
 # Cumulative targets: each level includes previous levels
 _CONTEXT_ALLOWED_TARGETS: Dict[ContextLevel, List[str]] = {
@@ -18,16 +19,18 @@ _CONTEXT_ALLOWED_TARGETS: Dict[ContextLevel, List[str]] = {
 }
 
 
-def is_target_allowed_in_context(word_type_value: str, context_level: ContextLevel) -> bool:
+def is_target_allowed_in_context(
+    word_type_value: str, context_level: ContextLevel
+) -> bool:
     """
     Check if a word type is allowed in the given context.
-    
+
     Cumulative model: higher levels include all lower level targets.
-    
+
     Args:
         word_type_value: The WordType.value string (e.g., "entity", "app")
         context_level: Current context level
-        
+
     Returns:
         True if allowed, False otherwise
     """

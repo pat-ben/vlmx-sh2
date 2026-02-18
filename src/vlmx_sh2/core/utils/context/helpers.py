@@ -19,8 +19,8 @@ The module provides two types of validation functions:
 
 from typing import List, Optional, Tuple
 
-from ..enums import ContextLevel
-from ..models.context import Context
+from ...enums import ContextLevel
+from ...models.context import Context
 
 
 def is_sys(context: Context) -> bool:

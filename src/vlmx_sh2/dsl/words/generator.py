@@ -166,10 +166,12 @@ def generate_view_words() -> Dict[str, ViewWord]:
 
 def generate_tool_words() -> Dict[str, ToolWord]:
     """
-    Generate ToolWord objects from manual definitions.
+    Generate ToolWord objects from TOML configuration files.
 
     Tools are available only in APP context.
     """
-    from .tools import TOOL_WORDS_LIST
+    from .tool_loader import load_tools_from_directory
+    from .paths import get_system_tools_dir
 
-    return {tool.id: tool for tool in TOOL_WORDS_LIST}
+    tools = load_tools_from_directory(get_system_tools_dir())
+    return {tool.id: tool for tool in tools}

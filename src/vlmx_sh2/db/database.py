@@ -5,8 +5,8 @@ from typing import Any, cast
 from ..core.models.context import Context
 from ..core.models.responses import StorageResult
 from ..core.registry import ROOT_ENTITY_ID, get_root_json_filename, is_schema_id
-from .backend import StorageBackend, StorageBackendType
-from .json_backend import JsonBackend
+from .backends.json import JsonBackend
+from .base import StorageBackend, StorageBackendType
 from .paths import (  # noqa: F401 — re-exported
     get_company_folder_path,
     get_data_directory_path,
@@ -47,7 +47,7 @@ def set_backend(backend_type: StorageBackendType) -> None:
         _backend = JsonBackend()
         return
     if backend_type == StorageBackendType.SQLITE:
-        from .sqlite_backend import SqliteBackend
+        from .backends.sql import SqliteBackend
 
         _backend = SqliteBackend()
         return

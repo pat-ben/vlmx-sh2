@@ -1,0 +1,16 @@
+# Tool Registry
+# Index of all available system tools.
+
+[registry]
+version = "0.1"
+description = "Tool registry"
+
+[[tools]]
+id = "dcf"
+name = "DCF"
+file = "dcf.toml"
+
+[[tools]]
+id = "milestones"
+name = "Milestones"
+file = "milestones.toml"

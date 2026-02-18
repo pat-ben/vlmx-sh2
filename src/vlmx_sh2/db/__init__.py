@@ -15,14 +15,14 @@ sqlmodel/sqlalchemy at startup.
 """
 
 # Backend protocol and configuration
-from .backend import StorageBackend, StorageBackendType
-from .database import StorageInterface, set_backend, get_backend
+from .base import StorageBackend, StorageBackendType
+from .database import StorageInterface, get_backend, set_backend
 
 # Shared path utilities (no SQLite dependency)
-from .paths import get_data_directory_path, get_company_folder_path
+from .paths import get_company_folder_path, get_data_directory_path
 
 # Result helpers (no SQLite dependency)
-from .result_helpers import success_result, error_result
+from .result_helpers import error_result, success_result
 
 # NOTE: SQLite engine utilities and legacy free functions are NOT
 # imported here to keep startup fast.  Import directly when needed:

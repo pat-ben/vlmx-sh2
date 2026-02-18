@@ -1,0 +1,21 @@
+# View Registry
+# Index of all available system views.
+
+[registry]
+version = "0.1"
+description = "View registry"
+
+[[views]]
+id = "innosuisse"
+name = "Innosuisse"
+file = "innosuisse.toml"
+
+[[views]]
+id = "investor"
+name = "Investor Report"
+file = "investor.toml"
+
+[[views]]
+id = "neco"
+name = "NECO"
+file = "neco.toml"

@@ -74,6 +74,7 @@ def load_views_from_directory(views_dir: Path) -> List[ViewWord]:
             # Create ViewWord object
             view_word = ViewWord(
                 id=view_id,
+                name=view_data.get("name", ""),
                 description=view_data.get("description", ""),
                 aliases=view_data.get("aliases", []),
                 context=ContextLevel.APP,  # All views are APP-level

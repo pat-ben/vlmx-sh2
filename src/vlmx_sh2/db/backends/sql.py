@@ -11,21 +11,27 @@ Provides both:
 
 from typing import Any, Dict, List, Optional, Type
 
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from ..core.models.context import Context
-from ..core.registry import (
+from vlmx_sh2.core.enums import Cardinality
+from vlmx_sh2.core.models.context import Context
+from vlmx_sh2.core.registry import (
     ROOT_ENTITY_ID,
-    get_entity_class as _registry_get_entity_class,
     get_root_entity,
     is_schema_id,
 )
-from ..core.schemas.base import EntityModel
-from vlmx_sh2.core.enums import Cardinality
-from .paths import get_company_folder_path, get_data_directory_path
-from .engine import get_engine, create_tables, get_session, get_company_db_path
-from .result_helpers import error_result, success_result
-
+from vlmx_sh2.core.registry import (
+    get_entity_class as _registry_get_entity_class,
+)
+from vlmx_sh2.core.schemas.base import EntityModel
+from vlmx_sh2.db.engine import (
+    create_tables,
+    get_company_db_path,
+    get_engine,
+    get_session,
+)
+from vlmx_sh2.db.paths import get_company_folder_path, get_data_directory_path
+from vlmx_sh2.db.result_helpers import error_result, success_result
 
 # ==================== HELPERS ====================
 
@@ -118,7 +124,9 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> Dict[str, Any]:
-        raise NotImplementedError("SqliteBackend.update_dynamic_entity_record not yet implemented")
+        raise NotImplementedError(
+            "SqliteBackend.update_dynamic_entity_record not yet implemented"
+        )
 
     def list_organizations(
         self,
@@ -132,21 +140,27 @@ class SqliteBackend:
         company_name: str,
         context: Context,
     ) -> bool:
-        return sqlite_entity_exists(entity_type=entity_name, company_name=company_name, context=context)
+        return sqlite_entity_exists(
+            entity_type=entity_name, company_name=company_name, context=context
+        )
 
     def find_organization_by_name(
         self,
         search_name: str,
         context: Context,
     ) -> Optional[str]:
-        raise NotImplementedError("SqliteBackend.find_organization_by_name not yet implemented")
+        raise NotImplementedError(
+            "SqliteBackend.find_organization_by_name not yet implemented"
+        )
 
     def find_organization_candidates(
         self,
         search_name: str,
         context: Context,
     ) -> List[str]:
-        raise NotImplementedError("SqliteBackend.find_organization_candidates not yet implemented")
+        raise NotImplementedError(
+            "SqliteBackend.find_organization_candidates not yet implemented"
+        )
 
 
 # ==================== LEGACY FREE FUNCTIONS ====================
@@ -154,8 +168,9 @@ class SqliteBackend:
 # existing code importing them continues to work.
 
 
-def sqlite_create_entity(entity_type: str, data: Dict[str, Any],
-                         context: Context) -> Dict[str, Any]:
+def sqlite_create_entity(
+    entity_type: str, data: Dict[str, Any], context: Context
+) -> Dict[str, Any]:
     """Insert a new entity row. For schema types, also creates the .db file and tables."""
     try:
         if is_schema_id(entity_type):
@@ -192,7 +207,8 @@ def sqlite_create_entity(entity_type: str, data: Dict[str, Any],
             )
         else:
             # Non-company entities require an org context
-            from ..core.utils.context_helpers import is_sys
+            from vlmx_sh2.core.utils.context.helpers import is_sys
+
             if is_sys(context) or not context.org_name:
                 return error_result(
                     "Must be in organization context to create non-company entities"
@@ -221,8 +237,9 @@ def sqlite_create_entity(entity_type: str, data: Dict[str, Any],
         return error_result(f"Failed to create {entity_type}: {str(e)}")
 
 
-def sqlite_load_entity(entity_type: str, company_name: str,
-                       context: Context) -> Optional[Dict[str, Any]]:
+def sqlite_load_entity(
+    entity_type: str, company_name: str, context: Context
+) -> Optional[Dict[str, Any]]:
     """Load a single entity record and return as dict."""
     try:
         entity_class = _get_entity_class(entity_type)
@@ -245,9 +262,9 @@ def sqlite_load_entity(entity_type: str, company_name: str,
         return None
 
 
-def sqlite_save_entity(entity_type: str, data: Dict[str, Any],
-                       company_name: str,
-                       context: Context) -> Dict[str, Any]:
+def sqlite_save_entity(
+    entity_type: str, data: Dict[str, Any], company_name: str, context: Context
+) -> Dict[str, Any]:
     """Update an existing entity record."""
     try:
         entity_class = _get_entity_class(entity_type)
@@ -262,8 +279,10 @@ def sqlite_save_entity(entity_type: str, data: Dict[str, Any],
         with get_session(engine) as session:
             # For SINGLE cardinality, get the first (only) row
             # For MULTIPLE, require an 'id' in data to locate the record
-            if (hasattr(entity_class, 'cardinality')
-                    and entity_class.cardinality == Cardinality.MULTIPLE):
+            if (
+                hasattr(entity_class, "cardinality")
+                and entity_class.cardinality == Cardinality.MULTIPLE
+            ):
                 record_id = data.get("id")
                 if record_id is None:
                     return error_result(f"Record 'id' required to update {entity_type}")
@@ -273,7 +292,9 @@ def sqlite_save_entity(entity_type: str, data: Dict[str, Any],
                 existing = session.exec(statement).first()
 
             if existing is None:
-                return error_result(f"{entity_type} record not found for '{company_name}'")
+                return error_result(
+                    f"{entity_type} record not found for '{company_name}'"
+                )
 
             # Apply updates
             for key, value in data.items():
@@ -294,8 +315,9 @@ def sqlite_save_entity(entity_type: str, data: Dict[str, Any],
         return error_result(f"Failed to save {entity_type}: {str(e)}")
 
 
-def sqlite_delete_entity(entity_type: str, entity_name: str,
-                         context: Context) -> Dict[str, Any]:
+def sqlite_delete_entity(
+    entity_type: str, entity_name: str, context: Context
+) -> Dict[str, Any]:
     """Delete an entity record or all entity data."""
     try:
         entity_class = _get_entity_class(entity_type)
@@ -315,7 +337,9 @@ def sqlite_delete_entity(entity_type: str, entity_name: str,
             )
         else:
             if not context.org_name:
-                return error_result("Must be in organization context to delete entities")
+                return error_result(
+                    "Must be in organization context to delete entities"
+                )
 
             db_path = get_company_db_path(context.org_name, context)
             if not db_path.exists():
@@ -338,8 +362,9 @@ def sqlite_delete_entity(entity_type: str, entity_name: str,
         return error_result(f"Failed to delete {entity_type}: {str(e)}")
 
 
-def sqlite_load_all_entities(entity_type: str, company_name: str,
-                             context: Context) -> List[Dict[str, Any]]:
+def sqlite_load_all_entities(
+    entity_type: str, company_name: str, context: Context
+) -> List[Dict[str, Any]]:
     """Load all records for a multi-cardinality entity."""
     try:
         entity_class = _get_entity_class(entity_type)
@@ -391,8 +416,7 @@ def sqlite_list_organizations(context: Context) -> Dict[str, Any]:
         return error_result(f"Failed to list companies: {str(e)}")
 
 
-def sqlite_entity_exists(entity_type: str, company_name: str,
-                         context: Context) -> bool:
+def sqlite_entity_exists(entity_type: str, company_name: str, context: Context) -> bool:
     """Check if a table has any data for the given entity type."""
     try:
         entity_class = _get_entity_class(entity_type)
