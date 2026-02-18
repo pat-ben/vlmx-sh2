@@ -165,16 +165,7 @@ class JsonBackend:
                 _create_schema_entities(company_folder, entity_type)
 
                 # Register org in system/org/registry.toml.
-                import importlib.util as _ilu
-
-                _spec = _ilu.spec_from_file_location(
-                    "org_registry",
-                    Path(__file__).resolve().parents[4] / "system" / "org" / "org_registry.py",
-                )
-                assert _spec is not None and _spec.loader is not None
-                _mod = _ilu.module_from_spec(_spec)
-                _spec.loader.exec_module(_mod)
-                write_org_to_registry = _mod.write_org_to_registry
+                from vlmx_sh2.system.org.org_registry import write_org_to_registry
 
                 if not write_org_to_registry(
                     {

@@ -20,3 +20,8 @@ currency = "Currency.USD"
 id = "coca"
 name = "Coca"
 currency = "Currency.USD"
+
+[[organizations]]
+id = "testcorp"
+name = "Testcorp"
+currency = "Currency.USD"

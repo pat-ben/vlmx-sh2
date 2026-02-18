@@ -8,21 +8,47 @@ organizations created in this local installation.
 import logging
 import tomllib
 from pathlib import Path
+from ...core.models.context import Context
+from ...core.schemas.company import OrganizationEntity
 
 logger = logging.getLogger(__name__)
+
+
+
+def get_org(context: Context) -> list[OrganizationEntity]:
+    """Return all organizations from the org registry index.
+
+    Reads system/org/registry.toml rather than scanning data/ folders.
+    Each entry provides only the left-pane fields (name, legal, currency);
+    full org data is loaded separately via get_org_snapshot() when selected.
+    """
+    try:
+
+        entries = read_org_registry()
+        results = []
+        for entry in entries:
+            try:
+                results.append(
+                    OrganizationEntity(
+                        name=entry["name"],
+                        legal=entry.get("legal"),
+                        currency=entry.get("currency"),
+                    )
+                )
+            except Exception:
+                continue
+        return results
+    except Exception:
+        return []
 
 
 def get_org_registry_path() -> Path:
     """
     Return the path to system/org/registry.toml.
 
-    File is at: system/org/org_registry.py
-    parents[0] = system/org/
-    parents[1] = system/
-    parents[2] = project root
+    registry.toml lives in the same directory as this file.
     """
-    project_root = Path(__file__).resolve().parents[2]
-    return project_root / "system" / "org" / "registry.toml"
+    return Path(__file__).resolve().parent / "registry.toml"
 
 
 def read_org_registry() -> list[dict]:

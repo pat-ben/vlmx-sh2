@@ -18,6 +18,7 @@ from ....core.models.responses import (
 )
 from ....engine.executor import CommandExecutor
 from ...widgets.command_block import CommandBlock
+from ....system.org.org_registry import get_org
 
 
 class MainScreen(Screen):
@@ -43,10 +44,9 @@ class MainScreen(Screen):
 
         self.run_worker(self._populate_organisations_option_list, thread=True)
 
-    def _populate_organisations_option_list(self):
-        from ...data_provider import UIDataProvider
+    def _populate_organisations_option_list(self):    
 
-        orgs = UIDataProvider.get_org(self.context)
+        orgs = get_org(self.context)
         orgs_option_list = self.query_one("#organisations-option-list", OptionList)
         orgs_option_list.add_options([org.name for org in orgs])
 

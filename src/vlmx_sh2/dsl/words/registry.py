@@ -9,7 +9,7 @@ between database models and DSL word registrations.
 from typing import Dict
 from ...core.utils.context.rules import is_target_allowed_in_context    
 from ...core.enums.core import ContextLevel
-from ...core.models.words import Word, WordType
+from ...core.models.words import Word, WordType, ToolWord, ViewWord
 from ...core.registry import get_all_schema_configs
 from .actions import ACTION_WORDS_LIST
 from .generator import (
@@ -90,6 +90,31 @@ def get_words_for_context(context_level: ContextLevel) -> Dict[str, Word]:
             result[word_id] = word
 
     return result
+
+
+def get_views(schema_id: str = "company") -> list[ViewWord]:
+    """Return ViewWord instances for the given schema_id."""
+    return [v for v in VIEW_WORDS.values() if v.schema_id == schema_id]
+
+
+def get_tools() -> list[ToolWord]:
+    """Return all ToolWord instances."""
+    return list(TOOL_WORDS.values())
+
+
+def get_entity_ids_for_view(view_id: str) -> list[str]:
+    """Return the entity IDs associated with a view word."""
+    view_word = VIEW_WORDS.get(view_id)
+    if view_word is None:
+        return []
+    return view_word.entities
+
+
+def get_entity_ids_for_tool(tool_id: str) -> list[str]:
+    """Return the entity IDs associated with a tool word."""
+    # TODO: wire tool dependencies when ToolWord exposes them
+    return []
+
 
 
 def get_schema_class(schema_type: str):
