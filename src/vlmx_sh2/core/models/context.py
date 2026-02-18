@@ -8,7 +8,6 @@ tracks current company and plugin state during command sessions.
 
 from __future__ import annotations
 
-
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -16,7 +15,6 @@ from pydantic import BaseModel, model_validator
 from pydantic.config import ConfigDict
 
 from ..enums import ContextLevel
-
 
 
 class Context(BaseModel):
@@ -30,7 +28,9 @@ class Context(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # Context level tracking
-    level: ContextLevel = ContextLevel.SYS  # SYS=System, ORG=Organization, APP=Application
+    level: ContextLevel = (
+        ContextLevel.SYS
+    )  # SYS=System, ORG=Organization, APP=Application
 
     # System level (level 0)
     sys_path: Optional[Path] = None
@@ -42,8 +42,8 @@ class Context(BaseModel):
 
     # Application level (level 2)
     app_id: Optional[str] = None
-    app_name: Optional[str] = None      # NEW: Human-readable app name
-    app_type: Optional[str] = None      # NEW: "view" or "tool"
+    app_name: Optional[str] = None  # NEW: Human-readable app name
+    app_type: Optional[str] = None  # NEW: "view" or "tool"
 
     # Session (Step 2)
     user_id: Optional[int] = None
@@ -54,29 +54,20 @@ class Context(BaseModel):
         # SYS level: no organization or application fields
         if self.level == ContextLevel.SYS:
             if any((self.org_id, self.org_name, self.app_id, self.app_name)):
-                raise ValueError(
-                    "At SYS level, org and app fields must all be None"
-                )
+                raise ValueError("At SYS level, org and app fields must all be None")
         # ORG level: must have organization, no application
         elif self.level == ContextLevel.ORG:
-            if self.org_id is None or self.org_name is None:
-                raise ValueError(
-                    "At ORG level, org_id and org_name must not be None"
-                )
+            if self.org_name is None:
+                raise ValueError("At ORG level, org_name must not be None")
             if self.app_id is not None or self.app_name is not None:
                 raise ValueError("At ORG level, app fields must be None")
         # APP level: must have organization AND application
         elif self.level == ContextLevel.APP:
-            if self.org_id is None or self.org_name is None:
-                raise ValueError(
-                    "At APP level, org_id and org_name must not be None"
-                )
+            if self.org_name is None:
+                raise ValueError("At APP level, org_name must not be None")
             if self.app_id is None or self.app_name is None:
-                raise ValueError(
-                    "At APP level, app_id and app_name must not be None"
-                )
+                raise ValueError("At APP level, app_id and app_name must not be None")
         return self
-
 
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump(exclude_none=True)

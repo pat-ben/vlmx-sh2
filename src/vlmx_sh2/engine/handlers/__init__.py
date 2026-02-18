@@ -27,6 +27,7 @@ from .crud import (
     reset_handler,
     show_handler,
 )
+from .navigation import navigate_handler
 from .wizard import fill_handler
 
 # ---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ register_action_handler("add", add_handler)
 register_action_handler("delete", delete_handler)
 register_action_handler("reset", reset_handler)
 register_action_handler("show", show_handler)
+register_action_handler("cd", navigate_handler)
 
 register_action_handler("fill", fill_handler)
 
@@ -52,6 +54,8 @@ __all__ = [
     "delete_handler",
     "reset_handler",
     "show_handler",
+    # Navigation
+    "navigate_handler",
     # Wizard
     "fill_handler",
     # Apps

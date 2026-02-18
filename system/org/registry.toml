@@ -5,3 +5,18 @@
 [registry]
 version = "0.1"
 description = "Organization registry"
+
+[[organizations]]
+id = "valmetrics"
+name = "valmetrics"
+currency = "Currency.USD"
+
+[[organizations]]
+id = "acme"
+name = "acme"
+currency = "Currency.USD"
+
+[[organizations]]
+id = "coca"
+name = "Coca"
+currency = "Currency.USD"
