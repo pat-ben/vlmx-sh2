@@ -1,14 +1,14 @@
 """
 Core (non-UI) enums.
 
-This module is intended for shared, foundational enums that describe system-level
+This module is intended for shared, foundational enums that describe shell-level
 concepts and are used across multiple layers (engine, lang, storage, ui).
 
 Guidelines:
 - Put *user-facing* domain/value enums in `forms.py` (e.g., Currency, Country).
 - Put parsing-structure enums in `parser.py` (e.g., TokenType, Operator).
 - Put validation pipeline enums in `validation.py` (e.g., IssueStage, IssueSeverity).
-- Put execution/runtime system concepts here.
+- Put execution/runtime shell concepts here.
 """
 
 from enum import Enum
@@ -19,7 +19,7 @@ class ContextLevel(int, Enum):
     Context level within the shell.
 
     Levels represent how much context is currently "selected" by the user:
-    - SYS: no organization selected (system/root)
+    - SYS: no organization selected (shell/root)
     - ORG: organization selected
     - APP: app/module selected within organization (deepest context)
 

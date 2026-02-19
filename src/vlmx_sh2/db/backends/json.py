@@ -164,8 +164,8 @@ class JsonBackend:
 
                 _create_schema_entities(company_folder, entity_type)
 
-                # Register org in system/org/registry.toml.
-                from vlmx_sh2.system.org.org_registry import write_org_to_registry
+                # Register org in shell/org/registry.toml.
+                from vlmx_sh2.shell.sys.index import write_org_to_registry
 
                 if not write_org_to_registry(
                     {

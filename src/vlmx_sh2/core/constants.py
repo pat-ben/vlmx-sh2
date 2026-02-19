@@ -6,7 +6,7 @@ and ensure consistency.
 """
 
 # System-managed fields that should be excluded from user-editable forms
-# These fields are automatically managed by the system and should not be
+# These fields are automatically managed by the shell and should not be
 # directly modified by users through form interfaces
 SYSTEM_FIELDS = {
     'id',           # Record identifier

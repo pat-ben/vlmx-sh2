@@ -68,7 +68,7 @@ class EntityModel(SQLModel):
 
     @classmethod
     def get_all_system_fields(cls) -> Set[str]:
-        """Get system fields including auto-detected foreign keys."""
+        """Get shell fields including auto-detected foreign keys."""
         system_fields = cls._system_fields.copy()
 
         # Auto-detect foreign keys

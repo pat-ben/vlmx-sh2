@@ -83,7 +83,7 @@ class ActionCategory(str, Enum):
 
     CRUD = "crud"
     NAVIGATION = "navigation"
-    SYSTEM = "system"
+    SYSTEM = "shell"
     ANALYSIS = "analysis"
     IMPORT_EXPORT = "import_export"
 

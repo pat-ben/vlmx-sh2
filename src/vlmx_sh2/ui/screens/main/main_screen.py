@@ -18,7 +18,7 @@ from ....core.models.responses import (
 )
 from ....engine.executor import CommandExecutor
 from ...widgets.command_block import CommandBlock
-from ....system.org.org_registry import get_org
+from vlmx_sh2.shell.sys.index import get_org
 
 
 class MainScreen(Screen):

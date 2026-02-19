@@ -1,15 +1,15 @@
 """
 Org registry reader/writer.
 
-Manages system/org/registry.toml as the authoritative index of all
+Manages shell/org/registry.toml as the authoritative index of all
 organizations created in this local installation.
 """
 
 import logging
 import tomllib
 from pathlib import Path
-from ...core.models.context import Context
-from ...core.schemas.company import OrganizationEntity
+from vlmx_sh2.core.models.context import Context
+from vlmx_sh2.core.schemas.company import OrganizationEntity
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def get_org(context: Context) -> list[OrganizationEntity]:
     """Return all organizations from the org registry index.
 
-    Reads system/org/registry.toml rather than scanning data/ folders.
+    Reads shell/org/registry.toml rather than scanning data/ folders.
     Each entry provides only the left-pane fields (name, legal, currency);
     full org data is loaded separately via get_org_snapshot() when selected.
     """
@@ -44,7 +44,7 @@ def get_org(context: Context) -> list[OrganizationEntity]:
 
 def get_org_registry_path() -> Path:
     """
-    Return the path to system/org/registry.toml.
+    Return the path to shell/org/registry.toml.
 
     registry.toml lives in the same directory as this file.
     """

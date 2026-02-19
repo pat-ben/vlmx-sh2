@@ -36,7 +36,7 @@ def normalize(input_text: str, context: ValidationContext) -> str:
     # Step 2: Store normalized text in context
     context.normalized_text = normalized_text
 
-    # Step 3: Text validation using diagnostics system (BLOCKING)
+    # Step 3: Text validation using diagnostics shell (BLOCKING)
     if not Validator.validate_text(
         IssueStage.NORMALIZER, context, text=normalized_text
     ):

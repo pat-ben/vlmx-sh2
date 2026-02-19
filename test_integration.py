@@ -49,7 +49,7 @@ def main():
         test_basic_functionality()
 
         print(
-            "\n*** Integration tests passed! The implementation integrates correctly with the system."
+            "\n*** Integration tests passed! The implementation integrates correctly with the shell."
         )
 
     except Exception as e:

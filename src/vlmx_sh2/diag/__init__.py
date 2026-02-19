@@ -1,6 +1,6 @@
 # File: src/vlmx_sh2/diagnostics/__init__.py
 """
-Diagnostic system for VLMX shell.
+Diagnostic shell for VLMX shell.
 
 Provides validation issue tracking, suggestion generation, and diagnostic logging
 to deliver Nushell-quality error reporting and user feedback.

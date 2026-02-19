@@ -2,7 +2,7 @@
 Context and session management.
 
 Provides navigation context and session state for command execution.
-Manages hierarchical contexts (system, organization, application) and
+Manages hierarchical contexts (shell, organization, application) and
 tracks current company and plugin state during command sessions.
 """
 

@@ -198,5 +198,5 @@ def handle_storage_result(
     else:
         return _validation_error(
             storage_result.error or f"Operation failed for {entity_type}",
-            ["Check database permissions and system status"],
+            ["Check database permissions and shell status"],
         )

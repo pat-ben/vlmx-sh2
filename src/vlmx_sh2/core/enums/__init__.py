@@ -1,7 +1,7 @@
 """
 Core ENUMs package - single export hub.
 
-This package contains all enums used throughout the VLMX-SH2 system.
+This package contains all enums used throughout the VLMX-SH2 shell.
 Prefer importing enums from here to keep call sites stable:
 
     from vlmx_sh2.core.enums import Operator, TokenType, IssueStage

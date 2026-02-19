@@ -25,13 +25,13 @@ from ...models.context import Context
 
 def is_sys(context: Context) -> bool:
     """
-    Check if context is at system level.
+    Check if context is at shell level.
 
     Args:
         context: The context to check
 
     Returns:
-        True if at system level, False otherwise
+        True if at shell level, False otherwise
     """
     return context.level == ContextLevel.SYS
 

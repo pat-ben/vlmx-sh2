@@ -1,7 +1,7 @@
 """
 TOML tool loader.
 
-Loads ToolWord definitions from TOML files in the system/tools/ directory.
+Loads ToolWord definitions from TOML files in the shell/tools/ directory.
 This replaces the hardcoded tool definitions in tools.py with dynamic configuration.
 """
 

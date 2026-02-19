@@ -417,7 +417,7 @@ async def _create_schema(
     except Exception as e:
         return ErrorResult(
             errors=[f"Failed to create entity: {str(e)}"],
-            suggestions=["Check input values and system status"],
+            suggestions=["Check input values and shell status"],
         )
 
 
@@ -428,8 +428,8 @@ async def _drop_schema(
 
     if not is_sys(context):
         return ErrorResult(
-            errors=["Can only drop schemas from system level"],
-            suggestions=["Use 'cd' to navigate to system level first"],
+            errors=["Can only drop schemas from shell level"],
+            suggestions=["Use 'cd' to navigate to shell level first"],
         )
 
     actual_company_name, error = _resolve_organization_name(name, context)
@@ -579,7 +579,7 @@ async def _add_field_values(
     except Exception as e:
         return ErrorResult(
             errors=[f"Failed to add fields: {str(e)}"],
-            suggestions=["Check input format and system status"],
+            suggestions=["Check input format and shell status"],
         )
 
 

@@ -1,7 +1,7 @@
 """
 DSL Words Package.
 
-This package handles the complete word registry system for the VLMX DSL,
+This package handles the complete word registry shell for the VLMX DSL,
 providing a unified interface for word lookup and management. The registry
 combines auto-generated entity and field words with manual action words.
 

@@ -1,7 +1,7 @@
 """
 TOML view loader.
 
-Loads ViewWord definitions from TOML files in the system/views/ directory.
+Loads ViewWord definitions from TOML files in the shell/views/ directory.
 This replaces the hardcoded view definitions with dynamic configuration.
 """
 

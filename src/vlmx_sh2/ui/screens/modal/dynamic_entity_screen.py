@@ -151,7 +151,7 @@ class DynamicEntityScreen(ModalScreen):
     def _show_success_message_in_modal(self, message: str) -> None:
         """Show success message within the modal without closing it."""
         try:
-            # Use Textual's notification system for success messages
+            # Use Textual's notification shell for success messages
             self.notify(message, severity="information")
         except Exception:
             pass
@@ -159,7 +159,7 @@ class DynamicEntityScreen(ModalScreen):
     def _show_error_message_in_modal(self, message: str) -> None:
         """Show error message within the modal without closing it."""
         try:
-            # Use Textual's notification system for error messages
+            # Use Textual's notification shell for error messages
             self.notify(message, severity="error")
         except Exception:
             pass
