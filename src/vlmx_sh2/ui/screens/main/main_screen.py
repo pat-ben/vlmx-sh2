@@ -3,7 +3,7 @@
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Label, OptionList
+from textual.widgets import Footer, Header, OptionList
 
 from vlmx_sh2.ui.formatters.results import format_command_result
 
@@ -17,6 +17,7 @@ from ....core.models.responses import (
     QueryRequest,
 )
 from ....engine.executor import CommandExecutor
+from ...widgets.app_selector import AppSelector
 from ...widgets.command_block import CommandBlock
 from vlmx_sh2.shell.sys.index import get_org
 
@@ -36,7 +37,7 @@ class MainScreen(Screen):
         with Horizontal():
             with Vertical(id="left-pane"):
                 yield OptionList(id="organisations-option-list")
-                yield Label("apps widget")
+                yield AppSelector(id="app-selector")
             with Vertical(id="command-block-container"):
                 yield CommandBlock(context=self.context)
 
@@ -44,11 +45,36 @@ class MainScreen(Screen):
 
         self.run_worker(self._populate_organisations_option_list, thread=True)
 
-    def _populate_organisations_option_list(self):    
+    def _populate_organisations_option_list(self):
 
         orgs = get_org(self.context)
         orgs_option_list = self.query_one("#organisations-option-list", OptionList)
         orgs_option_list.add_options([org.name for org in orgs])
+
+    async def _submit_command(self, command: str) -> None:
+        """Populate the active CommandBlock's input with command and submit it."""
+        from textual.widgets import Input
+
+        for block in reversed(list(self.query(CommandBlock))):
+            try:
+                inp = block.query_one(Input)
+                if not inp.disabled:
+                    inp.value = command
+                    await inp.action_submit()
+                    return
+            except Exception:
+                continue
+
+    async def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        """Handle org selection from the organisations list."""
+        if event.option_list.id != "organisations-option-list":
+            return
+        event.stop()
+        await self._submit_command(f'cd "{str(event.option.prompt)}/"')
+
+    async def on_app_selector_app_selected(self, event: AppSelector.AppSelected) -> None:
+        """Handle view/tool selection from AppSelector."""
+        await self._submit_command(f'cd "{event.app_id}/"')
 
     async def on_command_block_command_submitted(self, message):
         """Handle command submission from CommandBlock."""
@@ -136,6 +162,13 @@ class MainScreen(Screen):
                     app_name=context_switch["app_name"],
                     app_type=context_switch["app_type"],
                 )
+
+            # Sync AppSelector visibility with new context
+            app_selector = self.query_one(AppSelector)
+            if self.context.level in (ContextLevel.ORG, ContextLevel.APP):
+                app_selector.show_for_org()
+            else:
+                app_selector.hide()
 
         # Create new prompt
         self._create_new_command_block()

@@ -81,3 +81,16 @@ FormWizard {
 #button-container Button {
     margin-right: 1;
 }
+
+#app-selector {
+    margin-top: 1;
+}
+
+AppSelector TabbedContent {
+    height: auto;
+}
+
+AppSelector OptionList {
+    height: auto;
+    max-height: 20;
+}
