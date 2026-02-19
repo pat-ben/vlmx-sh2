@@ -157,10 +157,12 @@ def generate_view_words() -> Dict[str, ViewWord]:
 
     Views are available only in APP context.
     """
+    from importlib.resources import files
+    from pathlib import Path
     from .view_loader import load_views_from_directory
-    from .paths import get_system_views_dir
 
-    views = load_views_from_directory(get_system_views_dir())
+    views_dir = Path(str(files("vlmx_sh2.shell.app") / "views"))
+    views = load_views_from_directory(views_dir)
     return {view.id: view for view in views}
 
 
@@ -170,8 +172,10 @@ def generate_tool_words() -> Dict[str, ToolWord]:
 
     Tools are available only in APP context.
     """
+    from importlib.resources import files
+    from pathlib import Path
     from .tool_loader import load_tools_from_directory
-    from .paths import get_system_tools_dir
 
-    tools = load_tools_from_directory(get_system_tools_dir())
+    tools_dir = Path(str(files("vlmx_sh2.shell.app") / "tools"))
+    tools = load_tools_from_directory(tools_dir)
     return {tool.id: tool for tool in tools}
